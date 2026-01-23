@@ -32,49 +32,68 @@ export default function CafesDestacados() {
     const slider = sliderRef.current;
     if (!slider) return;
 
-    const startAutoScroll = () => {
-      intervalRef.current = setInterval(() => {
-        slider.scrollBy({
-          left: 1,
-          behavior: "smooth",
-        });
+    intervalRef.current = setInterval(() => {
+      slider.scrollBy({
+        left: 1,
+        behavior: "smooth",
+      });
 
-        if (
-          slider.scrollLeft + slider.offsetWidth >=
-          slider.scrollWidth
-        ) {
-          slider.scrollTo({ left: 0 });
-        }
-      }, 20);
-    };
+      if (
+        slider.scrollLeft + slider.offsetWidth >=
+        slider.scrollWidth
+      ) {
+        slider.scrollTo({ left: 0 });
+      }
+    }, 20);
 
-    const stopAutoScroll = () => {
-      clearInterval(intervalRef.current);
-    };
-
-    startAutoScroll();
-
-    slider.addEventListener("mouseenter", stopAutoScroll);
-    slider.addEventListener("mouseleave", startAutoScroll);
-
-    return () => {
-      stopAutoScroll();
-      slider.removeEventListener("mouseenter", stopAutoScroll);
-      slider.removeEventListener("mouseleave", startAutoScroll);
-    };
+    return () => clearInterval(intervalRef.current);
   }, []);
+
+  const scrollLeft = () => {
+    sliderRef.current.scrollBy({
+      left: -320,
+      behavior: "smooth",
+    });
+  };
+
+  const scrollRight = () => {
+    sliderRef.current.scrollBy({
+      left: 320,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <section className="py-24 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-8">
+      <div className="max-w-7xl mx-auto px-8 relative">
 
-        <h2 className="text-4xl font-semibold mb-12">
-          Productos destacados
-        </h2>
+        {/* TÍTULO + CONTROLES */}
+        <div className="flex items-center justify-between mb-12">
+          <h2 className="text-4xl font-semibold">
+            Productos destacados
+          </h2>
 
+          <div className="flex gap-2">
+            <button
+              onClick={scrollLeft}
+              className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-black hover:text-white transition"
+            >
+              ←
+            </button>
+
+            <button
+              onClick={scrollRight}
+              className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-black hover:text-white transition"
+            >
+              →
+            </button>
+          </div>
+        </div>
+
+        {/* CARRUSEL */}
         <div
           ref={sliderRef}
-          className="flex gap-6 overflow-x-auto no-scrollbar"
+          className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth"
         >
           {[...cafes, ...cafes].map((cafe, index) => (
             <div
