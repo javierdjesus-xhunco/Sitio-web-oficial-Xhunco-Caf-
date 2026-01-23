@@ -11,49 +11,67 @@ export default function Clientes() {
     if (!slider) return;
 
     const startScroll = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
       intervalRef.current = setInterval(() => {
-        slider.scrollBy({
-          left: 1,
-          behavior: "smooth",
-        });
+        slider.scrollLeft += 1;
 
         if (
           slider.scrollLeft + slider.offsetWidth >=
           slider.scrollWidth
         ) {
-          slider.scrollTo({ left: 0 });
+          slider.scrollTo({ left: 0, behavior: "auto" });
         }
       }, 20);
     };
 
-    const stopScroll = () => {
-      clearInterval(intervalRef.current);
-    };
-
     startScroll();
 
-    slider.addEventListener("mouseenter", stopScroll);
-    slider.addEventListener("mouseleave", startScroll);
-
     return () => {
-      stopScroll();
-      slider.removeEventListener("mouseenter", stopScroll);
-      slider.removeEventListener("mouseleave", startScroll);
+      clearInterval(intervalRef.current);
     };
   }, []);
+
+  const handleScroll = (direction) => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const offset = slider.offsetWidth * 0.8;
+    slider.scrollLeft += direction * offset;
+  };
 
   return (
     <section
       id="clientes"
       className="mt-40 py-24 bg-[#F8F7F5] overflow-hidden"
     >
-      <div className="max-w-7xl mx-auto px-8 mb-12">
-        <h2 className="text-4xl font-semibold">
-          Nuestros clientes
-        </h2>
-        <p className="mt-4 text-gray-600">
-          Negocios que confían en Xhunco® Café
-        </p>
+      <div className="max-w-7xl mx-auto px-8 mb-12 flex flex-wrap items-center justify-between gap-6">
+        <div>
+          <h2 className="text-4xl font-semibold">
+            Nuestros clientes
+          </h2>
+          <p className="mt-4 text-gray-600">
+            Negocios que confían en Xhunco® Café
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => handleScroll(-1)}
+            aria-label="Retroceder clientes"
+            className="h-10 w-10 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScroll(1)}
+            aria-label="Avanzar clientes"
+            className="h-10 w-10 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+          >
+            →
+          </button>
+        </div>
       </div>
 
       <div

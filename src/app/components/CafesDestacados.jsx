@@ -32,68 +32,66 @@ export default function CafesDestacados() {
     const slider = sliderRef.current;
     if (!slider) return;
 
-    intervalRef.current = setInterval(() => {
-      slider.scrollBy({
-        left: 1,
-        behavior: "smooth",
-      });
-
-      if (
-        slider.scrollLeft + slider.offsetWidth >=
-        slider.scrollWidth
-      ) {
-        slider.scrollTo({ left: 0 });
+    const startAutoScroll = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
-    }, 20);
+      intervalRef.current = setInterval(() => {
+        slider.scrollLeft += 1;
 
-    return () => clearInterval(intervalRef.current);
+        if (
+          slider.scrollLeft + slider.offsetWidth >=
+          slider.scrollWidth
+        ) {
+          slider.scrollTo({ left: 0, behavior: "auto" });
+        }
+      }, 20);
+    };
+
+    startAutoScroll();
+
+    return () => {
+      clearInterval(intervalRef.current);
+    };
   }, []);
 
-  const scrollLeft = () => {
-    sliderRef.current.scrollBy({
-      left: -320,
-      behavior: "smooth",
-    });
-  };
-
-  const scrollRight = () => {
-    sliderRef.current.scrollBy({
-      left: 320,
-      behavior: "smooth",
-    });
+  const handleScroll = (direction) => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const offset = slider.offsetWidth * 0.8;
+    slider.scrollLeft += direction * offset;
   };
 
   return (
     <section className="py-24 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-8 relative">
-
-        {/* TÍTULO + CONTROLES */}
-        <div className="flex items-center justify-between mb-12">
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="flex flex-wrap items-center justify-between gap-6 mb-12">
           <h2 className="text-4xl font-semibold">
             Productos destacados
           </h2>
-
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
             <button
-              onClick={scrollLeft}
-              className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-black hover:text-white transition"
+              type="button"
+              onClick={() => handleScroll(-1)}
+              aria-label="Retroceder productos destacados"
+              className="h-10 w-10 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
             >
               ←
             </button>
-
             <button
-              onClick={scrollRight}
-              className="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-black hover:text-white transition"
+              type="button"
+              onClick={() => handleScroll(1)}
+              aria-label="Avanzar productos destacados"
+              className="h-10 w-10 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
             >
               →
             </button>
           </div>
         </div>
 
-        {/* CARRUSEL */}
         <div
           ref={sliderRef}
-          className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth"
+          className="flex gap-6 overflow-x-auto no-scrollbar"
         >
           {[...cafes, ...cafes].map((cafe, index) => (
             <div
