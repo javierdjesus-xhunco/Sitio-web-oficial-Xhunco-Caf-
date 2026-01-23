@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const categorias = [
   "General",
@@ -134,7 +134,16 @@ function Filtros({
   );
 }
 
-function CatalogoSeccion({ titulo, descripcion, categoria, productos }) {
+function CatalogoSeccion({
+  titulo,
+  descripcion,
+  categoria,
+  productos,
+  cantidades,
+  onIncrementar,
+  onDecrementar,
+  onAgregarCarrito,
+}) {
   return (
     <section className="max-w-6xl mx-auto px-8 pb-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -149,7 +158,10 @@ function CatalogoSeccion({ titulo, descripcion, categoria, productos }) {
 
       <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {productos.length > 0 ? (
-          productos.map((producto) => (
+          productos.map((producto) => {
+            const cantidad = cantidades[producto.nombre] ?? 0;
+            const sinInventario = !producto.disponible;
+            return (
             <article
               key={producto.nombre}
               className="rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition"
@@ -163,19 +175,51 @@ function CatalogoSeccion({ titulo, descripcion, categoria, productos }) {
               <p className="mt-2 text-sm text-gray-600">
                 {producto.descripcion}
               </p>
-              <div className="mt-6 flex items-center justify-between text-sm">
-                <span className="font-semibold text-gray-900">
-                  ${producto.precio} MXN
-                </span>
+              <div className="mt-6 space-y-4 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="font-semibold text-gray-900">
+                    ${producto.precio} MXN
+                  </span>
+                  <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2">
+                    <span className="text-xs text-gray-500">Cantidad</span>
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 text-center text-sm font-semibold">
+                        {cantidad}
+                      </span>
+                      <div className="flex flex-col overflow-hidden rounded-md border border-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => onIncrementar(producto.nombre)}
+                          disabled={sinInventario}
+                          className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                          aria-label={`Agregar ${producto.nombre}`}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDecrementar(producto.nombre)}
+                          disabled={sinInventario || cantidad === 0}
+                          className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                          aria-label={`Quitar ${producto.nombre}`}
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  className="font-medium text-black hover:opacity-70"
+                  onClick={() => onAgregarCarrito(producto)}
+                  disabled={sinInventario || cantidad === 0}
+                  className="rounded-full border border-black px-4 py-2 text-sm font-medium text-black transition hover:bg-black hover:text-white disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent"
                 >
-                  Ver detalles
+                  Agregar al carrito
                 </button>
               </div>
             </article>
-          ))
+          )})
         ) : (
           <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-sm text-gray-600">
             No hay productos con estos filtros.
@@ -191,6 +235,9 @@ export default function SuministrosPage() {
   const [disponibilidad, setDisponibilidad] = useState("todas");
   const [orden, setOrden] = useState("az");
   const [busqueda, setBusqueda] = useState("");
+  const [cantidades, setCantidades] = useState({});
+  const [carrito, setCarrito] = useState({});
+  const [carritoCargado, setCarritoCargado] = useState(false);
 
   const productosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -237,6 +284,60 @@ export default function SuministrosPage() {
     return acc;
   }, {});
 
+  const totalCarrito = Object.values(carrito).reduce(
+    (total, item) => total + item.cantidad,
+    0,
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const guardado = window.localStorage.getItem("suministrosCarrito");
+    if (guardado) {
+      try {
+        setCarrito(JSON.parse(guardado));
+      } catch (error) {
+        console.error("No se pudo leer el carrito guardado.", error);
+      }
+    }
+    setCarritoCargado(true);
+  }, []);
+
+  useEffect(() => {
+    if (!carritoCargado || typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem("suministrosCarrito", JSON.stringify(carrito));
+  }, [carrito, carritoCargado]);
+
+  const actualizarCantidad = (nombre, delta) => {
+    setCantidades((prev) => {
+      const actual = prev[nombre] ?? 0;
+      const siguiente = Math.max(0, actual + delta);
+      return { ...prev, [nombre]: siguiente };
+    });
+  };
+
+  const agregarAlCarrito = (producto) => {
+    const cantidad = cantidades[producto.nombre] ?? 0;
+    if (cantidad === 0 || !producto.disponible) {
+      return;
+    }
+    setCarrito((prev) => {
+      const existente = prev[producto.nombre];
+      const nuevaCantidad = (existente?.cantidad ?? 0) + cantidad;
+      return {
+        ...prev,
+        [producto.nombre]: {
+          ...producto,
+          cantidad: nuevaCantidad,
+        },
+      };
+    });
+    setCantidades((prev) => ({ ...prev, [producto.nombre]: 0 }));
+  };
+
   return (
     <main className="min-h-screen bg-white text-gray-900">
       <section className="max-w-6xl mx-auto px-8 pt-32 pb-12">
@@ -255,7 +356,8 @@ export default function SuministrosPage() {
 
       <section className="sticky top-24 z-20 bg-white/95 backdrop-blur border-y border-gray-200">
         <div className="max-w-6xl mx-auto px-8 py-4">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap gap-3">
             {categorias.map((categoria) => (
               <button
                 key={categoria}
@@ -270,6 +372,18 @@ export default function SuministrosPage() {
                 {categoria}
               </button>
             ))}
+            </div>
+            <a
+              href="/suministros/carrito"
+              className="flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+              aria-label="Ir al carrito"
+            >
+              <span className="text-base">🛒</span>
+              <span>Carrito</span>
+              <span className="rounded-full bg-black px-2 py-0.5 text-xs text-white">
+                {totalCarrito}
+              </span>
+            </a>
           </div>
 
           <Filtros
@@ -295,18 +409,11 @@ export default function SuministrosPage() {
             }
             categoria={categoria}
             productos={productosPorCategoria[categoria]}
+            cantidades={cantidades}
+            onIncrementar={(nombre) => actualizarCantidad(nombre, 1)}
+            onDecrementar={(nombre) => actualizarCantidad(nombre, -1)}
+            onAgregarCarrito={agregarAlCarrito}
           />
-          <div className="max-w-6xl mx-auto px-8 pb-6">
-            <Filtros
-              disponibilidad={disponibilidad}
-              setDisponibilidad={setDisponibilidad}
-              orden={orden}
-              setOrden={setOrden}
-              busqueda={busqueda}
-              setBusqueda={setBusqueda}
-              sugerencias={sugerencias}
-            />
-          </div>
         </div>
       ))}
 
