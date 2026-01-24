@@ -18,6 +18,7 @@ const productos = [
     descripcion: "Ideal para lattes y bebidas frías.",
     disponible: true,
     precio: 210,
+    imagen: "/suministros/placeholder.svg",
   },
   {
     nombre: "Jarabe de caramelo",
@@ -25,6 +26,7 @@ const productos = [
     descripcion: "Dulce, con notas tostadas.",
     disponible: false,
     precio: 225,
+    imagen: "/suministros/placeholder.svg",
   },
   {
     nombre: "Salsa de chocolate",
@@ -32,6 +34,7 @@ const productos = [
     descripcion: "Perfecta para mocha y frappés.",
     disponible: true,
     precio: 240,
+    imagen: "/suministros/placeholder.svg",
   },
   {
     nombre: "Base chai",
@@ -39,6 +42,7 @@ const productos = [
     descripcion: "Especias y té negro en polvo.",
     disponible: true,
     precio: 320,
+    imagen: "/suministros/placeholder.svg",
   },
   {
     nombre: "Base matcha",
@@ -46,6 +50,7 @@ const productos = [
     descripcion: "Matcha ceremonial para bebidas.",
     disponible: true,
     precio: 390,
+    imagen: "/suministros/placeholder.svg",
   },
   {
     nombre: "Perlas tapioca",
@@ -53,6 +58,7 @@ const productos = [
     descripcion: "Textura suave para bubble tea.",
     disponible: false,
     precio: 180,
+    imagen: "/suministros/placeholder.svg",
   },
   {
     nombre: "Té verde jazmín",
@@ -60,6 +66,7 @@ const productos = [
     descripcion: "Aroma floral con notas suaves.",
     disponible: true,
     precio: 160,
+    imagen: "/suministros/placeholder.svg",
   },
 ];
 

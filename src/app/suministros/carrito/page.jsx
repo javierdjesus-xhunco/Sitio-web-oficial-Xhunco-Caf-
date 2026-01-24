@@ -19,6 +19,13 @@ export default function CarritoPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem("suministrosCarrito", JSON.stringify(carrito));
+  }, [carrito]);
+
   const items = useMemo(() => Object.values(carrito), [carrito]);
   const totalArticulos = items.reduce(
     (total, item) => total + item.cantidad,
@@ -28,6 +35,34 @@ export default function CarritoPage() {
     (total, item) => total + item.cantidad * item.precio,
     0,
   );
+
+  const actualizarCantidad = (nombre, delta) => {
+    setCarrito((prev) => {
+      const item = prev[nombre];
+      if (!item) {
+        return prev;
+      }
+      const nuevaCantidad = Math.max(0, item.cantidad + delta);
+      if (nuevaCantidad === 0) {
+        const { [nombre]: _, ...resto } = prev;
+        return resto;
+      }
+      return {
+        ...prev,
+        [nombre]: {
+          ...item,
+          cantidad: nuevaCantidad,
+        },
+      };
+    });
+  };
+
+  const eliminarProducto = (nombre) => {
+    setCarrito((prev) => {
+      const { [nombre]: _, ...resto } = prev;
+      return resto;
+    });
+  };
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
@@ -57,18 +92,58 @@ export default function CarritoPage() {
                 {items.map((item) => (
                   <li
                     key={item.nombre}
-                    className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4"
+                    className="flex flex-wrap items-center justify-between gap-6 border-b border-gray-100 pb-4"
                   >
-                    <div>
-                      <p className="text-sm text-gray-500">{item.categoria}</p>
-                      <p className="text-lg font-semibold">{item.nombre}</p>
-                      <p className="text-sm text-gray-600">
-                        ${item.precio} MXN c/u
-                      </p>
+                    <div className="flex items-center gap-4">
+                      <div className="h-16 w-16 overflow-hidden rounded-2xl bg-gray-100">
+                        <img
+                          src={item.imagen || "/suministros/placeholder.svg"}
+                          alt={item.nombre}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          {item.categoria}
+                        </p>
+                        <p className="text-lg font-semibold">{item.nombre}</p>
+                        <p className="text-sm text-gray-600">
+                          ${item.precio} MXN c/u
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">Cantidad</p>
-                      <p className="text-lg font-semibold">{item.cantidad}</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2">
+                        <span className="text-xs text-gray-500">Cantidad</span>
+                        <span className="w-6 text-center text-sm font-semibold">
+                          {item.cantidad}
+                        </span>
+                        <div className="flex flex-col overflow-hidden rounded-md border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => actualizarCantidad(item.nombre, 1)}
+                            className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                            aria-label={`Aumentar ${item.nombre}`}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => actualizarCantidad(item.nombre, -1)}
+                            className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                            aria-label={`Disminuir ${item.nombre}`}
+                          >
+                            ▼
+                          </button>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => eliminarProducto(item.nombre)}
+                        className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-600 hover:border-gray-400"
+                      >
+                        Eliminar
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -94,23 +169,15 @@ export default function CarritoPage() {
             >
               Comprar ahora
             </button>
-            <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-4 text-center">
-              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">
-                Pago seguro
-              </p>
-              <div className="mt-3 flex items-center justify-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-lg">
-                  🏦
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-gray-900">
-                    Institución financiera
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Logo genérico (se reemplazará por el banco real).
-                  </p>
-                </div>
-              </div>
+            <div className="mt-6 flex items-center justify-center rounded-2xl border border-dashed border-gray-300 p-6">
+              <img
+                src="/pagos/spinnegocios.png"
+                alt="Logo de la institución financiera"
+                className="h-20 w-auto object-contain"
+                onError={(event) => {
+                  event.currentTarget.src = "/suministros/placeholder.svg";
+                }}
+              />
             </div>
           </div>
         </div>
