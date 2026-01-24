@@ -62,8 +62,8 @@ export default function Header() {
             B2B
           </Link>
 
-          <Link href="/academia" className="font-medium hover:opacity-70">
-            Academia
+          <Link href="/suministros" className="font-medium hover:opacity-70">
+            Suministros
           </Link>
 
           <Link href="/contacto" className="font-medium hover:opacity-70">
