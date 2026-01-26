@@ -1,0 +1,417 @@
+﻿sku,nombre,categoria,presentacion,precio,unidad,stock,activo
+SKU-001,Vista hermosa (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-002,Naranjales (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-003,Barranca Grande (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-004,Palo blanco (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-005,Úrsulo Galván (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-006,Vequia (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-007,El Espinal (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-008,Lagunilla (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-009,Mesa del Espinal (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-010,Vaquería (Lavado),CAFE,1kg,0,,0,TRUE
+SKU-011,Muñeco,CAFE,1kg,0,,0,TRUE
+SKU-012,Jonotal,CAFE,1kg,0,,0,TRUE
+SKU-013,Cerro de Los Planes,CAFE,1kg,0,,0,TRUE
+SKU-014,Zoyatla,CAFE,1kg,0,,0,TRUE
+SKU-015,Paraíso,CAFE,1kg,0,,0,TRUE
+SKU-016,Taro,POLVOS,2kg,679.82,,31,TRUE
+SKU-017,Coco,POLVOS,2kg,586.32,,10,TRUE
+SKU-018,Cookies & cream,POLVOS,2kg,621.52,,26,TRUE
+SKU-019,Caramelo,POLVOS,2kg,577.52,,41,TRUE
+SKU-020,Chocolate blanco,POLVOS,2kg,503.82,,32,TRUE
+SKU-021,Cappuccino,POLVOS,2kg,583.02,,28,TRUE
+SKU-022,Moka,POLVOS,2kg,583.02,,38,TRUE
+SKU-023,Chocolate,POLVOS,2kg,665.52,,41,TRUE
+SKU-024,Base neutra,POLVOS,2kg,562.12,,47,TRUE
+SKU-025,Vainilla francesa,POLVOS,2kg,631.42,,16,TRUE
+SKU-026,Yogur,POLVOS,2kg,597.32,,14,TRUE
+SKU-027,Chai té negro,POLVOS,2kg,621.52,,12,TRUE
+SKU-028,Chai té verde,POLVOS,2kg,804.12,,10,TRUE
+SKU-029,Té matcha,POLVOS,2kg,911.92,,31,TRUE
+SKU-030,Horchata,POLVOS,2kg,517.02,,15,TRUE
+SKU-031,Dulce de calabaza,POLVOS,2kg,541.22,,17,TRUE
+SKU-032,Mazapán,POLVOS,2kg,0,,0,TRUE
+SKU-033,Cajeta,POLVOS,2kg,0,,0,TRUE
+SKU-034,Chai manzana canela,POLVOS,2kg,0,,0,TRUE
+SKU-035,Mora azul,POLVOS,2kg,0,,0,TRUE
+SKU-036,Xocolãtl,POLVOS,2kg,677.16,,13,TRUE
+SKU-037,Crème brûlée,POLVOS,2kg,0,,0,TRUE
+SKU-038,Base cristal,POLVOS,2.5kg,708.15,,5,TRUE
+SKU-039,Base neutra sin azúcar,POLVOS,1.6kg,478.5,,10,TRUE
+SKU-040,Taro,POLVOS,700g,304.98,,8,TRUE
+SKU-041,Cookies & cream,POLVOS,700g,318.18,,6,TRUE
+SKU-042,Caramelo,POLVOS,700g,297.01,,8,TRUE
+SKU-043,Chocolate blanco,POLVOS,700g,255.21,,1,TRUE
+SKU-044,Cappuccino,POLVOS,700g,297.01,,5,TRUE
+SKU-045,Moka,POLVOS,700g,305.81,,7,TRUE
+SKU-046,Chocolate,POLVOS,700g,255.21,,1,TRUE
+SKU-047,Base neutra,POLVOS,700g,312.41,,4,TRUE
+SKU-048,Vainilla francesa,POLVOS,700g,324.51,,5,TRUE
+SKU-049,Yogur,POLVOS,700g,310.21,,8,TRUE
+SKU-050,Chai té negro,POLVOS,700g,0,,0,TRUE
+SKU-051,Matcha,POLVOS,700g,0,,0,TRUE
+SKU-052,Dulce de calabaza,POLVOS,700g,277.21,,10,TRUE
+SKU-053,Mazapán,POLVOS,700g,292.61,,5,TRUE
+SKU-054,Cajeta,POLVOS,700g,0,,0,TRUE
+SKU-055,Chai manzana canela,POLVOS,700g,0,,0,TRUE
+SKU-056,Horchata,POLVOS,700g,0,,0,TRUE
+SKU-057,Mora azul,POLVOS,700g,0,,0,TRUE
+SKU-058,Matcha azul,POLVOS,700g,292.61,,7,TRUE
+SKU-059,Xocolãtl,POLVOS,700g,332.64,,11,TRUE
+SKU-060,Crème brûlée,POLVOS,700g,0,,0,TRUE
+SKU-061,Base cristal,POLVOS,1kg,349.26,,4,TRUE
+SKU-062,Cúrcuma latte,POLVOS,250g,189.9,,10,TRUE
+SKU-063,Piña colada,POLVOS,2kg,0,,0,TRUE
+SKU-064,Choco-arándano,POLVOS,2kg,766.72,,3,TRUE
+SKU-065,Choco-fresa,POLVOS,2kg,0,,0,TRUE
+SKU-066,Moka blanco,POLVOS,2kg,0,,0,TRUE
+SKU-067,Moka blanco,POLVOS,700g,314.61,,7,TRUE
+SKU-068,Piña colada,POLVOS,700g,0,,0,TRUE
+SKU-069,Choco-fresa,POLVOS,700g,421.31,,5,TRUE
+SKU-070,Choco-arándano,POLVOS,700g,0,,0,TRUE
+SKU-071,Taro,POLVOS,1kg,677.85,,5,TRUE
+SKU-072,Té verde matcha,POLVOS,1kg,1169.75,,14,TRUE
+SKU-073,Chocolate en polvo,POLVOS,2.025kg,580.93,,3,TRUE
+SKU-074,Chai tigre tradicional,POLVOS,1.814kg,940.84,,50,TRUE
+SKU-075,Chai elefante vainilla,POLVOS,1.814kg,940.84,,42,TRUE
+SKU-076,Chai tortuga té verde,POLVOS,1.814kg,940.84,,15,TRUE
+SKU-077,Chai tucán mango,POLVOS,1.814kg,940.84,,5,TRUE
+SKU-078,Chai orca tradicional sin azúcar,POLVOS,1.520kg,1119.5,,3,TRUE
+SKU-079,Chai flamingo vainilla sin azúcar,POLVOS,1.520kg,1154.7,,11,TRUE
+SKU-080,Chai elefante vainilla,POLVOS,398g,261.75,,5,TRUE
+SKU-081,Chai tigre tradicional,POLVOS,398g,261.75,,7,TRUE
+SKU-082,Chai tortuga té verde,POLVOS,398g,265.05,,9,TRUE
+SKU-083,Chai panda calabaza,POLVOS,398g,244.15,,8,TRUE
+SKU-084,Chai tea frost matcha,POLVOS,398g,0,,0,TRUE
+SKU-085,Chai rhino cocoa,POLVOS,456g,0,,0,TRUE
+SKU-086,Chai flamingo vainilla sin azúcar,POLVOS,337g,288.86,,9,TRUE
+SKU-087,Chai orca tradicional sin azúcar,POLVOS,102g,265.76,,6,TRUE
+SKU-088,Cúrcuma latte,POLVOS,90g,258.59,,12,TRUE
+SKU-089,Doble moka,POLVOS,1.360kg,0,,0,TRUE
+SKU-090,Original moka frappé,POLVOS,1.360kg,602.32,,4,TRUE
+SKU-091,Helado de chocolate,POLVOS,1.360kg,0,,0,TRUE
+SKU-092,Caramelo de café,POLVOS,1.360kg,0,,0,TRUE
+SKU-093,Chocolate azteca de oro,POLVOS,1.360kg,463.32,,5,TRUE
+SKU-094,Tahitian vainilla latte,POLVOS,1.360kg,0,,0,TRUE
+SKU-095,Caffe latte,POLVOS,1.360kg,0,,0,TRUE
+SKU-096,Café y chispas,POLVOS,1.360kg,0,,0,TRUE
+SKU-097,Galletas con crema,POLVOS,1.360kg,602.32,,5,TRUE
+SKU-098,Chai té negro especiado,POLVOS,1.360kg,614.35,,4,TRUE
+SKU-099,Chai té negro y vainilla,POLVOS,1.360kg,0,,0,TRUE
+SKU-100,Caramelo,POLVOS,1.360kg,0,,0,TRUE
+SKU-101,Matcha,POLVOS,1.360kg,686.62,,11,TRUE
+SKU-102,Vainilla,POLVOS,1.360kg,0,,0,TRUE
+SKU-103,Charcoal,POLVOS,1.360kg,713.99,,7,TRUE
+SKU-104,Coco,POLVOS,1.360kg,549.11,,6,TRUE
+SKU-105,Taro latte,POLVOS,1.360kg,549.11,,3,TRUE
+SKU-106,Chocolate blanco,POLVOS,1.360kg,583.22,,4,TRUE
+SKU-107,Madagascar vainilla natural,POLVOS,1.360kg,453.42,,2,TRUE
+SKU-108,Chocolate menta barista frappé,POLVOS,1.360kg,602.32,,6,TRUE
+SKU-109,Fresa con crema de frutas,POLVOS,1.360kg,0,,0,TRUE
+SKU-110,Almendra latte,POLVOS,1.360kg,549.11,,2,TRUE
+SKU-111,Mango latte,POLVOS,1.360kg,0,,0,TRUE
+SKU-112,Galletas con crema,POLVOS,1.580Kg,0,,0,TRUE
+SKU-113,Manzana chai,POLVOS,1.580Kg,904.34,,4,TRUE
+SKU-114,Batido de vainilla,POLVOS,1.580Kg,0,,0,TRUE
+SKU-115,Moka,POLVOS,1.580Kg,0,,0,TRUE
+SKU-116,Vainilla,POLVOS,1.580Kg,0,,0,TRUE
+SKU-117,Caramelo de café,POLVOS,1.580Kg,809.03,,2,TRUE
+SKU-118,Doble moka,POLVOS,1.580Kg,0,,0,TRUE
+SKU-119,Cappuccino,POLVOS,1.580Kg,785.54,,2,TRUE
+SKU-120,Chocolate blanco,POLVOS,1.580Kg,0,,0,TRUE
+SKU-121,Té verde matcha,POLVOS,1.580Kg,0,,0,TRUE
+SKU-122,Fresa,POLVOS,1.580Kg,0,,0,TRUE
+SKU-123,Chai especiado,POLVOS,1.580Kg,0,,0,TRUE
+SKU-124,Chai vainilla,POLVOS,1.580Kg,904.34,,2,TRUE
+SKU-125,Helado latte,POLVOS,1.360kg,756.76,,5,TRUE
+SKU-126,Latte frappé,POLVOS,1.360kg,719.83,,5,TRUE
+SKU-127,Café espresso,POLVOS,1.360kg,725.01,,5,TRUE
+SKU-128,Moka glaciar,POLVOS,1.360kg,0,,0,TRUE
+SKU-129,Moka frappé,POLVOS,1.360kg,0,,0,TRUE
+SKU-130,Doble moka,POLVOS,1.360kg,0,,0,TRUE
+SKU-131,Chocolate blanco,POLVOS,1.360kg,0,,0,TRUE
+SKU-132,Caramelo de café,POLVOS,1.360kg,0,,0,TRUE
+SKU-133,Caramelo,POLVOS,1.360kg,0,,0,TRUE
+SKU-134,Pistache,POLVOS,1.360kg,653.48,,5,TRUE
+SKU-135,Galletas con crema,POLVOS,1.360kg,0,,0,TRUE
+SKU-136,Red velvet,POLVOS,1.360kg,721.62,,5,TRUE
+SKU-137,Matcha frappé,POLVOS,1.360kg,0,,0,TRUE
+SKU-138,Chai vainilla,POLVOS,1.360kg,0,,0,TRUE
+SKU-139,Chai té negro especiado,POLVOS,1.360kg,0,,0,TRUE
+SKU-140,Vainilla,POLVOS,1.360kg,0,,0,TRUE
+SKU-141,Chocolate dulce,POLVOS,1.13kg,299.38,,22,TRUE
+SKU-142,Chocolate créme frappé,POLVOS,1.13kg,0,,0,TRUE
+SKU-143,Chocolate holandés masterpiece,POLVOS,0.68kg,0,,0,TRUE
+SKU-144,Fresa,JARABES,1 L,0,,0,TRUE
+SKU-145,Manzana Verde,JARABES,1 L,192.5,,6,TRUE
+SKU-146,Crema irlandesa,JARABES,1 L,192.5,,3,TRUE
+SKU-147,Amaretto,JARABES,1 L,165.55,,4,TRUE
+SKU-148,Caramelo,JARABES,1 L,192.5,,3,TRUE
+SKU-149,Vainilla,JARABES,1 L,192.5,,3,TRUE
+SKU-150,Vainilla francesa,JARABES,1 L,192.5,,4,TRUE
+SKU-151,Crema de avellana,JARABES,1 L,192.5,,5,TRUE
+SKU-152,Orgánico,JARABES,1 L,0,,0,TRUE
+SKU-153,Frambuesa,JARABES,1 L,0,,0,TRUE
+SKU-154,Mango,JARABES,1 L,192.5,,6,TRUE
+SKU-155,Mora azul,JARABES,1 L,0,,0,TRUE
+SKU-156,Roca de almendra,JARABES,1 L,0,,0,TRUE
+SKU-157,Caramelo de mantequilla,JARABES,1 L,0,,0,TRUE
+SKU-158,Caramelo,JARABES,1 L,0,,0,TRUE
+SKU-159,Pastel de queso,JARABES,1 L,0,,0,TRUE
+SKU-160,Chocolate blanco,JARABES,1 L,0,,0,TRUE
+SKU-161,Chocolate milano,JARABES,1 L,0,,0,TRUE
+SKU-162,Canela,JARABES,1 L,0,,0,TRUE
+SKU-163,Crema de banana,JARABES,1 L,0,,0,TRUE
+SKU-164,Crema de caramelo,JARABES,1 L,0,,0,TRUE
+SKU-165,Amaretto,JARABES,1 L,0,,0,TRUE
+SKU-166,Zarzamora,JARABES,1 L,0,,0,TRUE
+SKU-167,Mora Azul,JARABES,1 L,0,,0,TRUE
+SKU-168,Cereza,JARABES,1 L,0,,0,TRUE
+SKU-169,Coco,JARABES,1 L,0,,0,TRUE
+SKU-170,Crema irlandesa,JARABES,1 L,0,,0,TRUE
+SKU-171,Crema de cocoa,JARABES,1 L,0,,0,TRUE
+SKU-172,Crema de menta,JARABES,1 L,0,,0,TRUE
+SKU-173,Durazno,JARABES,1 L,0,,0,TRUE
+SKU-174,Diamond (vino espumoso y vainilla),JARABES,1 L,247.3,,24,TRUE
+SKU-175,Caramelo inglés,JARABES,1 L,0,,0,TRUE
+SKU-176,Vainilla francesa,JARABES,1 L,0,,0,TRUE
+SKU-177,Avellana,JARABES,1 L,0,,0,TRUE
+SKU-178,Limón,JARABES,1 L,0,,0,TRUE
+SKU-179,Mango,JARABES,1 L,0,,0,TRUE
+SKU-180,Piña,JARABES,1 L,0,,0,TRUE
+SKU-181,Tiramisu,JARABES,1 L,0,,0,TRUE
+SKU-182,Uva,JARABES,1 L,0,,0,TRUE
+SKU-183,Vainas de vainilla,JARABES,1 L,0,,0,TRUE
+SKU-184,Sandía,JARABES,1 L,0,,0,TRUE
+SKU-185,Frambuesa,JARABES,1 L,0,,0,TRUE
+SKU-186,Fresa,JARABES,1 L,0,,0,TRUE
+SKU-187,Hierbabuena,JARABES,1 L,0,,0,TRUE
+SKU-188,Kiwi,JARABES,1 L,0,,0,TRUE
+SKU-189,Lima,JARABES,1 L,0,,0,TRUE
+SKU-190,Manzana,JARABES,1 L,0,,0,TRUE
+SKU-191,Granada,JARABES,1 L,0,,0,TRUE
+SKU-192,Vainilla,JARABES,1 L,0,,0,TRUE
+SKU-193,Arándano,JARABES,1 L,0,,0,TRUE
+SKU-194,Almendra,JARABES,1 L,0,,0,TRUE
+SKU-195,Calabaza,JARABES,1 L,0,,0,TRUE
+SKU-196,Maple,JARABES,1 L,0,,0,TRUE
+SKU-197,Chai con especias,JARABES,1 L,0,,0,TRUE
+SKU-198,Azúcar morena,JARABES,1 L,0,,0,TRUE
+SKU-199,Guayaba,JARABES,1 L,0,,0,TRUE
+SKU-200,Crema de cacahuate,JARABES,1 L,0,,0,TRUE
+SKU-201,Crema de nuez,JARABES,1 L,0,,0,TRUE
+SKU-202,Galleta de jengibre,JARABES,1 L,0,,0,TRUE
+SKU-203,Manzana verde,JARABES,1 L,0,,0,TRUE
+SKU-204,Frambuesa roja,JARABES,1 L,0,,0,TRUE
+SKU-205,Nuez de macadamia,JARABES,1 L,0,,0,TRUE
+SKU-206,Caramelo salado,JARABES,1 L,0,,0,TRUE
+SKU-207,Cerveza de raíz,JARABES,1 L,0,,0,TRUE
+SKU-208,Mojito,JARABES,1 L,0,,0,TRUE
+SKU-209,Curacao azul,JARABES,1 L,0,,0,TRUE
+SKU-210,Rosas,JARABES,1 L,0,,0,TRUE
+SKU-211,Lavanda,JARABES,1 L,0,,0,TRUE
+SKU-212,Lichi,JARABES,1 L,0,,0,TRUE
+SKU-213,Bourbon caramel,JARABES,1 L,0,,0,TRUE
+SKU-214,Longan,JARABES,1 L,0,,0,TRUE
+SKU-215,Pistache,JARABES,1 L,0,,0,TRUE
+SKU-216,Malvavisco tostado,JARABES,1 L,0,,0,TRUE
+SKU-217,Ron oscuro con frambuesa,JARABES,750ml,0,,0,TRUE
+SKU-218,Almendra,JARABES,750ml,0,,0,TRUE
+SKU-219,Avellana,JARABES,750ml,0,,0,TRUE
+SKU-220,Caramelo,JARABES,750ml,0,,0,TRUE
+SKU-221,Chocolate blanco,JARABES,750ml,0,,0,TRUE
+SKU-222,Coco,JARABES,750ml,0,,0,TRUE
+SKU-223,Durazno,JARABES,750ml,0,,0,TRUE
+SKU-224,Frambuesa,JARABES,750ml,0,,0,TRUE
+SKU-225,Vainilla,JARABES,750ml,0,,0,TRUE
+SKU-226,Chocolate,JARABES,750ml,0,,0,TRUE
+SKU-227,Crema irlandesa,JARABES,750ml,0,,0,TRUE
+SKU-228,Caramelo inglés,JARABES,750ml,0,,0,TRUE
+SKU-229,Fresa,JARABES,750ml,0,,0,TRUE
+SKU-230,Mango,JARABES,750ml,0,,0,TRUE
+SKU-231,Vainilla francesa,JARABES,750ml,0,,0,TRUE
+SKU-232,Pay de calabaza,JARABES,750ml,0,,0,TRUE
+SKU-233,Caramelo,SALSAS,1.89 L,655.22,,7,TRUE
+SKU-234,Chocolate,SALSAS,1.89 L,590.44,,10,TRUE
+SKU-235,Caramelo,SALSAS,443ml,202.33,,9,TRUE
+SKU-236,Chocolate,SALSAS,443ml,0,,0,TRUE
+SKU-237,Calabaza,SALSAS,1.89,675.02,,10,TRUE
+SKU-238,Calabaza,SALSAS,443ml,142.56,,6,TRUE
+SKU-239,Chocolate oscuro,SALSAS,1.89 L,0,,0,TRUE
+SKU-240,Caramelo,SALSAS,1.89 L,668.74,,5,TRUE
+SKU-241,Chocolate blanco,SALSAS,1.89 L,0,,0,TRUE
+SKU-242,Chocolate oscuro,SALSAS,1.89 L,510.84,,17,TRUE
+SKU-243,Chocolate blanco,SALSAS,1.89 L,577.54,,4,TRUE
+SKU-244,Caramelo,SALSAS,1.89 L,624.84,,11,TRUE
+SKU-245,Chocolate oscuro,SALSAS,1.89 L,0,,0,TRUE
+SKU-246,Caramelo,SALSAS,1.89 L,0,,0,TRUE
+SKU-247,Chocolate blanco,SALSAS,1.89 L,0,,0,TRUE
+SKU-248,Chocolate oscuro,SALSAS,488 ml,142.56,,6,TRUE
+SKU-249,Chocolate blanco,SALSAS,488 ml,155.03,,7,TRUE
+SKU-250,Caramelo,SALSAS,488 ml,144.03,,5,TRUE
+SKU-251,Chocolate y avellana,SALSAS,488 ml,0,,0,TRUE
+SKU-252,Fresa,PURES Y CONCENTRADOS,1.8 L,1061.23,,5,TRUE
+SKU-253,Piña,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-254,Limón,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-255,Melón verde,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-256,Lichi,PURES Y CONCENTRADOS,1.8 L,1061.23,,5,TRUE
+SKU-257,Guayaba roja,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-258,Cereza,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-259,Frambuesa,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-260,Mora azul,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-261,Maracuyá,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-262,Curacao azul,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-263,Sandía,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-264,Arándano rojo,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-265,Mix de frutas,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-266,Kiwi,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-267,Taro,PURES Y CONCENTRADOS,1.8 L,0,,0,TRUE
+SKU-268,Chamoy,PURES Y CONCENTRADOS,1 L,80.85,,3,TRUE
+SKU-269,Maracuyá,PURES Y CONCENTRADOS,4.2 kg,636.71,,4,TRUE
+SKU-270,Mango,PURES Y CONCENTRADOS,4.2 kg,786.31,,4,TRUE
+SKU-271,Kiwi,PURES Y CONCENTRADOS,4.2 kg,0,,0,TRUE
+SKU-272,Mora azul,PURES Y CONCENTRADOS,4.2 kg,0,,0,TRUE
+SKU-273,Fresa,PURES Y CONCENTRADOS,4.2 kg,636.71,,4,TRUE
+SKU-274,Piña,PURES Y CONCENTRADOS,4 kg,0,,0,TRUE
+SKU-275,Mango,PURES Y CONCENTRADOS,1.89 L,0,,0,TRUE
+SKU-276,Fresa,PURES Y CONCENTRADOS,1.89 L,466.13,,6,TRUE
+SKU-277,Manzana verde,PURES Y CONCENTRADOS,1.89 L,0,,0,TRUE
+SKU-278,Piña colada,PURES Y CONCENTRADOS,1.89 L,0,,0,TRUE
+SKU-279,Frutas del bosque,PURES Y CONCENTRADOS,1.89 L,466.13,,6,TRUE
+SKU-280,Mango,PURES Y CONCENTRADOS,1.89 L,970.13,,6,TRUE
+SKU-281,Durazno,PURES Y CONCENTRADOS,1.89 L,970.13,,6,TRUE
+SKU-282,Mezcla de moras,PURES Y CONCENTRADOS,1.89 L,970.13,,6,TRUE
+SKU-283,Fresa,PURES Y CONCENTRADOS,1.89 L,970.13,,5,TRUE
+SKU-284,Piña colada,PURES Y CONCENTRADOS,1.89 L,0,,0,TRUE
+SKU-285,Frambuesa,PURES Y CONCENTRADOS,1 L,0,,0,TRUE
+SKU-286,Manzana verde,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-287,Lichi,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-288,Maracuyá,PURES Y CONCENTRADOS,1.9 L,1192.75,,6,TRUE
+SKU-289,Limón,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-290,Frambuesa,PURES Y CONCENTRADOS,1.9 L,1452.78,,7,TRUE
+SKU-291,Sandía,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-292,Kiwi,PURES Y CONCENTRADOS,1.9 L,1201.09,,6,TRUE
+SKU-293,Mango,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-294,Fresa,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-295,Piña,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-296,Mora azul,PURES Y CONCENTRADOS,1.9 L,0,,0,TRUE
+SKU-297,Fresa,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-298,Granada,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-299,Kiwi,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-300,Mango,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-301,Lichi,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-302,Manzana verde,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-303,Maracuyá,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-304,Yogur,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-305,Mora azul,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-306,Durazno,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-307,Cereza,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-308,Chicle,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-309,Taro,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-310,Pitahaya,BUBBLE TEA,3.4 kg,0,,0,TRUE
+SKU-311,Mango,BUBBLE TEA,3.2 kg,0,,0,TRUE
+SKU-312,Fresa,BUBBLE TEA,3.2 kg,0,,0,TRUE
+SKU-313,Maracuyá,BUBBLE TEA,3.2 kg,0,,0,TRUE
+SKU-314,Mora azul,BUBBLE TEA,3.2 kg,0,,0,TRUE
+SKU-315,Manzana verde,BUBBLE TEA,3.2 kg,0,,0,TRUE
+SKU-316,Lichi,BUBBLE TEA,3.2 kg,0,,0,TRUE
+SKU-317,Heart sabor fresa,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-318,Star sabor mango,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-319,Lichi,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-320,Coco,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-321,Manzana verde,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-322,Mango,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-323,Fresa,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-324,Maracuyá,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-325,Uva,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-326,Cereza,BUBBLE TEA,3.85 kg,0,,0,TRUE
+SKU-327,Lichi,BUBBLE TEA,4 kg,0,,0,TRUE
+SKU-328,Manzana verde,BUBBLE TEA,4 kg,0,,0,TRUE
+SKU-329,Mango,BUBBLE TEA,4 kg,0,,0,TRUE
+SKU-330,Fresa,BUBBLE TEA,4 kg,0,,0,TRUE
+SKU-331,Mix yogo tropical,BUBBLE TEA,4 kg,0,,0,TRUE
+SKU-332,Café,BUBBLE TEA,4 kg,0,,0,TRUE
+SKU-333,Tapioca,BUBBLE TEA,3 kg,0,,0,TRUE
+SKU-334,Perlas de tapioca,BUBBLE TEA,2.7 kg,0,,0,TRUE
+SKU-335,Azúcar morena,BUBBLE TEA,2 kg,0,,0,TRUE
+SKU-336,Mini Mochis,BUBBLE TEA,300g,0,,0,TRUE
+SKU-337,Fusión de moras,TES Y TISANAS,250g,0,,0,TRUE
+SKU-338,Esencia fresa kiwi,TES Y TISANAS,250g,0,,0,TRUE
+SKU-339,Fruta de la pasión,TES Y TISANAS,250g,0,,0,TRUE
+SKU-340,Mango maracuyá,TES Y TISANAS,250g,0,,0,TRUE
+SKU-341,Ponche tradicional,TES Y TISANAS,250g,0,,0,TRUE
+SKU-342,Piña coco,TES Y TISANAS,250g,0,,0,TRUE
+SKU-343,Guayaba,TES Y TISANAS,250g,0,,0,TRUE
+SKU-344,Té negro fruta tropical,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-345,Oolong osmanthus,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-346,Manzanilla jinxuan oolong,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-347,Fruta dorada,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-348,Mezcla de fresa y frambuesa,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-349,Fantasy berries,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-350,Jade oolong de cuatro estaciones,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-351,Oolong tieguanyin,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-352,Té negro de assam,TES Y TISANAS,Bolsa con 50 sobre de 8g,0,,0,TRUE
+SKU-353,Earl grey,TES Y TISANAS,250g,0,,0,TRUE
+SKU-354,English breakfast,TES Y TISANAS,250g,0,,0,TRUE
+SKU-355,Menta,TES Y TISANAS,250g,0,,0,TRUE
+SKU-356,Temple of heaven,TES Y TISANAS,250g,0,,0,TRUE
+SKU-357,Jazmín,TES Y TISANAS,250g,0,,0,TRUE
+SKU-358,Mezcla oriental,TES Y TISANAS,250g,0,,0,TRUE
+SKU-359,Champagne,TES Y TISANAS,250g,0,,0,TRUE
+SKU-360,Sencha,TES Y TISANAS,250g,0,,0,TRUE
+SKU-361,Blue eyes,TES Y TISANAS,250g,0,,0,TRUE
+SKU-362,Fresa y kiwi,TES Y TISANAS,250g,0,,0,TRUE
+SKU-363,Fruta caribeña,TES Y TISANAS,250g,0,,0,TRUE
+SKU-364,Chai herbal,TES Y TISANAS,250g,0,,0,TRUE
+SKU-365,Maracuyá,TES Y TISANAS,250g,0,,0,TRUE
+SKU-366,Moras de la selva,TES Y TISANAS,250g,0,,0,TRUE
+SKU-367,Naranja passion,TES Y TISANAS,250g,0,,0,TRUE
+SKU-368,Omas garden,TES Y TISANAS,250g,0,,0,TRUE
+SKU-369,Herbal relax,TES Y TISANAS,250g,0,,0,TRUE
+SKU-370,Manzana,TES Y TISANAS,250g,0,,0,TRUE
+SKU-371,Fantasía tropical,TES Y TISANAS,250g,0,,0,TRUE
+SKU-372,Ponche de guayaba,TES Y TISANAS,250g,0,,0,TRUE
+SKU-373,Herbal manzanilla lavanda,TES Y TISANAS,250g,0,,0,TRUE
+SKU-374,Bora bora,TES Y TISANAS,250g,0,,0,TRUE
+SKU-375,Cherry festival,TES Y TISANAS,250g,0,,0,TRUE
+SKU-376,Rooibos puro,TES Y TISANAS,250g,0,,0,TRUE
+SKU-377,Blue eyes,TES Y TISANAS,1 kg,0,,0,TRUE
+SKU-378,Moras de la selva,TES Y TISANAS,1 kg,0,,0,TRUE
+SKU-379,Naranja passion,TES Y TISANAS,1 kg,0,,0,TRUE
+SKU-380,Omas garden,TES Y TISANAS,1 kg,0,,0,TRUE
+SKU-381,Bora bora,TES Y TISANAS,1 kg,0,,0,TRUE
+SKU-382,Temple of heaven,TES Y TISANAS,1 kg,0,,0,TRUE
+SKU-383,"Té verde, granada y frambuesa",TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-384,"Té verde, jengibre y durazno",TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-385,Té negro y calabaza,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-386,Té negro y bergamota,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-387,Té negro y canela,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-388,Té negro descafeinado,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-389,Té negro descafeinado y vainilla,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-390,"Té negro descafeinado, bergamota y vainilla",TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-391,"Té verde, melón y guayaba",TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-392,Té verde y pera,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-393,"Rooibos, té blanco y mandarina",TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-394,Chai té negro,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-395,Té negro y durazno,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-396,Bergamota,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-397,Té negro,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-398,Té verde y jazmín,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-399,Té verde y menta,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-400,Té negro y naranja,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-401,Té verde,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-402,Té verde chai,TES Y TISANAS,18 sobres de 250ml,0,,0,TRUE
+SKU-403,Hierbabuena,TES Y TISANAS,19 sobres de 250ml,0,,0,TRUE
+SKU-404,Limón meyer,TES Y TISANAS,20 sobres de 250ml,0,,0,TRUE
+SKU-405,Mango y Maracuyá,TES Y TISANAS,21 sobres de 250ml,0,,0,TRUE
+SKU-406,Frambuesa e hibiscos,TES Y TISANAS,22 sobres de 250ml,0,,0,TRUE
+SKU-407,Manzanilla y menta,TES Y TISANAS,23 sobres de 250ml,0,,0,TRUE
+SKU-408,Manzana canela y manzanilla,TES Y TISANAS,24 sobres de 250ml,0,,0,TRUE
+SKU-409,Limón y jengibre,TES Y TISANAS,25 sobres de 250ml,0,,0,TRUE
+SKU-410,Manzanilla,TES Y TISANAS,26 sobres de 250ml,0,,0,TRUE
+SKU-411,Arándano y granada,TES Y TISANAS,27 sobres de 250ml,0,,0,TRUE
+SKU-412,Canela y vainilla,TES Y TISANAS,28 sobres de 250ml,0,,0,TRUE
+SKU-413,Maple y manzana,TES Y TISANAS,29 sobres de 250ml,0,,0,TRUE
+SKU-414,Jengibre y naranja,TES Y TISANAS,30 sobres de 250ml,0,,0,TRUE
+SKU-415,"Canela, rooibos y manzanilla",TES Y TISANAS,31 sobres de 250ml,0,,0,TRUE
+SKU-416,"Canela, rooibos y jengibre",TES Y TISANAS,32 sobres de 250ml,0,,0,TRUE

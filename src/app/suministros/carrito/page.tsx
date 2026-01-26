@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 export default function CarritoPage() {
-  const [carrito, setCarrito] = useState({});
+  const [carrito, setCarrito] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (typeof window === "undefined") return;
     const guardado = window.localStorage.getItem("suministrosCarrito");
     if (guardado) {
       try {
@@ -20,36 +18,38 @@ export default function CarritoPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (typeof window === "undefined") return;
     window.localStorage.setItem("suministrosCarrito", JSON.stringify(carrito));
   }, [carrito]);
 
-  const items = useMemo(() => Object.values(carrito), [carrito]);
+  // IMPORTANTE: conservar la key real del carrito (sku o id:123)
+  const items = useMemo(() => Object.entries(carrito), [carrito]);
+
   const totalArticulos = items.reduce(
-    (total, item) => total + item.cantidad,
-    0,
-  );
-  const totalPrecio = items.reduce(
-    (total, item) => total + item.cantidad * item.precio,
+    (total, [, item]) => total + (item.cantidad ?? 0),
     0,
   );
 
-  const actualizarCantidad = (nombre, delta) => {
+  const totalPrecio = items.reduce(
+    (total, [, item]) => total + (item.cantidad ?? 0) * (item.precio ?? 0),
+    0,
+  );
+
+  const actualizarCantidad = (key: string, delta: number) => {
     setCarrito((prev) => {
-      const item = prev[nombre];
-      if (!item) {
-        return prev;
-      }
-      const nuevaCantidad = Math.max(0, item.cantidad + delta);
+      const item = prev[key];
+      if (!item) return prev;
+
+      const nuevaCantidad = Math.max(0, (item.cantidad ?? 0) + delta);
+
       if (nuevaCantidad === 0) {
-        const { [nombre]: _, ...resto } = prev;
+        const { [key]: _, ...resto } = prev;
         return resto;
       }
+
       return {
         ...prev,
-        [nombre]: {
+        [key]: {
           ...item,
           cantidad: nuevaCantidad,
         },
@@ -57,9 +57,9 @@ export default function CarritoPage() {
     });
   };
 
-  const eliminarProducto = (nombre) => {
+  const eliminarProducto = (key: string) => {
     setCarrito((prev) => {
-      const { [nombre]: _, ...resto } = prev;
+      const { [key]: _, ...resto } = prev;
       return resto;
     });
   };
@@ -83,15 +83,16 @@ export default function CarritoPage() {
         <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
           <div className="rounded-2xl border border-gray-200 p-6">
             <h2 className="text-2xl font-semibold">Artículos</h2>
+
             {items.length === 0 ? (
               <p className="mt-4 text-sm text-gray-500">
                 Aún no agregas productos al carrito.
               </p>
             ) : (
               <ul className="mt-6 space-y-4">
-                {items.map((item) => (
+                {items.map(([key, item]) => (
                   <li
-                    key={item.nombre}
+                    key={key}
                     className="flex flex-wrap items-center justify-between gap-6 border-b border-gray-100 pb-4"
                   >
                     <div className="flex items-center gap-4">
@@ -102,26 +103,27 @@ export default function CarritoPage() {
                           className="h-full w-full object-cover"
                         />
                       </div>
+
                       <div>
-                        <p className="text-sm text-gray-500">
-                          {item.categoria}
-                        </p>
+                        <p className="text-sm text-gray-500">{item.categoria}</p>
                         <p className="text-lg font-semibold">{item.nombre}</p>
                         <p className="text-sm text-gray-600">
                           ${item.precio} MXN c/u
                         </p>
                       </div>
                     </div>
+
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2">
                         <span className="text-xs text-gray-500">Cantidad</span>
                         <span className="w-6 text-center text-sm font-semibold">
                           {item.cantidad}
                         </span>
+
                         <div className="flex flex-col overflow-hidden rounded-md border border-gray-200">
                           <button
                             type="button"
-                            onClick={() => actualizarCantidad(item.nombre, 1)}
+                            onClick={() => actualizarCantidad(key, 1)}
                             className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
                             aria-label={`Aumentar ${item.nombre}`}
                           >
@@ -129,7 +131,7 @@ export default function CarritoPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => actualizarCantidad(item.nombre, -1)}
+                            onClick={() => actualizarCantidad(key, -1)}
                             className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
                             aria-label={`Disminuir ${item.nombre}`}
                           >
@@ -137,9 +139,10 @@ export default function CarritoPage() {
                           </button>
                         </div>
                       </div>
+
                       <button
                         type="button"
-                        onClick={() => eliminarProducto(item.nombre)}
+                        onClick={() => eliminarProducto(key)}
                         className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-600 hover:border-gray-400"
                       >
                         Eliminar
@@ -160,15 +163,19 @@ export default function CarritoPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span>Total</span>
-                <span className="font-semibold">${totalPrecio} MXN</span>
+                <span className="font-semibold">
+                  ${totalPrecio.toFixed(2)} MXN
+                </span>
               </div>
             </div>
+
             <button
               type="button"
               className="mt-6 w-full rounded-full bg-black px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
               Comprar ahora
             </button>
+
             <div className="mt-6 flex items-center justify-center rounded-2xl border border-dashed border-gray-300 p-6">
               <img
                 src="/pagos/spinnegocios.png"
