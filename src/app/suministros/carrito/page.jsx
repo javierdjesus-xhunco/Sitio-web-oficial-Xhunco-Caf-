@@ -91,7 +91,7 @@ export default function CarritoPage() {
               <ul className="mt-6 space-y-4">
                 {items.map((item) => (
                   <li
-                    key={item.nombre}
+                    key={item.sku}
                     className="flex flex-wrap items-center justify-between gap-6 border-b border-gray-100 pb-4"
                   >
                     <div className="flex items-center gap-4">
@@ -121,7 +121,7 @@ export default function CarritoPage() {
                         <div className="flex flex-col overflow-hidden rounded-md border border-gray-200">
                           <button
                             type="button"
-                            onClick={() => actualizarCantidad(item.nombre, 1)}
+                            onClick={() => actualizarCantidad(item.sku, 1)}
                             className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
                             aria-label={`Aumentar ${item.nombre}`}
                           >
@@ -129,7 +129,7 @@ export default function CarritoPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => actualizarCantidad(item.nombre, -1)}
+                            onClick={() => actualizarCantidad(item.sku, -1)}
                             className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
                             aria-label={`Disminuir ${item.nombre}`}
                           >
@@ -139,7 +139,7 @@ export default function CarritoPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => eliminarProducto(item.nombre)}
+                        onClick={() => eliminarProducto(item.sku)}
                         className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-600 hover:border-gray-400"
                       >
                         Eliminar

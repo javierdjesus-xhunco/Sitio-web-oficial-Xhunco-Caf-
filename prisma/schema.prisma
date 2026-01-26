@@ -1,0 +1,25 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Suministro {
+  id           Int      @id @default(autoincrement())
+  sku          String?  @unique
+  nombre       String
+  categoria    String?
+  presentacion String?
+  precio       Float
+  unidad       String?
+  stock        Int      @default(0)
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
