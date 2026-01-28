@@ -4,6 +4,8 @@
 import Link from "next/link";
 // Link permite navegación interna en Next.js sin recargar la página
 
+import Image from "next/image";
+
 import { useState } from "react";
 // Hook de React para manejar estados (abrir/cerrar menús)
 
@@ -27,12 +29,16 @@ export default function Header() {
         {/* Contenedor centrado que alinea logo, menú y botones */}
 
         {/* LOGO */}
-        <Link
-          href="/"
-          className="text-xl font-semibold tracking-wide"
-        >
-          Xhunco® Café
+        <Link href="/" className="flex items-center">
+        <Image
+        src="/logo-xhunco.png"
+        alt="Xhunco Café"
+        width={170}
+        height={40}
+        priority
+        />
         </Link>
+
         {/* Logo que redirige a la página principal */}
 
         {/* MENÚ DESKTOP */}

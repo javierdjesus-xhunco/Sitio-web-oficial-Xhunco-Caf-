@@ -3,7 +3,8 @@ import Header from "./components/Header";
 
 export const metadata = {
   title: "Xhunco Café",
-  description: "Café mexicano de especialidad",
+  description: "Café mexicano de Calidad",
+ 
 };
 
 export default function RootLayout({ children }) {

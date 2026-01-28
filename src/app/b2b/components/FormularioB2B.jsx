@@ -1,236 +1,192 @@
 "use client";
 
-import { useState } from "react";
+import {
+  BadgeCheck,
+  Truck,
+  Headphones,
+} from "lucide-react";
 
 export default function FormularioB2B() {
-  const [form, setForm] = useState({
-    empresa: "",
-    contacto: "",
-    correo: "",
-    telefono: "",
-    tipoNegocio: "",
-    consumo: "",
-    mensaje: "",
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [enviado, setEnviado] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const validarFormulario = () => {
-    if (
-      !form.empresa ||
-      !form.contacto ||
-      !form.correo ||
-      !form.telefono ||
-      !form.tipoNegocio ||
-      !form.consumo
-    ) {
-      setError("Por favor completa todos los campos obligatorios.");
-      return false;
-    }
-
-    setError("");
-    return true;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validarFormulario()) return;
-
-    setLoading(true);
-
-    try {
-      // 🔴 Aquí después conectarás tu backend real
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      setEnviado(true);
-      setForm({
-        empresa: "",
-        contacto: "",
-        correo: "",
-        telefono: "",
-        tipoNegocio: "",
-        consumo: "",
-        mensaje: "",
-      });
-    } catch (err) {
-      setError("Ocurrió un error. Intenta nuevamente.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <section className="py-24 bg-white">
-      <div className="max-w-4xl mx-auto px-8">
+    <section className="py-32 bg-[#F8F7F5]">
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
 
-        <h2 className="text-3xl font-semibold text-center">
-            Solicita una cotización y llevemos café de especialidad a tu negocio.
-        </h2>
+          {/* COLUMNA IZQUIERDA */}
+          <div>
+            <span className="uppercase text-sm tracking-widest text-gray-500">
+              Contacto
+            </span>
 
-        <p className="mt-4 text-gray-600 text-center max-w-2xl mx-auto">
-          Nuestro equipo se pondrá en contacto contigo para ofrecerte una
-          solución personalizada.
-        </p>
+            <h2 className="text-4xl font-semibold mt-4 mb-6 leading-tight">
+              Hablemos de tu <br />
+              <span className="text-[#7B4A2D]">proyecto de café</span>
+            </h2>
 
-        {/* MENSAJE DE ÉXITO */}
-        {enviado && (
-          <div className="mt-10 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-xl text-center">
-            <h3 className="font-semibold text-lg">
-              ¡Solicitud enviada con éxito!
-            </h3>
-            <p className="mt-2 text-sm">
-              En breve uno de nuestros asesores se pondrá en contacto contigo.
+            <p className="text-gray-600 text-lg mb-14 max-w-md">
+              Cuéntanos sobre tu negocio y un asesor especializado se pondrá
+              en contacto contigo en menos de 24 horas.
             </p>
-          </div>
-        )}
 
-        {/* FORMULARIO */}
-        {!enviado && (
-          <form
-            onSubmit={handleSubmit}
-            className="mt-12 bg-[#F8F7F5] border border-gray-200 rounded-2xl p-8 grid md:grid-cols-2 gap-6"
-          >
+            {/* BENEFICIOS */}
+            <div className="space-y-8">
 
-            {error && (
-              <div className="md:col-span-2 text-red-600 text-sm bg-red-50 border border-red-200 px-4 py-2 rounded-md">
-                {error}
+              <div className="flex gap-5 items-start">
+                <div className="h-12 w-12 rounded-2xl bg-[#EFE6DE] flex items-center justify-center">
+                  <BadgeCheck className="text-[#7B4A2D]" size={22} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-1">
+                    Calidad garantizada
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    Cafés con puntaje SCA superior a 85 puntos.
+                  </p>
+                </div>
               </div>
-            )}
 
-            {/* Empresa */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Nombre de la empresa *
-              </label>
-              <input
-                type="text"
-                name="empresa"
-                value={form.empresa}
-                onChange={handleChange}
-                className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-black"
-              />
-            </div>
+              <div className="flex gap-5 items-start">
+                <div className="h-12 w-12 rounded-2xl bg-[#EFE6DE] flex items-center justify-center">
+                  <Truck className="text-[#7B4A2D]" size={22} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-1">
+                    Entregas nacionales
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    Cobertura en todo México con tiempos garantizados.
+                  </p>
+                </div>
+              </div>
 
-            {/* Contacto */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Persona de contacto *
-              </label>
-              <input
-                type="text"
-                name="contacto"
-                value={form.contacto}
-                onChange={handleChange}
-                className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-black"
-              />
-            </div>
+              <div className="flex gap-5 items-start">
+                <div className="h-12 w-12 rounded-2xl bg-[#EFE6DE] flex items-center justify-center">
+                  <Headphones className="text-[#7B4A2D]" size={22} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-1">
+                    Soporte continuo
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    Asesoría técnica y comercial durante toda la relación.
+                  </p>
+                </div>
+              </div>
 
-            {/* Correo */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Correo electrónico *
-              </label>
-              <input
-                type="email"
-                name="correo"
-                value={form.correo}
-                onChange={handleChange}
-                className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-black"
-              />
             </div>
+          </div>
 
-            {/* Teléfono */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Teléfono *
-              </label>
-              <input
-                type="tel"
-                name="telefono"
-                value={form.telefono}
-                onChange={handleChange}
-                className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-black"
-              />
-            </div>
+          {/* COLUMNA DERECHA - FORMULARIO */}
+          <div className="bg-white rounded-3xl shadow-xl p-10">
+            <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            {/* Tipo negocio */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Tipo de negocio *
-              </label>
-              <select
-                name="tipoNegocio"
-                value={form.tipoNegocio}
-                onChange={handleChange}
-                className="w-full border rounded-md px-4 py-2 bg-white focus:ring-2 focus:ring-black"
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="cafeteria">Cafetería</option>
-                <option value="restaurante">Restaurante</option>
-                <option value="hotel">Hotel</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
+              {/* EMPRESA */}
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium">
+                  Nombre de la Empresa *
+                </label>
+                <input
+                  type="text"
+                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7B4A2D]"
+                />
+              </div>
 
-            {/* Consumo */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Consumo mensual *
-              </label>
-              <select
-                name="consumo"
-                value={form.consumo}
-                onChange={handleChange}
-                className="w-full border rounded-md px-4 py-2 bg-white focus:ring-2 focus:ring-black"
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="5-10kg">5 – 10 kg</option>
-                <option value="10-30kg">10 – 30 kg</option>
-                <option value="30-50kg">30 – 50 kg</option>
-                <option value="+50kg">Más de 50 kg</option>
-              </select>
-            </div>
+              {/* CONTACTO */}
+              <div>
+                <label className="text-sm font-medium">
+                  Nombre de Contacto *
+                </label>
+                <input
+                  type="text"
+                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7B4A2D]"
+                />
+              </div>
 
-            {/* Mensaje */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">
-                Comentarios adicionales
-              </label>
-              <textarea
-                name="mensaje"
-                value={form.mensaje}
-                onChange={handleChange}
-                rows="4"
-                className="w-full border rounded-md px-4 py-2 focus:ring-2 focus:ring-black"
-              />
-            </div>
+              <div>
+                <label className="text-sm font-medium">
+                  Correo Electrónico *
+                </label>
+                <input
+                  type="email"
+                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7B4A2D]"
+                />
+              </div>
 
-            {/* BOTÓN */}
-            <div className="md:col-span-2 text-center mt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className={`px-8 py-3 rounded-md text-white transition ${
-                  loading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-black hover:bg-gray-800"
-                }`}
-              >
-                {loading ? "Enviando..." : "Enviar solicitud"}
-              </button>
-            </div>
-          </form>
-        )}
+              {/* TEL / NEGOCIO */}
+              <div>
+                <label className="text-sm font-medium">
+                  Teléfono
+                </label>
+                <input
+                  type="tel"
+                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">
+                  Tipo de Negocio *
+                </label>
+                <select className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3">
+                  <option>Selecciona...</option>
+                  <option>Cafetería</option>
+                  <option>Restaurante</option>
+                  <option>Hotel</option>
+                  <option>Oficina</option>
+                  <option>Distribuidor</option>
+                </select>
+              </div>
+
+              {/* CIUDAD / VOLUMEN */}
+              <div>
+                <label className="text-sm font-medium">
+                  Ciudad
+                </label>
+                <input
+                  type="text"
+                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">
+                  Volumen Mensual Estimado
+                </label>
+                <select className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3">
+                  <option>Selecciona...</option>
+                  <option>Menos de 10 kg</option>
+                  <option>10 – 30 kg</option>
+                  <option>30 – 100 kg</option>
+                  <option>Más de 100 kg</option>
+                </select>
+              </div>
+
+              {/* MENSAJE */}
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium">
+                  Mensaje
+                </label>
+                <textarea
+                  rows={4}
+                  placeholder="Cuéntanos más sobre tus necesidades..."
+                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              {/* BOTÓN */}
+              <div className="md:col-span-2 pt-4">
+                <button
+                  type="submit"
+                  className="w-full bg-[#3B2F2F] text-white py-4 rounded-2xl font-semibold hover:bg-black transition"
+                >
+                  Enviar solicitud
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+        </div>
       </div>
     </section>
   );
