@@ -32,9 +32,9 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-semibold mb-4">Contacto</h4>
           <ul className="space-y-2 text-sm">
-            <li>📍 México</li>
-            <li>📧 contacto@xhunco.com</li>
-            <li>📞 +52 000 000 0000</li>
+            <li>📍 Tlaxcala</li>
+            <li>📧 javier.ortiz@xhunco.com</li>
+            <li>📞 +52 246-142-86-84</li>
           </ul>
         </div>
 
