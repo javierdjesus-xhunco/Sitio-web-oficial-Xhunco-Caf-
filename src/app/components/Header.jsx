@@ -119,20 +119,13 @@ export default function Header() {
         <div
           className="hidden md:flex items-center gap-4"
         >
-          {/* Botón Portal */}
-          <Link
-            href="/portal"
-            className="px-4 py-2 border border-black rounded-md hover:bg-black hover:text-white transition"
-          >
-            Portal
-          </Link>
-
+        
           {/* Botón principal Comprar café */}
           <Link
-            href="/cafes/tienda"
+            href="/portal"
             className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition"
           >
-            Comprar café
+            Portal
           </Link>
         </div>
 
