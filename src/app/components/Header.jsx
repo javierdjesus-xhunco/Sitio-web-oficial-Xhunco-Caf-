@@ -19,7 +19,7 @@ export default function Header() {
 
   return (
     <header
-      className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur border-b border-gray-200"
+      className="fixed top-0 w-full z-50 bg-white/-10 backdrop-blur-md  border-white/-10"
     >
       {/* Header fijo en la parte superior con fondo semitransparente */}
 

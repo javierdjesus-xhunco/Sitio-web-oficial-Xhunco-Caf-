@@ -19,7 +19,6 @@ export default function Home() {
       <NuestraHistoria/>
       <PropuestaValor />
       <B2B />
-      <PortalSocios />
       <Footer />
     </main>
   );
