@@ -35,7 +35,7 @@ export default function NuestraHistoria() {
         {/* IMAGEN */}
         <div className="relative w-full h-[420px] rounded-xl overflow-hidden">
           <Image
-            src="/historia.jpg"
+            src="/fondoportal.jpeg"
             alt="Nuestra historia"
             fill
             className="object-cover"

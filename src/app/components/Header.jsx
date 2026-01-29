@@ -78,7 +78,7 @@ export default function Header() {
                 {/* Contenedor del dropdown */}
 
                 <Link
-                  href="/cafes/tienda"
+                  href="/suministros"
                   className="block px-4 py-2 hover:bg-gray-100"
                 >
                   Tienda
@@ -92,7 +92,7 @@ export default function Header() {
                 </Link>
 
                 <Link
-                  href="/cafes/trazabilidad"
+                  href="/trazabilidad"
                   className="block px-4 py-2 hover:bg-gray-100"
                 >
                   Trazabilidad
@@ -120,10 +120,10 @@ export default function Header() {
           className="hidden md:flex items-center gap-4"
         >
         
-          {/* Botón principal Comprar café */}
+          {/* Botón principal portal*/}
           <Link
             href="/portal"
-            className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition"
+            className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900 transition"
           >
             Portal
           </Link>
@@ -160,7 +160,7 @@ export default function Header() {
             </summary>
 
             <div className="ml-4 mt-2 space-y-2">
-              <Link href="/cafes/tienda" className="block text-sm">
+              <Link href="/trazabilidad" className="block text-sm">
                 Tienda
               </Link>
 
@@ -168,7 +168,7 @@ export default function Header() {
                 Orígenes
               </Link>
 
-              <Link href="/cafes/trazabilidad" className="block text-sm">
+              <Link href="/trazabilidad" className="block text-sm">
                 Trazabilidad
               </Link>
             </div>
@@ -190,16 +190,9 @@ export default function Header() {
           <div className="pt-4 border-t space-y-3">
             <Link
               href="/portal"
-              className="block text-center border border-black py-2 rounded-md"
-            >
-              Portal
-            </Link>
-
-            <Link
-              href="/cafes/tienda"
               className="block text-center bg-black text-white py-2 rounded-md"
             >
-              Comprar café
+              Portal
             </Link>
           </div>
         </div>

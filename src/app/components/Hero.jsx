@@ -58,7 +58,7 @@ export default function Hero() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/cafes"
-            className="bg-[#6B3E26] hover:bg-[#5a331f] px-8 py-4 rounded-lg font-semibold transition"
+              className="border border-white hover:bg-white hover:text-black px-8 py-4 rounded-lg font-semibold transition"
           >
             Explorar cafés
           </Link>
