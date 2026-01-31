@@ -1,31 +1,32 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Mail, Lock } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function PortalLogin() {
   const router = useRouter();
+  const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => {
-    localStorage.removeItem("xhunco-auth");
-  }, []);
-
-  function handleLogin(e) {
+  async function handleLogin(e) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const email = String(formData.get("email") || "").trim().toLowerCase();
     const password = String(formData.get("password") || "");
-    const isValidUser =
-      email === "javier.ortiz@xhunco.com" && password === "di0056556ba";
+    setErrorMessage("");
 
-    if (!isValidUser) {
-      alert("Usuario o contraseña incorrectos.");
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setErrorMessage("Usuario o contraseña incorrectos.");
       return;
     }
 
-    localStorage.setItem("xhunco-auth", "true");
     router.push("/portal/panel");
   }
 
@@ -97,6 +98,9 @@ export default function PortalLogin() {
             Iniciar sesión
           </button>
         </form>
+        {errorMessage ? (
+          <p className="mt-4 text-sm text-red-600 text-center">{errorMessage}</p>
+        ) : null}
 
         {/* TEXTO SEGURIDAD */}
         <p className="text-xs text-gray-400 text-center mt-8">
