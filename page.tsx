@@ -20,7 +20,7 @@ export default function Home() {
       <a href="#" className="hover:text-black transition">Negocios</a>
       <a href="#" className="hover:text-black transition">Orígenes</a>
       <a href="#clientes" className="hover:text-black transition">
-        Nuestros Clientes
+        Nuestros socios
       </a>
       <a href="#" className="hover:text-black transition">Contacto</a>
     </nav>
@@ -41,7 +41,7 @@ export default function Home() {
       <a href="#" className="hover:text-black transition">Negocios</a>
       <a href="#" className="hover:text-black transition">Orígenes</a>
       <a href="#clientes" className="hover:text-black transition">
-        Nuestros Clientes
+        Nuestros socios
       </a>
       <a href="#" className="hover:text-black transition">Contacto</a>
     </nav>
@@ -201,18 +201,18 @@ export default function Home() {
 
   </div>
 </section>
-{/*AQUI EMPIEZA LA BARRA ANIMADA DE NUESTROS CLIENTES*/}
+{/*AQUI EMPIEZA LA BARRA ANIMADA DE NUESTROS SOCIOS*/}
 <section
   id="clientes"
   className="mt-40 py-24 bg-[#F8F7F5] overflow-hidden"
 >
   <div className="max-w-7xl mx-auto px-8 mb-12">
     <h2 className="text-4xl font-semibold">
-      Nuestros clientes
+      Nuestros socios
     </h2>
     <p className="mt-4 text-gray-600 max-w-2xl">
       Cafeterías y negocios que confían en Xhunco® Café
-      como su proveedor de café de especialidad.
+      como su proveedor de café de altura.
     </p>
   </div>
 

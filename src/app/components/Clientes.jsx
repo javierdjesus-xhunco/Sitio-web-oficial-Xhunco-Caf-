@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 
 const clientes = [
   {
-    nombre: "Café Central",
-    telefono: "+52 55 1234 5678",
-    correo: "contacto@cafecentral.mx",
+    nombre: "Columbo Cafe",
+    telefono: "+522461299630",
+    correo: "columbo.cafe@gmail.com",
     imagen: "/clientes/cliente-placeholder.svg",
     redes: [
       { nombre: "Instagram", url: "https://instagram.com/cafecentral" },
@@ -14,9 +14,9 @@ const clientes = [
     ],
   },
   {
-    nombre: "Panadería La Espiga",
-    telefono: "+52 81 2345 6789",
-    correo: "hola@laespiga.mx",
+    nombre: "Vive Cafe y Alitas",
+    telefono: "+522464766405",
+    correo: "jomahs@hotmail.com",
     imagen: "/clientes/cliente-placeholder.svg",
     redes: [
       { nombre: "Instagram", url: "https://instagram.com/laespiga" },
@@ -24,9 +24,9 @@ const clientes = [
     ],
   },
   {
-    nombre: "Hotel Sierra Azul",
-    telefono: "+52 33 3456 7890",
-    correo: "ventas@sierrasazul.mx",
+    nombre: "Bar Buffet Sin Reserva",
+    telefono: "+526683406688",
+    correo: "nobody@xno.com",
     imagen: "/clientes/cliente-placeholder.svg",
     redes: [
       { nombre: "LinkedIn", url: "https://linkedin.com/company/sierrasazul" },
@@ -34,9 +34,9 @@ const clientes = [
     ],
   },
   {
-    nombre: "Restaurante Valle Verde",
-    telefono: "+52 222 456 7890",
-    correo: "reservas@valleverde.mx",
+    nombre: "La Cabaña del Pescador",
+    telefono: "+522461744451",
+    correo: "nobody@xno.mx",
     imagen: "/clientes/cliente-placeholder.svg",
     redes: [
       { nombre: "Instagram", url: "https://instagram.com/valleverde" },
