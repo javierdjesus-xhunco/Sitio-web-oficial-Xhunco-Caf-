@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 const quickStats = [
   {
@@ -130,16 +131,79 @@ const completedOrders = [
 export default function PanelDashboard() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState("Resumen");
+  const [formState, setFormState] = useState({
+    status: "idle",
+    message: "",
+  });
 
   useEffect(() => {
-    const isAuthed =
-      typeof window !== "undefined" &&
-      localStorage.getItem("xhunco-auth") === "true";
+    let isMounted = true;
 
-    if (!isAuthed) {
-      router.replace("/portal");
-    }
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (isMounted && !data.session) {
+        router.replace("/portal");
+      }
+    };
+
+    checkSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!session) {
+          router.replace("/portal");
+        }
+      },
+    );
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
   }, [router]);
+
+  const handleCreateClient = async (event) => {
+    event.preventDefault();
+    setFormState({ status: "loading", message: "" });
+    const formData = new FormData(event.currentTarget);
+    const payload = {
+      businessName: String(formData.get("businessName") || "").trim(),
+      ownerName: String(formData.get("ownerName") || "").trim(),
+      address: String(formData.get("address") || "").trim(),
+      phone: String(formData.get("phone") || "").trim(),
+      email: String(formData.get("email") || "").trim().toLowerCase(),
+      password: String(formData.get("password") || ""),
+      role: String(formData.get("role") || "cliente").toLowerCase(),
+    };
+
+    try {
+      const response = await fetch("/api/admin/create-client", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        setFormState({
+          status: "error",
+          message: result.error || "No se pudo crear el cliente.",
+        });
+        return;
+      }
+
+      event.currentTarget.reset();
+      setFormState({
+        status: "success",
+        message: "Cliente creado correctamente.",
+      });
+    } catch (error) {
+      setFormState({
+        status: "error",
+        message: error instanceof Error ? error.message : "Error desconocido.",
+      });
+    }
+  };
 
   const renderSection = () => {
     switch (activeSection) {
@@ -153,7 +217,7 @@ export default function PanelDashboard() {
               </p>
             </div>
 
-            <form className="mt-6 grid gap-4 text-sm">
+            <form className="mt-6 grid gap-4 text-sm" onSubmit={handleCreateClient}>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="flex flex-col gap-2">
                   <span className="text-white/70">Nombre del negocio</span>
@@ -161,6 +225,8 @@ export default function PanelDashboard() {
                     className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none"
                     placeholder="Café Horizonte"
                     type="text"
+                    name="businessName"
+                    required
                   />
                 </label>
                 <label className="flex flex-col gap-2">
@@ -169,6 +235,7 @@ export default function PanelDashboard() {
                     className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none"
                     placeholder="Nombre completo"
                     type="text"
+                    name="ownerName"
                   />
                 </label>
               </div>
@@ -178,6 +245,7 @@ export default function PanelDashboard() {
                   className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none"
                   placeholder="Calle, número, colonia, ciudad"
                   type="text"
+                  name="address"
                 />
               </label>
               <div className="grid gap-4 md:grid-cols-2">
@@ -187,6 +255,7 @@ export default function PanelDashboard() {
                     className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none"
                     placeholder="55 1234 5678"
                     type="tel"
+                    name="phone"
                   />
                 </label>
                 <label className="flex flex-col gap-2">
@@ -195,6 +264,8 @@ export default function PanelDashboard() {
                     className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none"
                     placeholder="correo@negocio.com"
                     type="email"
+                    name="email"
+                    required
                   />
                 </label>
               </div>
@@ -205,31 +276,50 @@ export default function PanelDashboard() {
                     className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none"
                     placeholder="XHUNCO-2025"
                     type="text"
+                    name="password"
+                    required
                   />
                 </label>
                 <label className="flex flex-col gap-2">
                   <span className="text-white/70">Tipo de rol</span>
-                  <select className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none">
-                    <option>Cliente</option>
-                    <option>Administrador</option>
-                    <option>Super administrador</option>
+                  <select
+                    className="rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-white focus:border-emerald-300 focus:outline-none"
+                    name="role"
+                  >
+                    <option value="cliente">Cliente</option>
+                    <option value="admin">Administrador</option>
+                    <option value="super_admin">Super administrador</option>
                   </select>
                 </label>
               </div>
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <button
-                  type="button"
+                  type="submit"
                   className="rounded-full bg-emerald-300 px-4 py-2 text-xs font-semibold text-slate-950"
                 >
-                  Guardar cliente
+                  {formState.status === "loading"
+                    ? "Guardando..."
+                    : "Guardar cliente"}
                 </button>
                 <button
-                  type="button"
+                  type="reset"
                   className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white"
+                  onClick={() => setFormState({ status: "idle", message: "" })}
                 >
                   Limpiar formulario
                 </button>
               </div>
+              {formState.message ? (
+                <p
+                  className={`text-xs ${
+                    formState.status === "success"
+                      ? "text-emerald-300"
+                      : "text-red-300"
+                  }`}
+                >
+                  {formState.message}
+                </p>
+              ) : null}
             </form>
           </section>
         );
