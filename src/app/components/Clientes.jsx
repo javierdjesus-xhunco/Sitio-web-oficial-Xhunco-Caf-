@@ -4,12 +4,12 @@ import { useEffect, useRef } from "react";
 
 const clientes = [
   {
-    nombre: "Columbo Cafe",
+    nombre: "Barro Negro",
     telefono: "+522461299630",
-    correo: "columbo.cafe@gmail.com",
-    imagen: "/clientes/cliente-placeholder.svg",
+    correo: "nobody@xno.com",
+    imagen: "/clientes/barronegro.svg",
     redes: [
-      { nombre: "Instagram", url: "https://instagram.com/cafecentral" },
+      { nombre: "Instagram", url: "https://www.instagram.com/barronegroterraza/" },
       { nombre: "Facebook", url: "https://facebook.com/cafecentral" },
     ],
   },
@@ -17,17 +17,17 @@ const clientes = [
     nombre: "Vive Cafe y Alitas",
     telefono: "+522464766405",
     correo: "jomahs@hotmail.com",
-    imagen: "/clientes/cliente-placeholder.svg",
+    imagen: "/clientes/vivecafe.svg",
     redes: [
       { nombre: "Instagram", url: "https://instagram.com/laespiga" },
       { nombre: "WhatsApp", url: "https://wa.me/528123456789" },
     ],
   },
   {
-    nombre: "Bar Buffet Sin Reserva",
+    nombre: "MOYA",
     telefono: "+526683406688",
     correo: "nobody@xno.com",
-    imagen: "/clientes/cliente-placeholder.svg",
+    imagen: "/clientes/moya.svg",
     redes: [
       { nombre: "LinkedIn", url: "https://linkedin.com/company/sierrasazul" },
       { nombre: "Facebook", url: "https://facebook.com/sierrasazul" },
@@ -53,26 +53,16 @@ export default function Clientes() {
     const slider = sliderRef.current;
     if (!slider) return;
 
-    const startScroll = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      slider.scrollLeft += 1;
+
+      if (slider.scrollLeft + slider.offsetWidth >= slider.scrollWidth) {
+        slider.scrollTo({ left: 0, behavior: "auto" });
       }
-      intervalRef.current = setInterval(() => {
-        slider.scrollLeft += 1;
-
-        if (
-          slider.scrollLeft + slider.offsetWidth >=
-          slider.scrollWidth
-        ) {
-          slider.scrollTo({ left: 0, behavior: "auto" });
-        }
-      }, 20);
-    };
-
-    startScroll();
+    }, 20);
 
     return () => {
-      clearInterval(intervalRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -84,15 +74,10 @@ export default function Clientes() {
   };
 
   return (
-    <section
-      id="clientes"
-      className="mt-40 py-24 bg-[#F8F7F5] overflow-hidden"
-    >
+    <section id="clientes" className="mt-40 py-24 bg-[#F8F7F5] overflow-hidden">
       <div className="max-w-7xl mx-auto px-8 mb-12 flex flex-wrap items-center justify-between gap-6">
         <div>
-          <h2 className="text-4xl font-semibold">
-            Nuestros clientes
-          </h2>
+          <h2 className="text-4xl font-semibold">Nuestros Socios</h2>
           <p className="mt-4 text-gray-600">
             Negocios que confían en Xhunco® Café
           </p>
@@ -126,31 +111,29 @@ export default function Clientes() {
             key={`${cliente.nombre}-${index}`}
             className="min-w-[260px] md:min-w-[300px] bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col gap-4"
           >
-            <div className="flex items-center gap-4">
+            {/* LOGO CENTRADO – NO SE MUESTRA EL NOMBRE */}
+            <div className="flex justify-center">
               <img
                 src={cliente.imagen}
-                alt={`Logo de ${cliente.nombre}`}
-                className="h-16 w-16 rounded-full object-cover border border-gray-200"
+                alt="Logo del cliente"
+                className="h-24 w-24 object-contain"
               />
-              <h3 className="text-lg font-semibold text-gray-900">
-                {cliente.nombre}
-              </h3>
             </div>
-            <div className="text-sm text-gray-600 space-y-1">
+
+            {/* DATOS */}
+            <div className="text-sm text-gray-600 space-y-1 text-center">
               <p>
-                <span className="font-medium text-gray-800">
-                  Contacto:
-                </span>{" "}
+                <span className="font-medium text-gray-800">Contacto:</span>{" "}
                 {cliente.telefono}
               </p>
               <p>
-                <span className="font-medium text-gray-800">
-                  Correo:
-                </span>{" "}
+                <span className="font-medium text-gray-800">Correo:</span>{" "}
                 {cliente.correo}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+
+            {/* REDES */}
+            <div className="flex flex-wrap justify-center gap-3">
               {cliente.redes.map((red) => (
                 <a
                   key={red.nombre}
