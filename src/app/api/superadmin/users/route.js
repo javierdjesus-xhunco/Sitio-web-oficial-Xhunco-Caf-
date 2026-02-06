@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { supabaseServer } from "@/lib/supabaseServer";
 
+console.log("[build-check] NEXT_PUBLIC_SUPABASE_URL present?", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log("[build-check] NEXT_PUBLIC_SUPABASE_ANON_KEY present?", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+console.log("[build-check] SUPABASE_SERVICE_ROLE_KEY present?", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
 export async function POST(req) {
   try {
     // ✅ crea el cliente admin aquí (ya NO se crea al importar el archivo)
