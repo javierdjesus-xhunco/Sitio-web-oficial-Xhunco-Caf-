@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { supabaseServer } from "@/lib/supabaseServer";
 
-console.log("[build-check] NEXT_PUBLIC_SUPABASE_URL present?", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
-console.log("[build-check] NEXT_PUBLIC_SUPABASE_ANON_KEY present?", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-console.log("[build-check] SUPABASE_SERVICE_ROLE_KEY present?", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error("[env-check] NEXT_PUBLIC_SUPABASE_URL is missing in build/runtime");
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error("[env-check] NEXT_PUBLIC_SUPABASE_ANON_KEY is missing in build/runtime");
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("[env-check] SUPABASE_SERVICE_ROLE_KEY is missing in build/runtime");
+}
 
 export async function POST(req) {
   try {
