@@ -1,30 +1,25 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { supabaseServer } from "@/lib/supabaseServer";
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error("[env-check] NEXT_PUBLIC_SUPABASE_URL is missing in build/runtime");
-}
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error("[env-check] NEXT_PUBLIC_SUPABASE_ANON_KEY is missing in build/runtime");
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("[env-check] SUPABASE_SERVICE_ROLE_KEY is missing in build/runtime");
-}
 
 export async function POST(req) {
   try {
-    // ✅ crea el cliente admin aquí (ya NO se crea al importar el archivo)
-    const admin = supabaseAdmin();
+    // 🔥 IMPORTS DINÁMICOS (clave para que el build no truene)
+    const { supabaseAdmin } = await import("@/lib/supabaseAdmin");
+    const { supabaseServer } = await import("@/lib/supabaseServer");
 
-    // Identificar al usuario que hace la petición (sesión por cookies)
+    // Crear clientes SOLO en runtime
+    const admin = supabaseAdmin();
     const supabase = await supabaseServer();
+
+    // Obtener usuario autenticado
     const { data: authData, error: authErr } = await supabase.auth.getUser();
 
+    // ⬇️ A PARTIR DE AQUÍ va tu lógica normal
     if (authErr || !authData?.user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401 }
+      );
     }
-
     // Validar que sea super_admin
     const { data: me, error: meErr } = await supabase
       .from("profiles")
