@@ -17,8 +17,8 @@ export default function ClienteLayout({ children }) {
 
           <nav className="mt-8 space-y-2">
             <PortalSideItem href="/portal/cliente/dashboard" label="Resumen" exact />
+            <PortalSideItem href="/portal/cliente/pedidos/nuevo" label="Nuevo pedido" />
             <PortalSideItem href="/portal/cliente/pedidos" label="Mis pedidos" />
-            <PortalSideItem href="/portal/cliente/nuevo-pedido" label="Nuevo pedido" />
             <PortalSideItem href="/portal/cliente/perfil" label="Mi perfil" />
             <div className="mt-6">
             <LogoutButton />

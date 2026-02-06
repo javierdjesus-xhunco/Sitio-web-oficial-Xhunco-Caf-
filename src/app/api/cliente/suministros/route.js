@@ -14,14 +14,31 @@ export async function GET() {
   if (!authData?.user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   // leer tier del cliente
-  const { data: client, error: clientErr } = await supabase
+    const { data: client, error: clientErr } = await supabase
     .from("clients")
-    .select("price_tier")
+    .select("user_id, email, price_tier")
     .eq("user_id", authData.user.id)
-    .single();
+    .maybeSingle();
 
-  if (clientErr || !client?.price_tier) {
-    return NextResponse.json({ error: "Cliente sin price_tier" }, { status: 400 });
+  if (clientErr) {
+    return NextResponse.json(
+      { error: `clients query error: ${clientErr.message}` },
+      { status: 400 }
+    );
+  }
+
+  if (!client) {
+    return NextResponse.json(
+      { error: "No existe registro en clients para este usuario (falta alta de cliente)" },
+      { status: 400 }
+    );
+  }
+
+  if (!client.price_tier) {
+    return NextResponse.json(
+      { error: "El registro en clients existe pero price_tier está vacío" },
+      { status: 400 }
+    );
   }
 
   const col = tierToColumn[client.price_tier] || "precio_publico";
