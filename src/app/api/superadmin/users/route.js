@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req) {
   try {
     // 🔥 IMPORTS DINÁMICOS (clave para que el build no truene)
-    const { supabaseAdmin } = await import("@/lib/supabaseAdmin");
+    const { getSupabaseAdminClient } = await import("@/lib/supabaseAdmin");
     const { supabaseServer } = await import("@/lib/supabaseServer");
 
     // Crear clientes SOLO en runtime
-    const admin = supabaseAdmin();
+    const admin = getSupabaseAdminClient();
     const supabase = await supabaseServer();
 
     // Obtener usuario autenticado
