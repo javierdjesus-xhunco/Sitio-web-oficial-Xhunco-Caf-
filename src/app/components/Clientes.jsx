@@ -10,7 +10,17 @@ const clientes = [
     imagen: "/clientes/barronegro.svg",
     redes: [
       { nombre: "Instagram", url: "https://www.instagram.com/barronegroterraza/" },
-      { nombre: "Facebook", url: "https://facebook.com/cafecentral" },
+      { nombre: "Facebook", url: "https://www.facebook.com/barronegrococina" },
+    ],
+  },
+  {
+    nombre: "Cocolli",
+    telefono: "+522462077697",
+    correo: "nobody@xno.com",
+    imagen: "/clientes/cocolli.svg",
+    redes: [
+      { nombre: "Instagram", url: "https://www.instagram.com/cocolli_tx/" },
+      { nombre: "TikTok", url: "https://www.tiktok.com/@cocolli_tx?lang=es-419" },
     ],
   },
   {
@@ -19,8 +29,8 @@ const clientes = [
     correo: "jomahs@hotmail.com",
     imagen: "/clientes/vivecafe.svg",
     redes: [
-      { nombre: "Instagram", url: "https://instagram.com/laespiga" },
-      { nombre: "WhatsApp", url: "https://wa.me/528123456789" },
+      { nombre: "Instagram", url: "https://www.instagram.com/vivecafeyalitas/" },
+      { nombre: "Facebook", url: "https://www.facebook.com/profile.php?id=100063495763199" },
     ],
   },
   {
@@ -29,18 +39,18 @@ const clientes = [
     correo: "nobody@xno.com",
     imagen: "/clientes/moya.svg",
     redes: [
-      { nombre: "LinkedIn", url: "https://linkedin.com/company/sierrasazul" },
-      { nombre: "Facebook", url: "https://facebook.com/sierrasazul" },
+      { nombre: "Instagram", url: "https://www.instagram.com/moya.terraza/" },
+      { nombre: "Facebook", url: "https://www.facebook.com/moya.terraza" },
     ],
   },
   {
-    nombre: "La Cabaña del Pescador",
-    telefono: "+522461744451",
+    nombre: "Dulce Trago",
+    telefono: "+522461915123",
     correo: "nobody@xno.mx",
-    imagen: "/clientes/cliente-placeholder.svg",
+    imagen: "/clientes/DT.svg",
     redes: [
-      { nombre: "Instagram", url: "https://instagram.com/valleverde" },
-      { nombre: "TikTok", url: "https://tiktok.com/@valleverde" },
+      { nombre: "Instagram", url: "https://www.instagram.com/dulce.trago1/" },
+      { nombre: "TikTok", url: "https://www.tiktok.com/@dulce.trago1?lang=es" },
     ],
   },
 ];
