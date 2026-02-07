@@ -13,14 +13,14 @@ export default function B2B() {
           </span>
 
           <h2 className="text-4xl md:text-5xl font-semibold leading-tight mb-6">
-            Café de especialidad <br />
+            Café de altura <br />
             <span className="text-[#6B3E26]">para tu negocio</span>
           </h2>
 
           <p className="text-gray-700 text-lg mb-10 max-w-xl">
             Ofrecemos soluciones integrales para cafeterías, restaurantes,
             hoteles y oficinas. Desde el suministro de granos premium hasta
-            capacitación barista y equipamiento.
+            capacitación barista, equipamiento y suministros.
           </p>
 
           {/* BENEFICIOS */}
@@ -78,7 +78,7 @@ export default function B2B() {
         <div className="grid grid-cols-2 gap-6">
           <div className="row-span-2 rounded-3xl overflow-hidden">
             <Image
-              src="/b2b/cafe-terraza.jpg"
+              src="/recursos/tostador.png"
               alt="Cafetería"
               width={600}
               height={800}
@@ -89,7 +89,7 @@ export default function B2B() {
 
           <div className="rounded-3xl overflow-hidden">
             <Image
-              src="/b2b/latte-art.jpg"
+              src="/recursos/artelatte.svg"
               alt="Latte art"
               width={400}
               height={300}
@@ -99,7 +99,7 @@ export default function B2B() {
 
           <div className="rounded-3xl overflow-hidden">
             <Image
-              src="/b2b/granos-cafe.jpg"
+              src="/recursos/granoscafe.png"
               alt="Granos de café"
               width={400}
               height={300}
