@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 export const dynamic = "force-dynamic";
 
 export async function POST(req) {
   try {
+    if (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD) {
+      return NextResponse.json({ ok: true });
+    }
     // 🔥 IMPORTS DINÁMICOS (clave para que el build no truene)
     const { getSupabaseAdminClient } = await import("@/lib/supabaseAdmin");
     const { supabaseServer } = await import("@/lib/supabaseServer");
