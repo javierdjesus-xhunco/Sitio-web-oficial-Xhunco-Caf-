@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Mail, Lock } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 export default function PortalLogin() {
   const router = useRouter();
+  const supabase = getSupabaseClient();
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleLogin(e) {

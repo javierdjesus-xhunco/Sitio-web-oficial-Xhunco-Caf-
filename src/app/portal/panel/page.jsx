@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const quickStats = [
   { label: "Clientes activos", value: "128", helper: "+12 este mes" },
@@ -62,6 +62,7 @@ export default function PanelDashboard() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState("Resumen");
   const [formState, setFormState] = useState({ status: "idle", message: "" });
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   useEffect(() => {
     const checkSession = async () => {
