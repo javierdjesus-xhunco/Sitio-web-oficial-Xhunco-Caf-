@@ -3,8 +3,11 @@ import { supabaseServer } from "@/lib/supabaseServer";
 
 export async function GET() {
   const supabase = await supabaseServer();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData?.user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  const { data: authData, error: authErr } = await supabase.auth.getUser();
+
+  if (authErr || !authData?.user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
 
   const { data: rows, error } = await supabase
     .from("orders")
@@ -15,5 +18,8 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  return NextResponse.json({ ok: true, items: rows || [] });
+  return NextResponse.json(
+    { ok: true, items: rows || [] },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

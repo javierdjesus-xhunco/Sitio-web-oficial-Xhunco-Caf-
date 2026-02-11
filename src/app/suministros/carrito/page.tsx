@@ -64,15 +64,15 @@ export default function CarritoPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-gray-900">
+    <main className="min-h-screen bg-white text-black-900">
       <section className="max-w-6xl mx-auto px-8 pt-32 pb-12">
-        <p className="text-sm uppercase tracking-[0.3em] text-gray-500">
+        <p className="text-sm uppercase tracking-[0.3em] text-black-500">
           Carrito
         </p>
         <h1 className="mt-4 text-4xl md:text-5xl font-semibold">
           Resumen de tus compras
         </h1>
-        <p className="mt-6 text-lg text-gray-600 max-w-3xl">
+        <p className="mt-6 text-lg text-black-600 max-w-3xl">
           Aquí verás los artículos seleccionados y el total antes de finalizar
           la compra.
         </p>
@@ -84,7 +84,7 @@ export default function CarritoPage() {
             <h2 className="text-2xl font-semibold">Artículos</h2>
 
             {items.length === 0 ? (
-              <p className="mt-4 text-sm text-gray-500">
+              <p className="mt-4 text-sm text-balck-500">
                 Aún no agregas productos al carrito.
               </p>
             ) : (
@@ -104,7 +104,7 @@ export default function CarritoPage() {
                       </div>
 
                       <div>
-                        <p className="text-sm text-gray-500">{item.categoria}</p>
+                        <p className="text-sm text-black-500">{item.categoria}</p>
                         <p className="text-lg font-semibold">{item.nombre}</p>
                         <p className="text-sm text-gray-600">
                           ${item.precio} MXN c/u
@@ -114,7 +114,7 @@ export default function CarritoPage() {
 
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2">
-                        <span className="text-xs text-gray-500">Cantidad</span>
+                        <span className="text-xs text-black-500">Cantidad</span>
                         <span className="w-6 text-center text-sm font-semibold">
                           {item.cantidad}
                         </span>
@@ -123,7 +123,7 @@ export default function CarritoPage() {
                           <button
                             type="button"
                             onClick={() => actualizarCantidad(key, 1)}
-                            className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                            className="px-2 py-1 text-xs text-black-700 hover:bg-gray-100"
                             aria-label={`Aumentar ${item.nombre}`}
                           >
                             ▲
@@ -131,7 +131,7 @@ export default function CarritoPage() {
                           <button
                             type="button"
                             onClick={() => actualizarCantidad(key, -1)}
-                            className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                            className="px-2 py-1 text-xs text-black-700 hover:bg-gray-100"
                             aria-label={`Disminuir ${item.nombre}`}
                           >
                             ▼
@@ -155,7 +155,7 @@ export default function CarritoPage() {
 
           <div className="rounded-2xl border border-gray-200 p-6">
             <h2 className="text-xl font-semibold">Resumen</h2>
-            <div className="mt-6 space-y-3 text-sm text-gray-700">
+            <div className="mt-6 space-y-3 text-sm text-black-700">
               <div className="flex items-center justify-between">
                 <span>Artículos</span>
                 <span className="font-semibold">{totalArticulos}</span>
