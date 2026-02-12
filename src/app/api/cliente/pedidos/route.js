@@ -24,7 +24,6 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Regresa en formato estándar
     return NextResponse.json({ ok: true, orders: orders || [] });
   } catch (e) {
     return NextResponse.json(
@@ -39,6 +38,7 @@ export async function POST(req) {
   try {
     const supabase = await supabaseServer();
     const { data: authData, error: authErr } = await supabase.auth.getUser();
+
     if (authErr || !authData?.user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
@@ -54,36 +54,36 @@ export async function POST(req) {
 
     // 1) Crear pedido con tu RPC (solo items)
     const { data: orderId, error } = await supabase.rpc("create_order", { items });
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-    // 2) Guardar snapshots opcionales (sin tocar tu RPC)
-    //    Solo si tu tabla orders ya tiene estas columnas.
-    //    Si NO existen, este update fallará -> lo ignoramos para no romper.
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // 2) Guardar entrega/pago (requiere columnas en orders)
     const patch = {
-      // si tu tabla orders ya tiene estos campos, se guardan
-      delivery_method: body?.delivery_method || null,
-      payment_method: body?.payment_method || null,
-
-      // snapshots (recomendado que sean JSONB)
-      delivery_address_snapshot: body?.address || null,
-      payment_snapshot: body?.payment_details || null,
-
-      // opcional para tu numeración interna
-      draft_no: body?.draft_no || null,
+      delivery_method: body?.delivery_method || null,             // pickup | delivery
+      payment_method: body?.payment_method || null,               // cash | tpv | online
+      delivery_address_snapshot: body?.address || null,           // jsonb
+      payment_snapshot: body?.payment_details || null,            // jsonb
+      draft_no: body?.draft_no || null,                           // int (opcional)
     };
 
-    // intentamos update (si columnas no existen, no rompemos el flujo)
     const { error: updErr } = await supabaseAdmin
       .from("orders")
       .update(patch)
       .eq("id", orderId)
       .eq("client_user_id", userId);
 
-    // Si no tienes esas columnas aún, te conviene crearlas.
-    // No detenemos el pedido por esto.
+    // ✅ ya no se silencia: si falla, lo sabrás y podrás corregirlo
     if (updErr) {
-      // puedes loguear si quieres:
-      // console.log("No se pudo guardar snapshot:", updErr.message);
+      console.error("No se pudo guardar entrega/pago:", updErr);
+      return NextResponse.json(
+        {
+          error: `Pedido creado pero no se guardó entrega/pago: ${updErr.message}`,
+          order_id: orderId,
+        },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({ ok: true, order_id: orderId });

@@ -18,7 +18,7 @@ export default function ClienteLayout({ children }) {
 
   const links = useMemo(
     () => [
-      { href: "/portal/cliente/dashboard", label: "Dashboard" },
+      { href: "/portal/cliente/dashboard", label: "Inicio" },
       { href: "/portal/cliente/pedidos/nuevo", label: "Crear pedido" },
       { href: "/portal/cliente/pedidos", label: "Mis pedidos" },
     ],
