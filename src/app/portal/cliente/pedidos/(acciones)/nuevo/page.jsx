@@ -16,6 +16,9 @@ const LS_DRAFT = "xhunco_cart_draft";
 const LS_DRAFT_NO = "xhunco_cart_draft_no";
 const LS_RESUMEN = "xhunco_nuevo_pedido";
 
+const BRAND_GREEN = "#31572c";
+const BRAND_GREEN_DARK = "#25441f";
+
 function safeParse(json, fallback) {
   try {
     return JSON.parse(json);
@@ -39,13 +42,18 @@ export default function NuevoPedidoPage() {
   const [q, setQ] = useState("");
   const [orderBy, setOrderBy] = useState("nombre"); // nombre | precio | stock
 
-  // consecutivo local del pedido en preparación
   const [draftNo, setDraftNo] = useState(null);
+
+  // ✅ IMPORTANTÍSIMO: evita que se sobrescriba LS_DRAFT vacío al montar
+  const [hydrated, setHydrated] = useState(false);
 
   // modal imagen
   const [imgOpen, setImgOpen] = useState(false);
   const [imgSrc, setImgSrc] = useState("");
   const [imgAlt, setImgAlt] = useState("");
+
+  // ✅ Modal resumen móvil (no borra nada)
+  const [cartModalOpen, setCartModalOpen] = useState(false);
 
   const loadSuministros = async () => {
     setError("");
@@ -74,6 +82,9 @@ export default function NuevoPedidoPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    // Evita rehidrataciones dobles
+    setHydrated(false);
+
     const savedDraftNo = localStorage.getItem(LS_DRAFT_NO);
     if (savedDraftNo) setDraftNo(Number(savedDraftNo));
 
@@ -87,11 +98,17 @@ export default function NuevoPedidoPage() {
         setDraftNo(Number(data.draftNo));
       }
     }
+
+    // ✅ Ya restauramos, ahora sí se permite persistir
+    setHydrated(true);
   }, []);
 
   // 3) Guardar carrito automáticamente en localStorage (persistente)
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // ✅ CLAVE: no escribas LS_DRAFT hasta que ya rehidrataste
+    if (!hydrated) return;
 
     const hasItems = Object.keys(cart || {}).length > 0;
 
@@ -101,6 +118,7 @@ export default function NuevoPedidoPage() {
       const next = current + 1;
       localStorage.setItem(LS_DRAFT_NO, String(next));
       setDraftNo(next);
+      // Nota: no hacemos return; seguimos guardando draft con next
     }
 
     const persistedNo =
@@ -114,7 +132,7 @@ export default function NuevoPedidoPage() {
         updatedAt: Date.now(),
       }),
     );
-  }, [cart, draftNo]);
+  }, [cart, draftNo, hydrated]);
 
   // categorías dinámicas
   const categories = useMemo(() => {
@@ -126,6 +144,10 @@ export default function NuevoPedidoPage() {
   }, [items]);
 
   const cartItems = useMemo(() => Object.values(cart), [cart]);
+
+  const cartCount = useMemo(() => {
+    return cartItems.reduce((acc, it) => acc + Number(it?.qty || 0), 0);
+  }, [cartItems]);
 
   const total = useMemo(() => {
     return cartItems.reduce(
@@ -184,12 +206,12 @@ export default function NuevoPedidoPage() {
     setCart({});
     setError("");
     setNotice("");
-    // OJO: NO tocamos LS_DRAFT_NO, solo borramos el draft actual
     if (typeof window !== "undefined") {
       localStorage.removeItem(LS_DRAFT);
       localStorage.removeItem(LS_RESUMEN);
     }
     setDraftNo(null);
+    setCartModalOpen(false);
   };
 
   const openImage = (src, alt) => {
@@ -205,7 +227,7 @@ export default function NuevoPedidoPage() {
     setImgAlt("");
   };
 
-  // filtro combinado: categoría + búsqueda + orden
+  // filtro combinado
   const filteredItems = useMemo(() => {
     const query = norm(q);
 
@@ -279,6 +301,7 @@ export default function NuevoPedidoPage() {
     };
 
     localStorage.setItem(LS_RESUMEN, JSON.stringify(payload));
+    setCartModalOpen(false);
     router.push("/portal/cliente/pedidos/resumen");
   };
 
@@ -287,7 +310,7 @@ export default function NuevoPedidoPage() {
   }
 
   return (
-    <div className="max-w-[1200px] w-full">
+    <div className="max-w-[1200px] w-full text-black">
       {/* Header */}
       <div className="flex items-start justify-between gap-6">
         <div>
@@ -303,7 +326,8 @@ export default function NuevoPedidoPage() {
 
         <a
           href="/portal/cliente/dashboard"
-          className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+          className="rounded-full border px-5 py-2 text-sm transition"
+          style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN, backgroundColor: "white" }}
         >
           Volver
         </a>
@@ -330,13 +354,13 @@ export default function NuevoPedidoPage() {
               <div className="text-sm font-semibold text-gray-900">Suministros</div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {/* Categoría */}
                 <div className="flex items-center gap-2">
                   <div className="text-xs text-gray-600">Categoría</div>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none focus:border-emerald-500"
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
+                    style={{ borderColor: "rgba(0,0,0,0.12)" }}
                   >
                     {categories.map((c) => (
                       <option key={c} value={c}>
@@ -346,13 +370,13 @@ export default function NuevoPedidoPage() {
                   </select>
                 </div>
 
-                {/* Ordenar */}
                 <div className="flex items-center gap-2">
                   <div className="text-xs text-gray-600">Ordenar</div>
                   <select
                     value={orderBy}
                     onChange={(e) => setOrderBy(e.target.value)}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none focus:border-emerald-500"
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
+                    style={{ borderColor: "rgba(0,0,0,0.12)" }}
                   >
                     <option value="nombre">Nombre A–Z</option>
                     <option value="precio">Precio (mayor → menor)</option>
@@ -362,18 +386,19 @@ export default function NuevoPedidoPage() {
               </div>
             </div>
 
-            {/* Buscador */}
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar por nombre, marca, categoría o SKU…"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none focus:border-emerald-500"
+                className="w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none"
+                style={{ borderColor: "rgba(0,0,0,0.12)" }}
               />
               <button
                 type="button"
                 onClick={() => setQ("")}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                className="rounded-xl border bg-white px-4 py-3 text-sm transition"
+                style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
               >
                 Limpiar
               </button>
@@ -396,7 +421,6 @@ export default function NuevoPedidoPage() {
                   key={p.id}
                   className="rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:p-4 flex flex-col"
                 >
-                  {/* Imagen centrada */}
                   <button
                     type="button"
                     onClick={() => openImage(p.imagen, p.nombre)}
@@ -419,7 +443,6 @@ export default function NuevoPedidoPage() {
                     </div>
                   </button>
 
-                  {/* Info */}
                   <div className="flex-1 text-center">
                     <div className="text-gray-900 font-medium leading-tight line-clamp-2">
                       {p.nombre}
@@ -449,18 +472,21 @@ export default function NuevoPedidoPage() {
                     </div>
                   </div>
 
-                  {/* Controles +/- */}
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => removeOne(p)}
                       disabled={inCart <= 0}
-                      className="rounded-xl border border-gray-200 bg-white py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      className="rounded-xl border bg-white py-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
                     >
                       −
                     </button>
 
-                    <div className="rounded-xl border border-gray-200 bg-white py-2 text-sm text-gray-900 text-center">
+                    <div
+                      className="rounded-xl border bg-white py-2 text-sm text-gray-900 text-center"
+                      style={{ borderColor: "rgba(0,0,0,0.12)" }}
+                    >
                       {inCart}
                     </div>
 
@@ -468,7 +494,14 @@ export default function NuevoPedidoPage() {
                       type="button"
                       onClick={() => addOne(p)}
                       disabled={outOfStock || atMax}
-                      className="rounded-xl bg-emerald-600 py-2 text-sm text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      className="rounded-xl py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      style={{ backgroundColor: BRAND_GREEN }}
+                      onMouseEnter={(e) => {
+                        if (!outOfStock && !atMax) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                      }}
                       title={outOfStock ? "Sin stock" : atMax ? "Máximo por stock" : "Agregar"}
                     >
                       +
@@ -480,8 +513,8 @@ export default function NuevoPedidoPage() {
           </div>
         </div>
 
-        {/* Carrito */}
-        <div className="rounded-3xl border border-gray-200 bg-white p-4 sm:p-6">
+        {/* Carrito (desktop) */}
+        <div className="lg:sticky lg:top-6 self-start rounded-3xl border border-gray-200 bg-white p-4 sm:p-6 hidden lg:block">
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold text-gray-900">
               Carrito {draftNo ? <span className="text-gray-500">· #{draftNo}</span> : null}
@@ -494,9 +527,10 @@ export default function NuevoPedidoPage() {
                 setOrderBy("nombre");
                 clearCart();
               }}
-              className="text-xs text-gray-600 hover:text-gray-900 transition"
+              className="text-xs transition"
               type="button"
               title="Vaciar carrito"
+              style={{ color: BRAND_GREEN }}
             >
               Vaciar
             </button>
@@ -526,7 +560,8 @@ export default function NuevoPedidoPage() {
                             const p = items.find((x) => x.id === it.id);
                             if (p) removeOne(p);
                           }}
-                          className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-gray-50 transition"
+                          className="rounded-full border bg-white px-3 py-1 text-xs transition"
+                          style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
                           type="button"
                         >
                           -
@@ -540,7 +575,8 @@ export default function NuevoPedidoPage() {
                             const p = items.find((x) => x.id === it.id);
                             if (p) addOne(p);
                           }}
-                          className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition"
+                          className="rounded-full border bg-white px-3 py-1 text-xs disabled:opacity-60 transition"
+                          style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
                           type="button"
                         >
                           +
@@ -566,7 +602,14 @@ export default function NuevoPedidoPage() {
             <button
               disabled={cartItems.length === 0}
               onClick={goToResumen}
-              className="mt-4 w-full rounded-full bg-emerald-600 px-6 py-3 text-sm text-white hover:bg-emerald-700 disabled:opacity-60 transition"
+              className="mt-4 w-full rounded-full px-6 py-3 text-sm text-white disabled:opacity-60 transition"
+              style={{ backgroundColor: BRAND_GREEN }}
+              onMouseEnter={(e) => {
+                if (cartItems.length) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = BRAND_GREEN;
+              }}
               type="button"
             >
               Resumen del pedido
@@ -579,6 +622,155 @@ export default function NuevoPedidoPage() {
         </div>
       </div>
 
+      {/* ✅ Botón flotante móvil: SOLO ícono, SOLO si hay productos */}
+      {cartCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setCartModalOpen(true)}
+          className="lg:hidden fixed z-40 right-4 bottom-4 rounded-full shadow-lg border transition active:scale-[0.98]"
+          style={{ borderColor: "rgba(0,0,0,0.12)", backgroundColor: "white" }}
+          aria-label="Ver carrito"
+          title="Ver carrito"
+        >
+          <div className="relative p-3">
+            <img
+              src="/carrito.png"
+              alt="Carrito"
+              className="h-8 w-8 object-contain"
+              loading="eager"
+            />
+
+            <span
+              className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 rounded-full grid place-items-center text-[11px] font-semibold"
+              style={{ backgroundColor: BRAND_GREEN, color: "white" }}
+            >
+              {cartCount}
+            </span>
+          </div>
+        </button>
+      ) : null}
+
+      {/* ✅ Modal resumen móvil (NO borra carrito al cerrar) */}
+      {cartModalOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCartModalOpen(false)} />
+
+          <div className="absolute inset-0 flex items-end sm:items-center justify-center p-3">
+            <div className="w-full max-w-[560px] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+              <div className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900">
+                    Carrito {draftNo ? <span className="text-gray-500">· #{draftNo}</span> : null}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {cartCount} producto(s) · Total:{" "}
+                    <span className="text-gray-900 font-semibold">{formatMoney(total)}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCartModalOpen(false)}
+                  className="rounded-full border px-4 py-2 text-sm transition"
+                  style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN, backgroundColor: "white" }}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div className="border-t border-gray-200" />
+
+              <div className="p-4 max-h-[55vh] overflow-auto">
+                {cartItems.length === 0 ? (
+                  <div className="text-sm text-gray-600">Aún no agregas productos.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {cartItems.map((it) => {
+                      const stock = getStock(it.id);
+                      const atMax = it.qty >= stock;
+
+                      return (
+                        <div key={it.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900">{it.nombre}</div>
+                              <div className="mt-1 text-xs text-gray-600">
+                                {formatMoney(it.price)} c/u · Stock: {stock}
+                              </div>
+                              <div className="mt-1 text-xs text-gray-600">
+                                Subtotal: {formatMoney(Number(it.price || 0) * Number(it.qty || 0))}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  const p = items.find((x) => x.id === it.id);
+                                  if (p) removeOne(p);
+                                }}
+                                className="rounded-full border bg-white px-3 py-1 text-xs transition"
+                                style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
+                                type="button"
+                              >
+                                -
+                              </button>
+
+                              <div className="w-8 text-center text-sm text-gray-900">{it.qty}</div>
+
+                              <button
+                                disabled={atMax || stock <= 0}
+                                onClick={() => {
+                                  const p = items.find((x) => x.id === it.id);
+                                  if (p) addOne(p);
+                                }}
+                                className="rounded-full border bg-white px-3 py-1 text-xs disabled:opacity-60 transition"
+                                style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
+                                type="button"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200" />
+
+              <div className="p-4 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="w-1/2 rounded-full border px-6 py-3 text-sm transition"
+                  style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN, backgroundColor: "white" }}
+                >
+                  Vaciar
+                </button>
+
+                <button
+                  type="button"
+                  disabled={cartItems.length === 0}
+                  onClick={goToResumen}
+                  className="w-1/2 rounded-full px-6 py-3 text-sm text-white disabled:opacity-60 transition"
+                  style={{ backgroundColor: BRAND_GREEN }}
+                  onMouseEnter={(e) => {
+                    if (cartItems.length) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                  }}
+                >
+                  Ir a resumen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Modal imagen */}
       {imgOpen ? (
         <div className="fixed inset-0 z-50">
@@ -590,7 +782,8 @@ export default function NuevoPedidoPage() {
                 <button
                   type="button"
                   onClick={closeImage}
-                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm transition"
+                  style={{ color: BRAND_GREEN }}
                 >
                   ✕
                 </button>

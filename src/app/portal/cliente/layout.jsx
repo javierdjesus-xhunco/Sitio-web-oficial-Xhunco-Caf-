@@ -2,10 +2,11 @@
 
 export const dynamic = "force-dynamic";
 
-
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+const BRAND_GREEN = "#31572c";
+const BRAND_GREEN_DARK = "#25441f";
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -29,7 +30,6 @@ export default function ClienteLayout({ children }) {
     setOpen(false);
   }, [pathname]);
 
-  // 🔐 LOGOUT SINCRONIZADO CON EL SERVER
   const logout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -46,9 +46,10 @@ export default function ClienteLayout({ children }) {
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={() => setOpen(true)}
-            className="rounded-xl border border-black/20 px-3 py-2 text-sm"
-            aria-label="Abrir menú"
-            type="button"
+            className="rounded-xl border px-3 py-2 text-sm transition"
+            style={{ borderColor: BRAND_GREEN }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
             ☰
           </button>
@@ -57,7 +58,10 @@ export default function ClienteLayout({ children }) {
 
           <button
             onClick={logout}
-            className="rounded-xl border border-black/20 px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2 text-sm transition"
+            style={{ borderColor: BRAND_GREEN }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             type="button"
           >
             Salir
@@ -75,6 +79,7 @@ export default function ClienteLayout({ children }) {
             <nav className="mt-6 grid gap-2">
               {links.map((l) => {
                 const active = pathname === l.href;
+
                 return (
                   <a
                     key={l.href}
@@ -82,9 +87,28 @@ export default function ClienteLayout({ children }) {
                     className={cx(
                       "rounded-2xl border px-4 py-3 text-sm transition",
                       active
-                        ? "border-black bg-black/5 text-black"
-                        : "border-black/20 bg-white text-black hover:bg-black/5"
+                        ? "text-white"
+                        : "text-black"
                     )}
+                    style={{
+                      borderColor: BRAND_GREEN,
+                      backgroundColor: active ? BRAND_GREEN : "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!active) {
+                        e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                        e.currentTarget.style.color = "#fff";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!active) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.color = "#000";
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                    }}
                   >
                     {l.label}
                   </a>
@@ -94,7 +118,16 @@ export default function ClienteLayout({ children }) {
 
             <button
               onClick={logout}
-              className="mt-6 w-full rounded-2xl border border-black/20 bg-white px-4 py-3 text-sm text-black hover:bg-black/5 transition"
+              className="mt-6 w-full rounded-2xl border px-4 py-3 text-sm transition"
+              style={{ borderColor: BRAND_GREEN }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = "#000";
+              }}
               type="button"
             >
               Cerrar sesión
@@ -120,7 +153,10 @@ export default function ClienteLayout({ children }) {
                   </div>
                   <button
                     onClick={() => setOpen(false)}
-                    className="rounded-xl border border-black/20 bg-white px-3 py-2 text-sm text-black hover:bg-black/5 transition"
+                    className="rounded-xl border px-3 py-2 text-sm transition"
+                    style={{ borderColor: BRAND_GREEN }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     type="button"
                   >
                     ✕
@@ -132,7 +168,16 @@ export default function ClienteLayout({ children }) {
                     <a
                       key={l.href}
                       href={l.href}
-                      className="rounded-2xl border border-black/20 bg-white px-4 py-3 text-sm text-black hover:bg-black/5 transition"
+                      className="rounded-2xl border px-4 py-3 text-sm transition"
+                      style={{ borderColor: BRAND_GREEN }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                        e.currentTarget.style.color = "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.color = "#000";
+                      }}
                     >
                       {l.label}
                     </a>
@@ -141,7 +186,16 @@ export default function ClienteLayout({ children }) {
 
                 <button
                   onClick={logout}
-                  className="mt-6 w-full rounded-2xl border border-black/20 bg-white px-4 py-3 text-sm text-black hover:bg-black/5 transition"
+                  className="mt-6 w-full rounded-2xl border px-4 py-3 text-sm transition"
+                  style={{ borderColor: BRAND_GREEN }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                    e.currentTarget.style.color = "#fff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = "#000";
+                  }}
                   type="button"
                 >
                   Cerrar sesión

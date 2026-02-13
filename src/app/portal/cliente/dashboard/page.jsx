@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const BRAND_GREEN = "#31572c";
+const BRAND_GREEN = "#31572c"; // Hunter Green
 const BRAND_GREEN_DARK = "#25441f";
 
 function formatMoney(n) {
@@ -33,7 +33,6 @@ const STATUS_LABEL = {
 export default function ClienteDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
@@ -68,11 +67,11 @@ export default function ClienteDashboard() {
   }, [orders, ym]);
 
   const ultimoPedido = useMemo(() => {
-    return orders.length ? orders[0] : null; // ya viene ordenado DESC en el endpoint
+    return orders.length ? orders[0] : null;
   }, [orders]);
 
   return (
-    <div className="max-w-[1100px] w-full text-black">
+    <div className="max-w-[1100px] w-full bg-white text-black">
       <div className="rounded-3xl border border-black/10 bg-white p-8 shadow-sm">
         <div className="text-sm text-black/60">Bienvenido</div>
         <h1 className="mt-1 text-4xl font-semibold text-black">Panel del cliente</h1>
@@ -80,11 +79,11 @@ export default function ClienteDashboard() {
           Aquí podrás revisar tu historial y crear nuevos pedidos.
         </p>
 
-        {error ? (
+        {error && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
-        ) : null}
+        )}
 
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
           <KPI
@@ -100,7 +99,7 @@ export default function ClienteDashboard() {
               loading
                 ? "Cargando…"
                 : ultimoPedido
-                ? `${STATUS_LABEL[ultimoPedido.status] || ultimoPedido.status || "—"} · ${formatMoney(
+                ? `${STATUS_LABEL[ultimoPedido.status] || ultimoPedido.status} · ${formatMoney(
                     ultimoPedido.total
                   )}`
                 : "Sin registros"
@@ -111,33 +110,52 @@ export default function ClienteDashboard() {
         </div>
 
         <div className="mt-8 flex flex-col sm:flex-row gap-3">
+          {/* BOTÓN PRINCIPAL */}
           <a
             href="/portal/cliente/pedidos/nuevo"
             className="inline-flex justify-center rounded-full px-6 py-3 text-sm text-white transition"
             style={{ backgroundColor: BRAND_GREEN }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+            onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
+            onMouseUp={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
           >
             Crear pedido
           </a>
 
+          {/* BOTÓN SECUNDARIO */}
           <a
             href="/portal/cliente/pedidos"
             className="inline-flex justify-center rounded-full border px-6 py-3 text-sm transition"
-            style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f7f2")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            style={{ borderColor: BRAND_GREEN, color: "#000" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = BRAND_GREEN;
+              e.currentTarget.style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "#000";
+            }}
+            onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
           >
             Ver mis pedidos
           </a>
 
+          {/* BOTÓN RECARGAR */}
           <button
             onClick={() => location.reload()}
-            className="inline-flex justify-center rounded-full border px-6 py-3 text-sm transition"
-            style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f7f2")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             type="button"
+            className="inline-flex justify-center rounded-full border px-6 py-3 text-sm transition"
+            style={{ borderColor: BRAND_GREEN, color: "#000" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = BRAND_GREEN;
+              e.currentTarget.style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "#000";
+            }}
+            onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
           >
             Recargar
           </button>
@@ -152,7 +170,7 @@ function KPI({ title, value, note }) {
     <div className="rounded-2xl border border-black/10 bg-white p-5">
       <div className="text-xs tracking-wider text-black/50">{title}</div>
       <div className="mt-2 text-3xl font-semibold text-black">{value}</div>
-      <div className="mt-2 text-xs" style={{ color: BRAND_GREEN }}>
+      <div className="mt-2 text-xs" style={{ color: "#31572c" }}>
         {note}
       </div>
     </div>

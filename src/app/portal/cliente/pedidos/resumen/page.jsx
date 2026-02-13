@@ -54,7 +54,6 @@ export default function ResumenPedidoPage() {
   const [deliveryMethod, setDeliveryMethod] = useState("pickup"); // pickup | delivery
   const [addressLoading, setAddressLoading] = useState(false);
 
-  // address normalizado desde tabla clients:
   // { street, ext_number, int_number, neighborhood, municipality, state, postal_code }
   const [address, setAddress] = useState(null);
 
@@ -70,7 +69,12 @@ export default function ResumenPedidoPage() {
   });
 
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState("");
+
+  // ✅ Modal de éxito
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successMsg, setSuccessMsg] = useState(
+    "Pedido exitoso. En un momento nos comunicamos con ustedes para el seguimiento.",
+  );
 
   // Cargar: primero resumen, si no existe fallback al draft
   useEffect(() => {
@@ -109,10 +113,10 @@ export default function ResumenPedidoPage() {
     setLoading(false);
   }, []);
 
-  // ✅ Traer dirección del cliente (tabla clients) cuando elige delivery
+  // ✅ Traer dirección del cliente cuando elige delivery
   useEffect(() => {
     const loadAddress = async () => {
-      // Si vuelve a pickup, limpia dirección y loading
+      // Si vuelve a pickup, limpia
       if (deliveryMethod !== "delivery") {
         setAddress(null);
         setAddressLoading(false);
@@ -132,7 +136,6 @@ export default function ResumenPedidoPage() {
         return;
       }
 
-      // Espera: { address: { street, ext_number, int_number, neighborhood, municipality, state, postal_code } }
       setAddress(data?.address || null);
       setAddressLoading(false);
     };
@@ -140,6 +143,7 @@ export default function ResumenPedidoPage() {
     loadAddress();
   }, [deliveryMethod]);
 
+  // ✅ Volver NO borra nada
   const backToCart = () => router.push("/portal/cliente/pedidos/nuevo");
 
   const validateCardUI = () => {
@@ -154,7 +158,6 @@ export default function ResumenPedidoPage() {
   const confirmOrder = async () => {
     setSaving(true);
     setError("");
-    setResult("");
 
     if (!cart.length) {
       setSaving(false);
@@ -211,14 +214,18 @@ export default function ResumenPedidoPage() {
       return;
     }
 
-    setResult("Pedido exitoso, en un momento nos comunicamos con ustedes");
+    // ✅ Modal de éxito (NO limpiamos todavía; limpiamos al darle "Entendido")
+    setSuccessMsg("Pedido exitoso. En un momento nos comunicamos con ustedes para el seguimiento.");
+    setSuccessOpen(true);
+  };
 
+  const handleSuccessOk = () => {
+    // ✅ ahora sí limpiamos
     localStorage.removeItem(LS_RESUMEN);
     localStorage.removeItem(LS_DRAFT);
 
-    setTimeout(() => {
-      router.push("/portal/cliente/pedidos/nuevo");
-    }, 1200);
+    setSuccessOpen(false);
+    router.push("/portal/cliente/pedidos"); // ✅ Mis pedidos
   };
 
   const optionBtn = (active) =>
@@ -235,7 +242,7 @@ export default function ResumenPedidoPage() {
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">
-            Checkout{" "}
+            Resumen de tus Compras{" "}
             {draftNo ? (
               <span className="text-gray-500 text-xl align-middle">· Pedido #{draftNo}</span>
             ) : null}
@@ -246,25 +253,38 @@ export default function ResumenPedidoPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={backToCart}
-          className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
-        >
-          Volver
-        </button>
+        {/* ✅ Acciones (sin cambiar lógica) */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={backToCart}
+            className="rounded-full border px-5 py-2 text-sm transition"
+            style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN, backgroundColor: "white" }}
+          >
+            Volver
+          </button>
+
+          <button
+            type="button"
+            onClick={backToCart}
+            className="rounded-full px-5 py-2 text-sm text-white transition"
+            style={{ backgroundColor: BRAND_GREEN }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = BRAND_GREEN;
+            }}
+          >
+            Editar carrito
+          </button>
+        </div>
       </div>
 
       {/* Alerts */}
       {error ? (
         <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
-        </div>
-      ) : null}
-
-      {result ? (
-        <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {result}
         </div>
       ) : null}
 
@@ -281,10 +301,8 @@ export default function ResumenPedidoPage() {
                   onClick={() => setDeliveryMethod("pickup")}
                   className={optionBtn(deliveryMethod === "pickup")}
                 >
-                  <div className="font-medium text-gray-900">Recolección en sucursal</div>
-                  <div className="mt-1 text-sm text-gray-600">
-                    El cliente acude a recoger el pedido.
-                  </div>
+                  <div className="font-medium text-gray-900">Recolección en sucursal Xhunco</div>
+                  <div className="mt-1 text-sm text-gray-600">El cliente acude a recoger el pedido.</div>
                 </button>
 
                 <button
@@ -292,10 +310,8 @@ export default function ResumenPedidoPage() {
                   onClick={() => setDeliveryMethod("delivery")}
                   className={optionBtn(deliveryMethod === "delivery")}
                 >
-                  <div className="font-medium text-gray-900">Entrega a domicilio</div>
-                  <div className="mt-1 text-sm text-gray-600">
-                    Un repartidor lo lleva al negocio del cliente.
-                  </div>
+                  <div className="font-medium text-gray-900">Entrega a tu Negocio</div>
+                  <div className="mt-1 text-sm text-gray-600">Un repartidor lo llevará a tu negocio.</div>
                 </button>
               </div>
 
@@ -308,8 +324,7 @@ export default function ResumenPedidoPage() {
                   ) : address ? (
                     <div className="mt-2 text-sm text-gray-700">
                       <div>
-                        {address.street || "—"}{" "}
-                        {address.ext_number ? `#${address.ext_number}` : ""}
+                        {address.street || "—"} {address.ext_number ? `#${address.ext_number}` : ""}
                         {address.int_number ? ` Int ${address.int_number}` : ""}
                       </div>
                       <div>
@@ -320,15 +335,12 @@ export default function ResumenPedidoPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-2 text-sm text-red-700">
-                      No hay dirección disponible en el perfil.
-                    </div>
+                    <div className="mt-2 text-sm text-red-700">No hay dirección disponible en el perfil.</div>
                   )}
                 </div>
               ) : null}
             </div>
 
-            {/* Separador */}
             <div className="border-t border-gray-200" />
 
             {/* Paso 2 */}
@@ -453,7 +465,12 @@ export default function ResumenPedidoPage() {
         <div className="lg:col-span-5">
           <div className="rounded-3xl border border-gray-200 bg-white">
             <div className="p-5">
-              <StepTitle n={4} title="Confirmar" right={cart.length ? `Resumen (${cart.length} artículos)` : "Resumen"} />
+              {/* ✅ Ajuste visual: paso 3 */}
+              <StepTitle
+                n={3}
+                title="Confirmar"
+                right={cart.length ? `Resumen (${cart.length} artículos)` : "Resumen"}
+              />
 
               {/* Resumen */}
               <div className="mt-4 space-y-3">
@@ -478,7 +495,6 @@ export default function ResumenPedidoPage() {
                 )}
               </div>
 
-              {/* Separador */}
               <div className="mt-6 border-t border-gray-200" />
 
               {/* Totales */}
@@ -513,12 +529,37 @@ export default function ResumenPedidoPage() {
                 </div>
               </div>
             </div>
-
-            <div className="border-t border-gray-200" />
-            <div className="p-4 text-xs text-gray-500">No se muestran cupones en este flujo.</div>
           </div>
         </div>
       </div>
+
+      {/* ✅ MODAL ÉXITO */}
+      {successOpen ? (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl">
+              <div className="text-xl font-semibold text-gray-900">Pedido confirmado</div>
+              <div className="mt-3 text-sm text-gray-600">{successMsg}</div>
+
+              <button
+                type="button"
+                onClick={handleSuccessOk}
+                className="mt-6 w-full rounded-full px-6 py-3 text-sm text-white transition"
+                style={{ backgroundColor: BRAND_GREEN }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                }}
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

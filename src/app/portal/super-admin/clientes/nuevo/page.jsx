@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+const BRAND_GREEN = "#31572c";        // Hunter Green (botones)
+const INPUT_BG = "#e9f4ea";           // verde claro inputs
+const INPUT_BORDER = "#9bc79f";       // borde verde suave
+
 const initialForm = {
   // auth
   email: "",
@@ -35,6 +39,9 @@ export default function NuevoClientePage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState({ type: "", message: "" });
 
+  // ✅ logo
+  const [logoFile, setLogoFile] = useState(null);
+
   // Si cambias a admin/super_admin, limpiamos campos de cliente para que no queden en memoria
   useEffect(() => {
     if (!isCliente) {
@@ -50,6 +57,7 @@ export default function NuevoClientePage() {
         postal_code: "",
         price_tier: "precio_publico",
       }));
+      setLogoFile(null);
     }
   }, [isCliente]);
 
@@ -64,6 +72,13 @@ export default function NuevoClientePage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  // ✅ handler logo
+  const onLogoChange = (e) => {
+    setResult({ type: "", message: "" });
+    const f = e.target.files?.[0] || null;
+    setLogoFile(f);
+  };
+
   const validate = () => {
     for (const key of requiredForSubmit) {
       if (!String(form[key] ?? "").trim()) return `Falta: ${key}`;
@@ -74,6 +89,7 @@ export default function NuevoClientePage() {
   const resetAll = () => {
     setForm(initialForm);
     setRole("cliente");
+    setLogoFile(null);
     setResult({ type: "", message: "" });
   };
 
@@ -89,36 +105,39 @@ export default function NuevoClientePage() {
 
     setLoading(true);
 
-    // payload final al endpoint
-    const payload = {
-      role,
-      email: form.email.trim(),
-      password: form.password,
-      first_name: form.first_name.trim(),
-      middle_name: form.middle_name.trim() || null,
-      last_name_paterno: form.last_name_paterno.trim(),
-      last_name_materno: form.last_name_materno.trim(),
-      phone: form.phone.trim() || null,
-    };
+    // ✅ Enviar como FormData (para poder mandar archivo)
+    const fd = new FormData();
 
+    // auth
+    fd.append("role", role);
+    fd.append("email", form.email.trim());
+    fd.append("password", form.password);
+
+    // responsable (profiles)
+    fd.append("first_name", form.first_name.trim());
+    fd.append("middle_name", form.middle_name.trim() || "");
+    fd.append("last_name_paterno", form.last_name_paterno.trim());
+    fd.append("last_name_materno", form.last_name_materno.trim());
+    fd.append("phone", form.phone.trim() || "");
+
+    // cliente (clients)
     if (isCliente) {
-      Object.assign(payload, {
-        business_name: form.business_name.trim(),
-        street: form.street.trim() || null,
-        ext_number: form.ext_number.trim() || null,
-        int_number: form.int_number.trim() || null,
-        neighborhood: form.neighborhood.trim() || null,
-        municipality: form.municipality.trim() || null,
-        state: form.state.trim() || null,
-        postal_code: form.postal_code.trim() || null,
-        price_tier: form.price_tier,
-      });
+      fd.append("business_name", form.business_name.trim());
+      fd.append("street", form.street.trim() || "");
+      fd.append("ext_number", form.ext_number.trim() || "");
+      fd.append("int_number", form.int_number.trim() || "");
+      fd.append("neighborhood", form.neighborhood.trim() || "");
+      fd.append("municipality", form.municipality.trim() || "");
+      fd.append("state", form.state.trim() || "");
+      fd.append("postal_code", form.postal_code.trim() || "");
+      fd.append("price_tier", form.price_tier);
+
+      if (logoFile) fd.append("logo", logoFile);
     }
 
     const res = await fetch("/api/superadmin/users", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: fd, // ⚠️ NO headers
     });
 
     const data = await res.json().catch(() => ({}));
@@ -134,24 +153,25 @@ export default function NuevoClientePage() {
     // ✅ Limpia TODO automáticamente
     setForm(initialForm);
     setRole("cliente");
+    setLogoFile(null);
   };
 
   return (
-    <div className="max-w-[1100px]">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_0_80px_rgba(255,255,255,0.06)]">
+    <div className="max-w-[1100px] bg-white text-black">
+      <div className="rounded-3xl border border-black/10 bg-white p-8 shadow-[0_0_30px_rgba(0,0,0,0.06)]">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-semibold">
+            <h1 className="text-3xl font-semibold text-black">
               {role === "cliente" ? "Alta de cliente" : "Alta de usuario"}
             </h1>
-            <p className="mt-2 text-sm text-white/60">
+            <p className="mt-2 text-sm text-black/60">
               Crea cuentas y asigna roles. La contraseña la define el super administrador.
             </p>
           </div>
 
           <a
             href="/portal/super-admin/clientes"
-            className="rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm text-white/80 hover:bg-white/10 transition"
+            className="rounded-full border border-black/15 bg-white px-5 py-2 text-sm text-black/80 hover:bg-black/5 transition"
           >
             Volver
           </a>
@@ -168,7 +188,8 @@ export default function NuevoClientePage() {
                     setResult({ type: "", message: "" });
                     setRole(e.target.value);
                   }}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                 >
                   <option value="cliente">Cliente</option>
                   <option value="admin">Administrador</option>
@@ -187,7 +208,8 @@ export default function NuevoClientePage() {
                   name="email"
                   value={form.email}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   placeholder="correo@dominio.com"
                   autoComplete="off"
                 />
@@ -198,7 +220,8 @@ export default function NuevoClientePage() {
                   name="password"
                   value={form.password}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   placeholder="••••••••"
                   autoComplete="new-password"
                   type="password"
@@ -215,7 +238,8 @@ export default function NuevoClientePage() {
                   name="first_name"
                   value={form.first_name}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                 />
               </Field>
 
@@ -224,7 +248,8 @@ export default function NuevoClientePage() {
                   name="middle_name"
                   value={form.middle_name}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                 />
               </Field>
 
@@ -233,7 +258,8 @@ export default function NuevoClientePage() {
                   name="last_name_paterno"
                   value={form.last_name_paterno}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                 />
               </Field>
 
@@ -242,7 +268,8 @@ export default function NuevoClientePage() {
                   name="last_name_materno"
                   value={form.last_name_materno}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                 />
               </Field>
 
@@ -251,7 +278,8 @@ export default function NuevoClientePage() {
                   name="phone"
                   value={form.phone}
                   onChange={onChange}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                 />
               </Field>
             </div>
@@ -266,8 +294,25 @@ export default function NuevoClientePage() {
                     name="business_name"
                     value={form.business_name}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   />
+                </Field>
+
+                {/* ✅ NUEVO: Logo */}
+                <Field label="Logo del negocio (PNG/JPG/WebP)">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={onLogoChange}
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
+                  />
+                  {logoFile?.name ? (
+                    <div className="mt-2 text-xs text-black/60">
+                      Archivo: <span className="font-medium text-black">{logoFile.name}</span>
+                    </div>
+                  ) : null}
                 </Field>
 
                 <Field label="Tipo de precio *">
@@ -275,7 +320,8 @@ export default function NuevoClientePage() {
                     name="price_tier"
                     value={form.price_tier}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   >
                     <option value="precio_web">Precio web</option>
                     <option value="precio_publico">Precio público</option>
@@ -289,7 +335,8 @@ export default function NuevoClientePage() {
                     name="street"
                     value={form.street}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   />
                 </Field>
 
@@ -299,7 +346,8 @@ export default function NuevoClientePage() {
                       name="ext_number"
                       value={form.ext_number}
                       onChange={onChange}
-                      className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                      className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                      style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                     />
                   </Field>
 
@@ -308,7 +356,8 @@ export default function NuevoClientePage() {
                       name="int_number"
                       value={form.int_number}
                       onChange={onChange}
-                      className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                      className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                      style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                     />
                   </Field>
                 </div>
@@ -318,7 +367,8 @@ export default function NuevoClientePage() {
                     name="neighborhood"
                     value={form.neighborhood}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   />
                 </Field>
 
@@ -327,7 +377,8 @@ export default function NuevoClientePage() {
                     name="municipality"
                     value={form.municipality}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   />
                 </Field>
 
@@ -336,7 +387,8 @@ export default function NuevoClientePage() {
                     name="state"
                     value={form.state}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                   />
                 </Field>
 
@@ -345,7 +397,8 @@ export default function NuevoClientePage() {
                     name="postal_code"
                     value={form.postal_code}
                     onChange={onChange}
-                    className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none focus:border-emerald-400/30"
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
                     placeholder="Ej. 90000"
                   />
                 </Field>
@@ -358,7 +411,8 @@ export default function NuevoClientePage() {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-6 py-3 text-sm text-white/90 hover:bg-emerald-400/15 disabled:opacity-60 transition"
+              className="rounded-full px-6 py-3 text-sm text-white disabled:opacity-60 transition"
+              style={{ backgroundColor: BRAND_GREEN, border: `1px solid ${BRAND_GREEN}` }}
             >
               {loading ? "Creando..." : "Crear"}
             </button>
@@ -367,7 +421,8 @@ export default function NuevoClientePage() {
               type="button"
               disabled={loading}
               onClick={resetAll}
-              className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm text-white/80 hover:bg-white/10 disabled:opacity-60 transition"
+              className="rounded-full border px-6 py-3 text-sm disabled:opacity-60 transition"
+              style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN, backgroundColor: "white" }}
             >
               Limpiar
             </button>
@@ -376,17 +431,19 @@ export default function NuevoClientePage() {
               <div
                 className={[
                   "text-sm px-4 py-2 rounded-xl border",
-                  result.type === "ok"
-                    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
-                    : "border-red-400/30 bg-red-400/10 text-red-200",
+                  result.type === "ok" ? "text-green-800" : "text-red-700",
                 ].join(" ")}
+                style={{
+                  borderColor: result.type === "ok" ? "#b7d7bb" : "#f3b4b4",
+                  backgroundColor: result.type === "ok" ? "#edf7ee" : "#fdecec",
+                }}
               >
                 {result.message}
               </div>
             )}
           </div>
 
-          <div className="text-xs text-white/50">
+          <div className="text-xs text-black/60">
             Requeridos: email, password, nombre, apellidos{isCliente ? ", nombre del negocio" : ""}.
           </div>
         </form>
@@ -397,8 +454,8 @@ export default function NuevoClientePage() {
 
 function Section({ title, children }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-      <div className="text-sm font-medium text-white/80">{title}</div>
+    <div className="rounded-3xl border border-black/10 bg-white p-6">
+      <div className="text-sm font-medium text-black/80">{title}</div>
       <div className="mt-4">{children}</div>
     </div>
   );
@@ -407,7 +464,7 @@ function Section({ title, children }) {
 function Field({ label, children }) {
   return (
     <label className="block">
-      <div className="mb-2 text-xs text-white/60">{label}</div>
+      <div className="mb-2 text-xs text-black/70">{label}</div>
       {children}
     </label>
   );
@@ -415,12 +472,12 @@ function Field({ label, children }) {
 
 function HintCard() {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-xs text-white/60">
-      <div className="text-white/80 font-medium">Regla</div>
+    <div className="rounded-2xl border border-black/10 bg-black/5 p-4 text-xs text-black/70">
+      <div className="text-black/80 font-medium">Regla</div>
       <div className="mt-2">
-        Si el rol es <span className="text-white/80">Administrador</span> o{" "}
-        <span className="text-white/80">Super Administrador</span>, se omite el negocio y no se crea
-        registro en <span className="text-white/80">clients</span>.
+        Si el rol es <span className="text-black/90">Administrador</span> o{" "}
+        <span className="text-black/90">Super Administrador</span>, se omite el negocio y no se crea
+        registro en <span className="text-black/90">clients</span>.
       </div>
     </div>
   );

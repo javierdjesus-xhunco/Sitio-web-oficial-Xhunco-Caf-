@@ -233,15 +233,33 @@ export default function PedidoDetallePage() {
     doc.setFillColor(...BRAND_RGB);
     doc.rect(0, 25, pageW, 1.2, "F");
 
-    if (logoDataUrl) doc.addImage(logoDataUrl, "PNG", margin, 6, 30, 12);
+  // ===== Logo (tamaño correcto, manteniendo proporción) =====
+let logoW = 45;      // <-- AJUSTA ESTE VALOR (mm). Ej: 40–55
+let logoH = 12;      // se recalcula con proporción
+
+if (logoDataUrl) {
+  const props = doc.getImageProperties(logoDataUrl);
+  const ratio = props.height / props.width;
+  logoH = logoW * ratio;
+
+  // límite de alto para que no invada el header (opcional pero recomendado)
+  const maxH = 14;
+  if (logoH > maxH) {
+    logoH = maxH;
+    logoW = logoH / ratio;
+  }
+
+  doc.addImage(logoDataUrl, "PNG", margin, 9, logoW, logoH);
+}
+
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(12);
-    doc.text("Comprobante de pedido", logoDataUrl ? margin + 34 : margin, 12);
+    const textX = logoDataUrl ? margin + logoW + 4 : margin;
 
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text("Xhunco Café", logoDataUrl ? margin + 34 : margin, 17);
+    doc.text("Comprobante de pedido", textX, 12);
+    doc.text("Xhunco Café", textX, 17);
+
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(10);
