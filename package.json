@@ -10,6 +10,7 @@
     "postinstall": "prisma generate --schema=prisma/schema.prisma"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.17.15",
     "@prisma/client": "6.19.2",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/ssr": "^0.8.0",
