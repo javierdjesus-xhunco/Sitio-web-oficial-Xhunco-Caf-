@@ -5,22 +5,22 @@ import CafeCard from "./CafeCard";
 
 const cafes = [
   {
-    nombre: "Café Sierra Norte",
+    nombre: "Café Veracruz - Zongolica",
     descripcion: "Notas a chocolate oscuro y nuez.",
-    precio: "280 MXN",
-    imagen: "/cafes/cafe1.jpg",
+    precio: "369 MXN",
+    imagen: "/cafes/xhuncoveracruz.png",
   },
   {
-    nombre: "Café Altura Chiapas",
+    nombre: "Café Chiapas - Chilon",
     descripcion: "Aromas cítricos y cuerpo balanceado.",
-    precio: "310 MXN",
-    imagen: "/cafes/cafe2.jpg",
+    precio: "379 MXN",
+    imagen: "/cafes/xhuncochiapas.png",
   },
   {
-    nombre: "Café Oaxaca Orgánico",
+    nombre: "Café Oaxaca - Pluma Hidalgo",
     descripcion: "Suave, floral y acidez brillante.",
-    precio: "295 MXN",
-    imagen: "/cafes/cafe3.jpg",
+    precio: "389 MXN",
+    imagen: "/cafes/xhuncooaxaca.png",
   },
 ];
 

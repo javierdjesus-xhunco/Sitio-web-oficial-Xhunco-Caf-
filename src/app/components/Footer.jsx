@@ -1,16 +1,25 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   return (
-    <footer className="bg-black text-gray-300 pt-20 pb-10">
+    <footer className="bg-[#000000] text-gray-200 pt-20 pb-10">
       <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-12">
 
         {/* Marca */}
         <div>
-          <h3 className="text-white text-xl font-semibold mb-4">
-            Xhunco® Café
-          </h3>
-          <p className="text-sm leading-relaxed">
+          <div className="mb-4">
+            <Image
+              src="/logo-xhunco-horizontal-blanco.png"
+              alt="Xhunco Café"
+              width={160}
+              height={48}
+              className="object-contain"
+              priority
+            />
+          </div>
+
+          <p className="text-sm leading-relaxed text-gray-100">
             Café de origen con trazabilidad real.  
             Conectamos productores, tostadores y consumidores
             a través de una experiencia digital transparente.
@@ -21,19 +30,19 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-semibold mb-4">Explorar</h4>
           <ul className="space-y-2 text-sm">
-            <li><Link href="/#cafes">Cafés</Link></li>
-            <li><Link href="/#trazabilidad">Trazabilidad</Link></li>
-            <li><Link href="/#clientes">Clientes</Link></li>
-            <li><Link href="/trazabilidad">Buscar mi lote</Link></li>
+            <li><Link href="/#cafes" className="hover:text-white transition">Cafés</Link></li>
+            <li><Link href="/#trazabilidad" className="hover:text-white transition">Trazabilidad</Link></li>
+            <li><Link href="/#clientes" className="hover:text-white transition">Clientes</Link></li>
+            <li><Link href="/trazabilidad" className="hover:text-white transition">Buscar mi lote</Link></li>
           </ul>
         </div>
 
         {/* Contacto */}
         <div>
           <h4 className="text-white font-semibold mb-4">Contacto</h4>
-          <ul className="space-y-2 text-sm">
-            <li>📍 Tlaxcala</li>
-            <li>📧 javier.ortiz@xhunco.com</li>
+          <ul className="space-y-2 text-sm text-gray-100">
+            <li>📍 El Tordo 31 Col. Los Potrillos, Tlaxcala, Tlax C.P. 90014</li>
+            <li>📧 soporte@xhunco.com</li>
             <li>📞 +52 246-142-86-84</li>
           </ul>
         </div>
@@ -42,16 +51,15 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-semibold mb-4">Síguenos</h4>
           <div className="flex gap-4 text-sm">
-            <a href="#" className="hover:text-white">Instagram</a>
-            <a href="#" className="hover:text-white">Facebook</a>
-            <a href="#" className="hover:text-white">LinkedIn</a>
+            <a href="#" className="hover:text-white transition">Instagram</a>
+            <a href="#" className="hover:text-white transition">Facebook</a>
+            <a href="#" className="hover:text-white transition">LinkedIn</a>
           </div>
         </div>
 
       </div>
 
-      {/* Línea inferior */}
-      <div className="border-t border-gray-800 mt-16 pt-6 text-center text-sm text-gray-500">
+      <div className="border-t border-white/20 mt-16 pt-6 text-center text-sm text-gray-200">
         © {new Date().getFullYear()} Xhunco® Café. Todos los derechos reservados.
       </div>
     </footer>

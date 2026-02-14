@@ -51,7 +51,7 @@ export default function Hero() {
         </h1>
 
         <p className="text-lg md:text-xl mb-10 text-gray-200">
-          Cafés de especialidad cuidadosamente seleccionados,
+          Cafés de altura cuidadosamente seleccionados,
           con procesos transparentes desde el origen hasta tu taza.
         </p>
 
