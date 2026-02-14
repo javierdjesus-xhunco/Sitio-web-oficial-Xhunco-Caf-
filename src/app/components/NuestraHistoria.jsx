@@ -1,16 +1,36 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function NuestraHistoria() {
+  // ✅ Cambia/añade aquí tus imágenes (en /public)
+  const slides = [
+    "/recursos/hombrecaficultor3.jpg",
+    "/recursos/mujercaficultora1.jpg",
+    "/recursos/mujercaficultora2.jpg",
+    "/recursos/mujercaficultora4.webp",
+  ];
+
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+
+    const id = setInterval(() => {
+      setActive((prev) => (prev + 1) % slides.length);
+    }, 4000); // ✅ 2 segundos
+
+    return () => clearInterval(id);
+  }, [slides.length]);
+
   return (
     <section className="py-32 bg-white">
       <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-
         {/* TEXTO */}
         <div>
-          <h2 className="text-4xl font-semibold mb-6">
-            Nuestra historia
-          </h2>
+          <h2 className="text-4xl font-semibold mb-6">Nuestra historia</h2>
 
           <p className="text-gray-600 text-lg leading-relaxed mb-6">
             Xhunco® Café nace con una idea clara: conectar el trabajo de los
@@ -20,8 +40,8 @@ export default function NuestraHistoria() {
 
           <p className="text-gray-600 text-lg leading-relaxed mb-8">
             Trabajamos directamente con regiones cafetaleras, cuidando cada
-            etapa del proceso para ofrecer cafés consistentes, responsables
-            y con identidad propia.
+            etapa del proceso para ofrecer cafés consistentes, responsables y
+            con identidad propia.
           </p>
 
           <Link
@@ -32,17 +52,24 @@ export default function NuestraHistoria() {
           </Link>
         </div>
 
-        {/* IMAGEN */}
+        {/* GALERÍA (FADE) */}
         <div className="relative w-full h-[420px] rounded-xl overflow-hidden">
-          <Image
-            src="/fondoportal.jpeg"
-            alt="Nuestra historia"
-            fill
-            className="object-cover"
-            priority
-          />
+          {slides.map((src, i) => (
+            <Image
+              key={src}
+              src={src}
+              alt="Nuestra historia"
+              fill
+              priority={i === 0}
+              className={[
+                "object-cover",
+                "absolute inset-0",
+                "transition-opacity duration-700 ease-in-out", // ✅ desvanecido
+                i === active ? "opacity-100" : "opacity-0",
+              ].join(" ")}
+            />
+          ))}
         </div>
-
       </div>
     </section>
   );
