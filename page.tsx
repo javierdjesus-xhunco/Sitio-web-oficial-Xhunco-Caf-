@@ -86,7 +86,6 @@ export default function Home() {
           <a href="#" className="hover:text-black">Tienda</a>
           <a href="#" className="hover:text-black">Orígenes</a>
           <a href="#" className="hover:text-black">Trazabilidad</a>
-          <a href="#" className="hover:text-black">Academia</a>
           <a href="#" className="hover:text-black">Soluciones B2B</a>
           <a href="#" className="hover:text-black">Suministros</a>
           <a href="#" className="hover:text-black">Contacto</a>
