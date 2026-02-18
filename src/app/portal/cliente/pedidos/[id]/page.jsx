@@ -40,38 +40,126 @@ function formatPayment(method) {
   return method ? String(method) : "—";
 }
 
-function normalizeStatusLabel(statusRaw) {
-  const status = String(statusRaw || "pendiente").toLowerCase().trim();
-  const map = {
-    pendiente: "Pendiente",
-    "en proceso": "En proceso",
-    proceso: "En proceso",
-    finalizado: "Finalizado",
-    entregado: "Finalizado",
-    cancelado: "Cancelado",
-  };
-  return map[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pendiente");
+/** ===== Status (alineado a tu sistema real) ===== */
+const STATUS_FLOW = [
+  { key: "pendiente", label: "Pendiente" },
+  { key: "confirmado", label: "Confirmado" },
+  { key: "en_preparacion", label: "En preparación" },
+  { key: "en_ruta", label: "En ruta" },
+  { key: "entregado", label: "Entregado" },
+];
+
+function normalizeStatusKey(statusRaw) {
+  const s = String(statusRaw || "pendiente").toLowerCase().trim();
+  // tolerancia legacy
+  if (s === "en proceso" || s === "proceso") return "en_preparacion";
+  if (s === "finalizado") return "entregado";
+  return s || "pendiente";
+}
+
+function statusLabelFromKey(key) {
+  return STATUS_FLOW.find((x) => x.key === key)?.label || "Pendiente";
 }
 
 function StatusBadge({ statusRaw }) {
-  const status = String(statusRaw || "pendiente").toLowerCase().trim();
+  const status = normalizeStatusKey(statusRaw);
 
   const map = {
-    pendiente: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    "en proceso": "bg-blue-100 text-blue-800 border-blue-300",
-    proceso: "bg-blue-100 text-blue-800 border-blue-300",
-    finalizado: "bg-green-100 text-green-800 border-green-300",
-    entregado: "bg-green-100 text-green-800 border-green-300",
-    cancelado: "bg-red-100 text-red-800 border-red-300",
+    pendiente: "bg-gray-100 text-gray-800 border-gray-200",
+    confirmado: "bg-blue-50 text-blue-800 border-blue-200",
+    en_preparacion: "bg-yellow-50 text-yellow-800 border-yellow-200",
+    en_ruta: "bg-purple-50 text-purple-800 border-purple-200",
+    entregado: "bg-green-50 text-green-800 border-green-200",
+    cancelado: "bg-red-50 text-red-800 border-red-200",
   };
 
-  const cls = map[status] || "bg-gray-100 text-gray-800 border-gray-300";
-  const label = normalizeStatusLabel(status);
+  const cls = map[status] || "bg-gray-100 text-gray-800 border-gray-200";
+  const label = statusLabelFromKey(status);
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${cls}`}>
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${cls}`}>
       {label}
     </span>
+  );
+}
+
+function StatusTimeline({ statusRaw, createdAt }) {
+  const status = normalizeStatusKey(statusRaw);
+
+  if (status === "cancelado") {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+        <div className="text-sm font-semibold text-red-800">Pedido cancelado</div>
+        <div className="mt-1 text-xs text-red-700">
+          {createdAt ? `Creado: ${formatDateTime(createdAt)}` : null}
+        </div>
+      </div>
+    );
+  }
+
+  const currentIndex = STATUS_FLOW.findIndex((s) => s.key === status);
+  const idx = currentIndex >= 0 ? currentIndex : 0;
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-gray-900">Seguimiento</div>
+        <div className="text-xs text-gray-500">{createdAt ? `Creado: ${formatDateTime(createdAt)}` : "—"}</div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {STATUS_FLOW.map((step, i) => {
+          const done = i < idx;
+          const active = i === idx;
+
+          return (
+            <div key={step.key} className="flex items-start gap-3">
+              {/* Rail */}
+              <div className="relative flex flex-col items-center">
+                <div
+                  className={[
+                    "grid h-7 w-7 place-items-center rounded-full border text-xs font-bold",
+                    done
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : active
+                      ? "border-gray-900 bg-gray-900 text-white"
+                      : "border-gray-200 bg-white text-gray-400",
+                  ].join(" ")}
+                  title={step.label}
+                >
+                  {done ? "✓" : i + 1}
+                </div>
+
+                {i !== STATUS_FLOW.length - 1 ? (
+                  <div className={["mt-1 h-8 w-[2px] rounded-full", done ? "bg-emerald-200" : "bg-gray-200"].join(" ")} />
+                ) : null}
+              </div>
+
+              {/* Text */}
+              <div className="min-w-0 pt-0.5">
+                <div
+                  className={[
+                    "text-sm font-semibold",
+                    done ? "text-gray-900" : active ? "text-gray-900" : "text-gray-500",
+                  ].join(" ")}
+                >
+                  {step.label}
+                  {active ? <span className="ml-2 text-xs font-semibold text-gray-500">(actual)</span> : null}
+                </div>
+
+                <div className="mt-0.5 text-xs text-gray-500">
+                  {step.key === "pendiente" && "Recibimos tu solicitud de pedido."}
+                  {step.key === "confirmado" && "Un administrador validó tu pedido y lo confirmó."}
+                  {step.key === "en_preparacion" && "Estamos preparando tu pedido."}
+                  {step.key === "en_ruta" && "Tu pedido va en camino."}
+                  {step.key === "entregado" && "Pedido entregado exitosamente."}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -83,19 +171,13 @@ function safeText(v, fallback = "—") {
 
 function getBusinessNameFromAddressSnapshot(order) {
   const a = order?.delivery_address_snapshot || {};
-  return (
-    a?.business_name ||
-    a?.company ||
-    a?.negocio ||
-    a?.razon_social ||
-    a?.nombre_negocio ||
-    ""
-  );
+  return a?.business_name || a?.company || a?.negocio || a?.razon_social || a?.nombre_negocio || "";
 }
 
-async function toDataUrlFromPublic(path) {
-  const res = await fetch(path, { cache: "no-store" });
-  if (!res.ok) throw new Error(`No se pudo cargar ${path}`);
+// ✅ sirve para /public o URL absoluta (supabase)
+async function toDataUrlFromAny(src) {
+  const res = await fetch(src, { cache: "no-store" });
+  if (!res.ok) throw new Error(`No se pudo cargar ${src}`);
   const blob = await res.blob();
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -103,6 +185,23 @@ async function toDataUrlFromPublic(path) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+// ✅ dibujar imagen manteniendo proporción y límite de alto
+function addImageFit(doc, dataUrl, x, y, targetW, maxH) {
+  const props = doc.getImageProperties(dataUrl);
+  const ratio = props.height / props.width;
+
+  let w = targetW;
+  let h = w * ratio;
+
+  if (maxH && h > maxH) {
+    h = maxH;
+    w = h / ratio;
+  }
+
+  doc.addImage(dataUrl, "PNG", x, y, w, h);
+  return { w, h };
 }
 
 export default function PedidoDetallePage() {
@@ -119,6 +218,9 @@ export default function PedidoDetallePage() {
 
   // 👇 nombre del negocio (para UI y PDF)
   const [businessName, setBusinessName] = useState("");
+
+  // ✅ logo del cliente
+  const [clientLogoUrl, setClientLogoUrl] = useState("");
 
   const total = useMemo(() => formatMoney(order?.total), [order?.total]);
   const address = order?.delivery_address_snapshot || null;
@@ -153,271 +255,296 @@ export default function PedidoDetallePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Auto-refresh status (detener si finalizado/cancelado)
+  // Auto-refresh status (detener si entregado/cancelado)
   useEffect(() => {
     if (!id) return;
 
-    const st = String(order?.status || "").toLowerCase();
-    if (st === "finalizado" || st === "cancelado" || st === "entregado") return;
+    const st = normalizeStatusKey(order?.status);
+    if (st === "entregado" || st === "cancelado") return;
 
     const t = setInterval(() => load(true), 8000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, order?.status]);
 
-  // Obtener business_name: primero del snapshot, si no, del perfil
+  // ✅ Traer negocio y logo desde /api/cliente/me
   useEffect(() => {
     const run = async () => {
-      if (!order) return;
-
-      const fromSnap = getBusinessNameFromAddressSnapshot(order);
-      if (fromSnap) {
-        setBusinessName(fromSnap);
-        return;
-      }
-
-      // Fallback: perfil (clients)
       try {
-        const res = await fetch("/api/cliente/perfil", { cache: "no-store" });
+        const res = await fetch("/api/cliente/me", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
-          setBusinessName(data?.client?.business_name || "");
+          if (data?.client?.business_name) setBusinessName(data.client.business_name);
+          if (data?.client?.logo_url) setClientLogoUrl(data.client.logo_url);
         }
       } catch {
         // no rompemos
       }
     };
     run();
+  }, []);
+
+  // Fallback: del snapshot si viene
+  useEffect(() => {
+    if (!order) return;
+    const fromSnap = getBusinessNameFromAddressSnapshot(order);
+    if (fromSnap) setBusinessName(fromSnap);
   }, [order]);
 
   const downloadPdf = async () => {
-  if (!order) return;
+    if (!order) return;
 
-  setDownloading(true);
-  try {
-    const { jsPDF } = await import("jspdf");
-    const autoTable = (await import("jspdf-autotable")).default;
-
-    // ===== Config =====
-    const BRAND_RGB = [49, 87, 44];
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const margin = 14;
-
-    // ===== Logo =====
-    let logoDataUrl = null;
+    setDownloading(true);
     try {
-      logoDataUrl = await toDataUrlFromPublic(LOGO_PUBLIC_PATH);
-    } catch {
-      logoDataUrl = null;
-    }
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
 
-    // ===== Datos =====
-    const business = safeText(
-      businessName || getBusinessNameFromAddressSnapshot(order) || "Cliente"
-    );
-    const folioShort = String(order?.id || "").slice(0, 8).toUpperCase();
-    const uuid = safeText(order?.id, "—");
-    const fecha = formatDateTime(order?.created_at);
-    const statusLabel = normalizeStatusLabel(order?.status);
-    const entrega = formatDelivery(order?.delivery_method);
-    const pago = formatPayment(order?.payment_method);
+      // ===== Config =====
+      const BRAND_RGB = [49, 87, 44];
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 14;
 
-    const a = order?.delivery_address_snapshot || null;
-    const isDelivery = String(order?.delivery_method || "").toLowerCase() === "delivery";
+      // ===== Cargar ambos logos =====
+      let xhuncoLogo = null;
+      let clientLogo = null;
 
-    // ===== Header CLARO =====
-    doc.setFillColor(247, 248, 249);
-    doc.rect(0, 0, pageW, 26, "F");
-    doc.setFillColor(...BRAND_RGB);
-    doc.rect(0, 25, pageW, 1.2, "F");
+      try {
+        xhuncoLogo = await toDataUrlFromAny(LOGO_PUBLIC_PATH);
+      } catch {
+        xhuncoLogo = null;
+      }
 
-  // ===== Logo (tamaño correcto, manteniendo proporción) =====
-let logoW = 45;      // <-- AJUSTA ESTE VALOR (mm). Ej: 40–55
-let logoH = 12;      // se recalcula con proporción
+      if (clientLogoUrl) {
+        try {
+          clientLogo = await toDataUrlFromAny(clientLogoUrl);
+        } catch {
+          clientLogo = null;
+        }
+      }
 
-if (logoDataUrl) {
-  const props = doc.getImageProperties(logoDataUrl);
-  const ratio = props.height / props.width;
-  logoH = logoW * ratio;
+      // ===== Datos =====
+      const business = safeText(businessName || getBusinessNameFromAddressSnapshot(order) || "Cliente");
+      const folioShort = String(order?.id || "").slice(0, 8).toUpperCase();
+      const uuid = safeText(order?.id, "—");
+      const fecha = formatDateTime(order?.created_at);
+      const statusLabel = statusLabelFromKey(normalizeStatusKey(order?.status));
+      const entrega = formatDelivery(order?.delivery_method);
+      const pago = formatPayment(order?.payment_method);
 
-  // límite de alto para que no invada el header (opcional pero recomendado)
-  const maxH = 14;
-  if (logoH > maxH) {
-    logoH = maxH;
-    logoW = logoH / ratio;
-  }
+      const a = order?.delivery_address_snapshot || null;
+      const isDelivery = String(order?.delivery_method || "").toLowerCase() === "delivery";
 
-  doc.addImage(logoDataUrl, "PNG", margin, 9, logoW, logoH);
-}
+      // ===== Header =====
+      doc.setFillColor(247, 248, 249);
+      doc.rect(0, 0, pageW, 26, "F");
+      doc.setFillColor(...BRAND_RGB);
+      doc.rect(0, 25, pageW, 1.2, "F");
 
+      // ===== Logos =====
+      const logoY = 8.7;
+      const maxH = 14;
 
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    const textX = logoDataUrl ? margin + logoW + 4 : margin;
+      // Xhunco izquierda
+      let leftW = 0;
+      if (xhuncoLogo) {
+        const r = addImageFit(doc, xhuncoLogo, margin, logoY, 38, maxH);
+        leftW = r.w;
+      }
 
-    doc.text("Comprobante de pedido", textX, 12);
-    doc.text("Xhunco Café", textX, 17);
-
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(10);
-    doc.text(`Pedido #${folioShort}`, pageW - margin, 11, { align: "right" });
-    doc.setFontSize(9);
-    doc.setTextColor(90, 90, 90);
-    doc.text(fecha, pageW - margin, 17, { align: "right" });
-
-    // ===== Bloque Cliente / Pedido =====
-    let y = 34;
-    doc.setDrawColor(230, 230, 230);
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(margin, y, pageW - margin * 2, 28, 3, 3, "FD");
-
-    doc.setFontSize(9);
-    doc.setTextColor(90, 90, 90);
-    doc.text("Negocio", margin + 4, y + 7);
-    doc.text("Estatus", pageW / 2, y + 7);
-    doc.text("UUID", margin + 4, y + 18);
-
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text(business, margin + 4, y + 13);
-
-    doc.setFontSize(10);
-    doc.text(statusLabel, pageW / 2, y + 13);
-
-    doc.setFontSize(8);
-    doc.setTextColor(110, 110, 110);
-    doc.text(uuid, margin + 4, y + 23);
-
-    y += 36;
-
-    // ===== Entrega / Pago =====
-    doc.setDrawColor(230, 230, 230);
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(margin, y, pageW - margin * 2, isDelivery ? 34 : 20, 3, 3, "FD");
-
-    doc.setFontSize(9);
-    doc.setTextColor(90, 90, 90);
-    doc.text("Entrega", margin + 4, y + 7);
-    doc.text("Pago", pageW / 2, y + 7);
-
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text(entrega, margin + 4, y + 13);
-    doc.text(pago, pageW / 2, y + 13);
-
-    if (isDelivery) {
-      const line1 = `${a?.street || "—"}${a?.ext_number ? ` #${a.ext_number}` : ""}${a?.int_number ? ` Int ${a.int_number}` : ""}`;
-      const line2 = `${a?.neighborhood || "—"}, ${a?.municipality || "—"}`;
-      const line3 = `${a?.state || "—"} · CP ${a?.postal_code || "—"}`;
-
-      doc.setFontSize(9);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Domicilio", margin + 4, y + 20);
+      // ===== Bloque derecho: [logoCliente] Pedido #XXXX =====
+      const pedidoText = `Pedido #${folioShort}`;
 
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
-      doc.text(line1, margin + 4, y + 26);
-      doc.text(line2, margin + 4, y + 31);
-      doc.text(line3, margin + 4, y + 36);
+      const pedidoTextW = doc.getTextWidth(pedidoText);
 
-      y += 46;
-    } else {
-      y += 28;
+      const gap = 3;
+      if (clientLogo) {
+        const props = doc.getImageProperties(clientLogo);
+        const ratio = props.height / props.width;
+
+        let clientW = 14;
+        let clientH = clientW * ratio;
+
+        const clientMaxH = 10;
+        if (clientH > clientMaxH) {
+          clientH = clientMaxH;
+          clientW = clientH / ratio;
+        }
+
+        const blockW = clientW + gap + pedidoTextW;
+        const blockX = pageW - margin - blockW;
+
+        // logo cliente ANTES
+        doc.addImage(clientLogo, "PNG", blockX, 9.2, clientW, clientH);
+        // texto después del logo
+        doc.text(pedidoText, blockX + clientW + gap, 11);
+      } else {
+        doc.text(pedidoText, pageW - margin, 11, { align: "right" });
+      }
+
+      // Fecha abajo derecha
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text(fecha, pageW - margin, 17, { align: "right" });
+
+      // ===== Texto principal (izquierda-centro) =====
+      const textX = xhuncoLogo ? margin + leftW + 6 : margin;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.text("Comprobante de pedido", textX, 12);
+
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      doc.text(business, textX, 17);
+
+      // ===== Bloque Cliente / Pedido =====
+      let y = 34;
+      doc.setDrawColor(230, 230, 230);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, y, pageW - margin * 2, 28, 3, 3, "FD");
+
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text("Negocio", margin + 4, y + 7);
+      doc.text("Estatus", pageW / 2, y + 7);
+      doc.text("UUID", margin + 4, y + 18);
+
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.text(business, margin + 4, y + 13);
+
+      doc.setFontSize(10);
+      doc.text(statusLabel, pageW / 2, y + 13);
+
+      doc.setFontSize(8);
+      doc.setTextColor(110, 110, 110);
+      doc.text(uuid, margin + 4, y + 23);
+
+      y += 36;
+
+      // ===== Entrega / Pago =====
+      doc.setDrawColor(230, 230, 230);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, y, pageW - margin * 2, isDelivery ? 34 : 20, 3, 3, "FD");
+
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text("Entrega", margin + 4, y + 7);
+      doc.text("Pago", pageW / 2, y + 7);
+
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+      doc.text(entrega, margin + 4, y + 13);
+      doc.text(pago, pageW / 2, y + 13);
+
+      if (isDelivery) {
+        const line1 = `${a?.street || "—"}${a?.ext_number ? ` #${a.ext_number}` : ""}${a?.int_number ? ` Int ${a.int_number}` : ""}`;
+        const line2 = `${a?.neighborhood || "—"}, ${a?.municipality || "—"}`;
+        const line3 = `${a?.state || "—"} · CP ${a?.postal_code || "—"}`;
+
+        doc.setFontSize(9);
+        doc.setTextColor(90, 90, 90);
+        doc.text("Domicilio", margin + 4, y + 20);
+
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text(line1, margin + 4, y + 26);
+        doc.text(line2, margin + 4, y + 31);
+        doc.text(line3, margin + 4, y + 36);
+
+        y += 46;
+      } else {
+        y += 28;
+      }
+
+      // ===== Tabla Productos =====
+      const rows = items.map((it, idx) => {
+        const name =
+          it?.suministros_xhunco?.nombre ||
+          it?.nombre ||
+          it?.suministro_nombre ||
+          it?.product_name ||
+          `Item ${idx + 1}`;
+
+        const qty = Number(it?.qty ?? 0);
+        const unit = Number(it?.unit_price ?? 0);
+        const line =
+          Number(it?.line_total ?? 0) ||
+          (Number.isFinite(qty) && Number.isFinite(unit) ? qty * unit : 0);
+
+        return [String(name), String(qty), formatMoney(unit), formatMoney(line)];
+      });
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Producto", "Cant.", "Precio unit.", "Subtotal"]],
+        body: rows,
+        theme: "grid",
+        styles: { fontSize: 9, cellPadding: 2.4, lineColor: [230, 230, 230], lineWidth: 0.2 },
+        headStyles: { fillColor: BRAND_RGB, textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [250, 250, 250] },
+        columnStyles: {
+          0: { cellWidth: 90 },
+          1: { halign: "center", cellWidth: 18 },
+          2: { halign: "right", cellWidth: 36 },
+          3: { halign: "right", cellWidth: 36 },
+        },
+      });
+
+      // ===== Total =====
+      const tableEndY = doc.lastAutoTable?.finalY || y;
+      const panelY = tableEndY + 8;
+
+      doc.setDrawColor(...BRAND_RGB);
+      doc.setFillColor(250, 252, 250);
+      doc.roundedRect(pageW - margin - 78, panelY, 78, 20, 3, 3, "FD");
+
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text("Total", pageW - margin - 74, panelY + 7);
+
+      doc.setFontSize(13);
+      doc.setTextColor(0, 0, 0);
+      doc.text(formatMoney(order?.total), pageW - margin - 74, panelY + 15);
+
+      // ===== Footer =====
+      const footerY = Math.min(panelY + 34, pageH - 18);
+      doc.setDrawColor(235, 235, 235);
+      doc.line(margin, footerY - 6, pageW - margin, footerY - 6);
+
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text("Xhunco Café — Gracias por tu compra.", margin, footerY);
+      doc.text("En un momento nos comunicamos con ustedes para seguimiento y entrega.", margin, footerY + 5);
+
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text("Este documento es un comprobante interno de pedido.", margin, footerY + 11);
+
+      // ✅ Abrir + descargar
+      const filename = `Xhunco_Pedido_${folioShort}.pdf`;
+      const pdfBlob = doc.output("blob");
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, "_blank", "noopener,noreferrer");
+
+      const aTag = document.createElement("a");
+      aTag.href = url;
+      aTag.download = filename;
+      document.body.appendChild(aTag);
+      aTag.click();
+      aTag.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 15000);
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo generar el PDF.");
+    } finally {
+      setDownloading(false);
     }
-
-    // ===== Tabla Productos =====
-    const rows = items.map((it, idx) => {
-      const name =
-        it?.suministros_xhunco?.nombre ||
-        it?.nombre ||
-        it?.suministro_nombre ||
-        it?.product_name ||
-        `Item ${idx + 1}`;
-
-      const qty = Number(it?.qty ?? 0);
-      const unit = Number(it?.unit_price ?? 0);
-      const line =
-        Number(it?.line_total ?? 0) ||
-        (Number.isFinite(qty) && Number.isFinite(unit) ? qty * unit : 0);
-
-      return [String(name), String(qty), formatMoney(unit), formatMoney(line)];
-    });
-
-    autoTable(doc, {
-      startY: y,
-      head: [["Producto", "Cant.", "Precio unit.", "Subtotal"]],
-      body: rows,
-      theme: "grid",
-      styles: { fontSize: 9, cellPadding: 2.4, lineColor: [230, 230, 230], lineWidth: 0.2 },
-      headStyles: { fillColor: BRAND_RGB, textColor: 255, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [250, 250, 250] },
-      columnStyles: {
-        0: { cellWidth: 90 },
-        1: { halign: "center", cellWidth: 18 },
-        2: { halign: "right", cellWidth: 36 },
-        3: { halign: "right", cellWidth: 36 },
-      },
-    });
-
-    // ===== Total =====
-    const tableEndY = doc.lastAutoTable?.finalY || y;
-    const panelY = tableEndY + 8;
-
-    doc.setDrawColor(...BRAND_RGB);
-    doc.setFillColor(250, 252, 250);
-    doc.roundedRect(pageW - margin - 78, panelY, 78, 20, 3, 3, "FD");
-
-    doc.setFontSize(9);
-    doc.setTextColor(90, 90, 90);
-    doc.text("Total", pageW - margin - 74, panelY + 7);
-
-    doc.setFontSize(13);
-    doc.setTextColor(0, 0, 0);
-    doc.text(formatMoney(order?.total), pageW - margin - 74, panelY + 15);
-
-    // ===== Footer =====
-    const footerY = Math.min(panelY + 34, pageH - 18);
-    doc.setDrawColor(235, 235, 235);
-    doc.line(margin, footerY - 6, pageW - margin, footerY - 6);
-
-    doc.setFontSize(9);
-    doc.setTextColor(90, 90, 90);
-    doc.text("Xhunco Café — Gracias por tu compra.", margin, footerY);
-    doc.text("En un momento nos comunicamos con ustedes para seguimiento y entrega.", margin, footerY + 5);
-
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text("Este documento es un comprobante interno de pedido.", margin, footerY + 11);
-
-    // ✅ En vez de doc.save() => abrir en pestaña + descargar
-    const filename = `Xhunco_Pedido_${folioShort}.pdf`;
-
-    // 1) Abrir en nueva pestaña (más confiable)
-    const pdfBlob = doc.output("blob");
-    const url = URL.createObjectURL(pdfBlob);
-    window.open(url, "_blank", "noopener,noreferrer");
-
-    // 2) Descargar (opcional, para que el usuario guarde)
-    const aTag = document.createElement("a");
-    aTag.href = url;
-    aTag.download = filename;
-    document.body.appendChild(aTag);
-    aTag.click();
-    aTag.remove();
-
-    // liberar
-    setTimeout(() => URL.revokeObjectURL(url), 15000);
-  } catch (e) {
-    console.error(e);
-    setError("No se pudo generar el PDF.");
-  } finally {
-    setDownloading(false);
-  }
-};
-
+  };
 
   if (loading) return <div className="text-gray-600">Cargando pedido…</div>;
 
@@ -427,8 +554,7 @@ if (logoDataUrl) {
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">Detalle del pedido</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Fecha:{" "}
-            <span className="text-gray-900 font-medium">{formatDateTime(order?.created_at)}</span>
+            Fecha: <span className="text-gray-900 font-medium">{formatDateTime(order?.created_at)}</span>
           </p>
           {businessName ? (
             <p className="mt-1 text-sm text-gray-600">
@@ -517,10 +643,7 @@ if (logoDataUrl) {
                       (Number.isFinite(qty) && Number.isFinite(unit) ? qty * unit : 0);
 
                     return (
-                      <div
-                        key={it?.id || `${idx}`}
-                        className="rounded-2xl border border-gray-200 bg-gray-50 p-4"
-                      >
+                      <div key={it?.id || `${idx}`} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
                             <div className="font-medium text-gray-900">{name}</div>
@@ -542,6 +665,11 @@ if (logoDataUrl) {
           {/* Derecha */}
           <div className="lg:col-span-4 rounded-3xl border border-gray-200 bg-white p-6">
             <div className="text-sm font-semibold text-gray-900">Resumen</div>
+
+            {/* ✅ TIMELINE PRO */}
+            <div className="mt-4">
+              <StatusTimeline statusRaw={order?.status} createdAt={order?.created_at} />
+            </div>
 
             <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">Total</div>

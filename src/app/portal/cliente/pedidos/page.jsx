@@ -54,6 +54,11 @@ export default function ClientePedidosPage() {
   const [error, setError] = useState("");
   const [items, setItems] = useState([]);
 
+  // ✅ Nuevo: filtro por mes
+  // "all" = General (todos)
+  // "YYYY-MM" = mes específico
+  const [monthFilter, setMonthFilter] = useState("all");
+
   const load = useCallback(async () => {
     setError("");
     const res = await fetch("/api/cliente/pedidos/list", { cache: "no-store" });
@@ -106,8 +111,7 @@ export default function ClientePedidosPage() {
     };
   }, []);
 
-  // ✅ Para mostrar “Pedido #N”: construimos la numeración con base en orden viejo->nuevo
-  // y además mostramos la lista en orden nuevo->viejo (como ya lo tenías)
+  // ✅ Para mostrar “Pedido #N”: numeración viejo->nuevo y vista nuevo->viejo
   const viewOrders = useMemo(() => {
     const arr = Array.isArray(items) ? [...items] : [];
 
@@ -134,8 +138,54 @@ export default function ClientePedidosPage() {
     }));
   }, [items]);
 
-  const hasItems = viewOrders.length > 0;
+  // ✅ Nuevo: opciones del dropdown (General + meses disponibles)
+  const monthOptions = useMemo(() => {
+    // Genera keys "YYYY-MM" únicas a partir de created_at
+    const set = new Set();
+    for (const o of items || []) {
+      const ts = o?.created_at;
+      if (!ts) continue;
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      set.add(key);
+    }
 
+    // Ordenar de más reciente a más viejo
+    const keys = Array.from(set).sort((a, b) => (a < b ? 1 : -1));
+
+    const label = (key) => {
+      const [y, m] = key.split("-");
+      const d = new Date(Number(y), Number(m) - 1, 1);
+      // Ej: "febrero 2026"
+      const pretty = d.toLocaleString("es-MX", { month: "long", year: "numeric" });
+      return pretty.charAt(0).toUpperCase() + pretty.slice(1);
+    };
+
+    return [
+      { value: "all", label: "General (todos)" },
+      ...keys.map((k) => ({ value: k, label: label(k) })),
+    ];
+  }, [items]);
+
+  // ✅ Nuevo: aplicar filtro por mes
+  const filteredOrders = useMemo(() => {
+    if (monthFilter === "all") return viewOrders;
+
+    return viewOrders.filter((o) => {
+      const ts = o?.created_at;
+      if (!ts) return false;
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return false;
+
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return key === monthFilter;
+    });
+  }, [viewOrders, monthFilter]);
+
+  const hasItems = filteredOrders.length > 0;
+
+  // (Ya no hay botón "Recargar", pero dejamos tu función por si la usas en otro lado)
   const handleReload = async () => {
     setReloading(true);
     await load();
@@ -180,19 +230,29 @@ export default function ClientePedidosPage() {
             Nuevo pedido
           </Link>
 
-          <button
-            onClick={handleReload}
-            disabled={reloading}
-            className="inline-flex justify-center rounded-full px-6 py-3 text-sm text-white disabled:opacity-60 transition"
-            style={{ backgroundColor: BRAND_GREEN }}
-            onMouseEnter={(e) => {
-              if (!reloading) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
-            }}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
-            type="button"
-          >
-            {reloading ? "Recargando..." : "Recargar"}
-          </button>
+          {/* ✅ Reemplazo del botón Recargar -> Dropdown de meses */}
+          <div className="w-full sm:w-auto">
+            <label className="sr-only" htmlFor="monthFilter">
+              Filtrar por mes
+            </label>
+
+            <select
+              id="monthFilter"
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="w-full sm:w-[260px] rounded-full px-5 py-3 text-sm border transition bg-white"
+              style={{ borderColor: BRAND_GREEN, color: "#111" }}
+            >
+              {monthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Si quieres mantener “Recargar” oculto pero disponible: descomenta */}
+            {/* <button onClick={handleReload} className="hidden" type="button" /> */}
+          </div>
         </div>
 
         <div className="mt-6">
@@ -200,11 +260,13 @@ export default function ClientePedidosPage() {
             <div className="text-sm text-black/60">Cargando pedidos…</div>
           ) : !hasItems ? (
             <div className="rounded-2xl border border-black/10 bg-black/5 p-5 text-sm text-black/70">
-              Aún no tienes pedidos.
+              {monthFilter === "all"
+                ? "Aún no tienes pedidos."
+                : "No hay pedidos en el mes seleccionado."}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {viewOrders.map((o) => (
+              {filteredOrders.map((o) => (
                 <Link
                   key={o.id}
                   href={`/portal/cliente/pedidos/${o.id}`}
@@ -213,16 +275,11 @@ export default function ClientePedidosPage() {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs text-black/50">Pedido</div>
-                      <div className="mt-1 font-semibold">
-                        Pedido #{o.order_no || "—"}
-                      </div>
+                      <div className="mt-1 font-semibold">Pedido #{o.order_no || "—"}</div>
 
                       <div className="mt-2 text-xs text-black/50">
                         {formatDate(o.created_at)}
                       </div>
-
-                      {/* UUID se mantiene internamente (no visible). 
-                          Si quieres, lo ponemos en un tooltip o en detalle únicamente */}
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -230,7 +287,9 @@ export default function ClientePedidosPage() {
 
                       <div className="text-right">
                         <div className="text-xs text-black/50">Total</div>
-                        <div className="mt-1 text-lg font-semibold">{formatMoney(o.total)}</div>
+                        <div className="mt-1 text-lg font-semibold">
+                          {formatMoney(o.total)}
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -141,8 +141,8 @@ export async function POST(req) {
 
       const clientId = clientRow.id;
 
-      // ✅ Subir logo si viene
-      if (logo && typeof logo === "object" && "arrayBuffer" in logo) {
+      // ✅ Subir logo si viene (FIX: validación correcta)
+      if (logo && typeof logo?.arrayBuffer === "function") {
         const mime = logo.type || "image/png";
         const allowedMime = ["image/png", "image/jpeg", "image/webp"];
         if (!allowedMime.includes(mime)) {

@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const BRAND_GREEN = "#31572c";        // Hunter Green (botones)
-const INPUT_BG = "#e9f4ea";           // verde claro inputs
+const BRAND_GREEN = "#31572c";        // botones
+const INPUT_BG = "#e9f4ea";           // verde claro para inputs
 const INPUT_BORDER = "#9bc79f";       // borde verde suave
 
 const initialForm = {
@@ -57,7 +57,7 @@ export default function NuevoClientePage() {
         postal_code: "",
         price_tier: "precio_publico",
       }));
-      setLogoFile(null);
+      setLogoFile(null); // ✅
     }
   }, [isCliente]);
 
@@ -89,7 +89,7 @@ export default function NuevoClientePage() {
   const resetAll = () => {
     setForm(initialForm);
     setRole("cliente");
-    setLogoFile(null);
+    setLogoFile(null); // ✅
     setResult({ type: "", message: "" });
   };
 
@@ -105,7 +105,7 @@ export default function NuevoClientePage() {
 
     setLoading(true);
 
-    // ✅ Enviar como FormData (para poder mandar archivo)
+    // ✅ FIX 1: enviar con FormData (para que viaje el archivo)
     const fd = new FormData();
 
     // auth
@@ -132,12 +132,13 @@ export default function NuevoClientePage() {
       fd.append("postal_code", form.postal_code.trim() || "");
       fd.append("price_tier", form.price_tier);
 
+      // ✅ archivo
       if (logoFile) fd.append("logo", logoFile);
     }
 
     const res = await fetch("/api/superadmin/users", {
       method: "POST",
-      body: fd, // ⚠️ NO headers
+      body: fd, // ⚠️ IMPORTANTE: SIN headers Content-Type
     });
 
     const data = await res.json().catch(() => ({}));
@@ -299,7 +300,7 @@ export default function NuevoClientePage() {
                   />
                 </Field>
 
-                {/* ✅ NUEVO: Logo */}
+                {/* ✅ NUEVO: Subir logo */}
                 <Field label="Logo del negocio (PNG/JPG/WebP)">
                   <input
                     type="file"

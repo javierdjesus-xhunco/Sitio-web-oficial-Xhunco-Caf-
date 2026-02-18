@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import NotificationsBell from "@/components/NotificationsBell"; // ✅ NEW
 
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
@@ -16,6 +17,11 @@ export default function ClienteLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  const [client, setClient] = useState(null);
+
+  // ✅ cache-busting controlado (1 vez por montaje)
+  const [cacheKey] = useState(() => String(Date.now()));
 
   const links = useMemo(
     () => [
@@ -30,6 +36,33 @@ export default function ClienteLayout({ children }) {
     setOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    let alive = true;
+
+    const load = async () => {
+      try {
+        const res = await fetch("/api/cliente/me", { method: "GET" });
+        const data = await res.json().catch(() => ({}));
+        if (!alive) return;
+
+        if (!res.ok) {
+          setClient(null);
+          return;
+        }
+
+        setClient(data?.client || null);
+      } catch {
+        if (alive) setClient(null);
+      }
+    };
+
+    load();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const logout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -38,6 +71,9 @@ export default function ClienteLayout({ children }) {
       router.refresh();
     }
   };
+
+  // ✅ URL final del logo (con bust opcional)
+  const logoSrc = client?.logo_url ? `${client.logo_url}?v=${cacheKey}` : null;
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -50,22 +86,28 @@ export default function ClienteLayout({ children }) {
             style={{ borderColor: BRAND_GREEN }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            type="button"
           >
             ☰
           </button>
 
           <div className="text-sm font-medium">Portal · Cliente</div>
 
-          <button
-            onClick={logout}
-            className="rounded-xl border px-3 py-2 text-sm transition"
-            style={{ borderColor: BRAND_GREEN }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-            type="button"
-          >
-            Salir
-          </button>
+          {/* ✅ NEW: campanita + salir */}
+          <div className="flex items-center gap-2">
+            <NotificationsBell />
+
+            <button
+              onClick={logout}
+              className="rounded-xl border px-3 py-2 text-sm transition"
+              style={{ borderColor: BRAND_GREEN }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              type="button"
+            >
+              Salir
+            </button>
+          </div>
         </div>
       </header>
 
@@ -74,7 +116,29 @@ export default function ClienteLayout({ children }) {
         <aside className="hidden lg:block w-[150px] border-r border-black/10 bg-white">
           <div className="p-6">
             <div className="text-xs text-black/60">Portal</div>
-            <div className="mt-1 text-lg font-semibold text-black">Cliente</div>
+
+            {/* ✅ Logo + campanita */}
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <div className="flex justify-center">
+                {logoSrc ? (
+                  <img
+                    src={logoSrc}
+                    alt="Logo del negocio"
+                    className="h-14 w-14 rounded-xl border border-black/10 bg-white object-contain p-1"
+                  />
+                ) : (
+                  <div
+                    className="h-14 w-14 rounded-xl flex items-center justify-center text-sm font-semibold border border-black/10"
+                    style={{ backgroundColor: "#e9f4ea", color: BRAND_GREEN }}
+                  >
+                    C
+                  </div>
+                )}
+              </div>
+
+              {/* 🔔 Campanita desktop */}
+              <NotificationsBell />
+            </div>
 
             <nav className="mt-6 grid gap-2">
               {links.map((l) => {
@@ -86,9 +150,7 @@ export default function ClienteLayout({ children }) {
                     href={l.href}
                     className={cx(
                       "rounded-2xl border px-4 py-3 text-sm transition",
-                      active
-                        ? "text-white"
-                        : "text-black"
+                      active ? "text-white" : "text-black"
                     )}
                     style={{
                       borderColor: BRAND_GREEN,
@@ -138,19 +200,35 @@ export default function ClienteLayout({ children }) {
         {/* Drawer móvil */}
         {open && (
           <div className="lg:hidden fixed inset-0 z-40">
-            <div
-              className="absolute inset-0 bg-black/40"
-              onClick={() => setOpen(false)}
-            />
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+
             <div className="absolute left-0 top-0 h-full w-[86%] max-w-[320px] border-r border-black/10 bg-white">
               <div className="p-5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-xs text-black/60">Portal</div>
-                    <div className="mt-1 text-lg font-semibold text-black">
-                      Cliente
+
+                    <div className="mt-4 flex items-center gap-2">
+                      {logoSrc ? (
+                        <img
+                          src={logoSrc}
+                          alt="Logo del negocio"
+                          className="h-14 w-14 rounded-xl border border-black/10 bg-white object-contain p-1"
+                        />
+                      ) : (
+                        <div
+                          className="h-14 w-14 rounded-xl flex items-center justify-center text-sm font-semibold border border-black/10"
+                          style={{ backgroundColor: "#e9f4ea", color: BRAND_GREEN }}
+                        >
+                          C
+                        </div>
+                      )}
+
+                      {/* 🔔 Campanita en drawer */}
+                      <NotificationsBell />
                     </div>
                   </div>
+
                   <button
                     onClick={() => setOpen(false)}
                     className="rounded-xl border px-3 py-2 text-sm transition"
@@ -206,9 +284,7 @@ export default function ClienteLayout({ children }) {
         )}
 
         {/* Contenido */}
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-10">
-          {children}
-        </main>
+        <main className="flex-1 px-4 py-6 md:px-8 md:py-10">{children}</main>
       </div>
     </div>
   );
