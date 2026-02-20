@@ -7,7 +7,14 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        brand: {
+          green: "#31572c",      // Hunter Green
+          greenHover: "#3f6b38", // Hover (ligeramente más claro)
+        },
+      },
+    },
   },
   plugins: [],
 };

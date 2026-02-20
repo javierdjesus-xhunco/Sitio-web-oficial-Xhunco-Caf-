@@ -1,25 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  Sector,
-} from "recharts";
-import { Filter, DollarSign, Package, Truck, Ban, ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { DollarSign, Package, Truck, Ban, ChevronDown } from "lucide-react";
 
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
+
+/** ✅ Recharts lazy (mejor performance / menor JS inicial) */
+const ResponsiveContainer = dynamic(
+  () => import("recharts").then((m) => m.ResponsiveContainer),
+  { ssr: false }
+);
+const LineChart = dynamic(() => import("recharts").then((m) => m.LineChart), { ssr: false });
+const Line = dynamic(() => import("recharts").then((m) => m.Line), { ssr: false });
+const XAxis = dynamic(() => import("recharts").then((m) => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import("recharts").then((m) => m.YAxis), { ssr: false });
+const Tooltip = dynamic(() => import("recharts").then((m) => m.Tooltip), { ssr: false });
+const CartesianGrid = dynamic(() => import("recharts").then((m) => m.CartesianGrid), {
+  ssr: false,
+});
+const BarChart = dynamic(() => import("recharts").then((m) => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import("recharts").then((m) => m.Bar), { ssr: false });
+const PieChart = dynamic(() => import("recharts").then((m) => m.PieChart), { ssr: false });
+const Pie = dynamic(() => import("recharts").then((m) => m.Pie), { ssr: false });
+const Cell = dynamic(() => import("recharts").then((m) => m.Cell), { ssr: false });
+const Sector = dynamic(() => import("recharts").then((m) => m.Sector), { ssr: false });
 
 function money(n) {
   const v = Number(n || 0);
@@ -37,6 +43,7 @@ function prettyMonth(ym) {
   return d.toLocaleDateString("es-MX", { year: "numeric", month: "long" });
 }
 
+/** UI helpers */
 function Card({ children, className = "" }) {
   return (
     <div
@@ -51,7 +58,6 @@ function Card({ children, className = "" }) {
     </div>
   );
 }
-
 function Chip({ children }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-black">
@@ -59,11 +65,35 @@ function Chip({ children }) {
     </span>
   );
 }
-
 function Empty({ title = "Sin datos" }) {
   return (
     <div className="mt-4 flex h-[220px] items-center justify-center rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 text-sm text-neutral-600">
       {title}
+    </div>
+  );
+}
+function SkeletonRows() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-16 animate-pulse rounded-2xl border border-neutral-200 bg-neutral-50"
+        />
+      ))}
+    </div>
+  );
+}
+function Row({ title, subtitle, meta }) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-2xl border border-neutral-200 p-4 hover:bg-neutral-50">
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold text-black">{title}</div>
+        <div className="truncate text-xs text-neutral-600">{subtitle}</div>
+      </div>
+      <div className="shrink-0 text-right">
+        <div className="text-xs font-semibold text-black">{meta}</div>
+      </div>
     </div>
   );
 }
@@ -105,30 +135,6 @@ function renderActiveShape(props) {
   );
 }
 
-function Row({ title, subtitle, meta }) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-neutral-200 p-4 hover:bg-neutral-50">
-      <div className="min-w-0">
-        <div className="truncate text-sm font-semibold text-black">{title}</div>
-        <div className="truncate text-xs text-neutral-600">{subtitle}</div>
-      </div>
-      <div className="shrink-0 text-right">
-        <div className="text-xs font-semibold text-black">{meta}</div>
-      </div>
-    </div>
-  );
-}
-
-function SkeletonRows() {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="h-16 animate-pulse rounded-2xl border border-neutral-200 bg-neutral-50" />
-      ))}
-    </div>
-  );
-}
-
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -152,51 +158,72 @@ export default function AdminDashboard() {
   const [topN, setTopN] = useState(10);
   const [groupOthers, setGroupOthers] = useState(true);
 
-  useEffect(() => {
-    let alive = true;
+  /** ✅ Abort + debounce (evita spam de requests) */
+  const abortRef = useRef(null);
+  const debounceRef = useRef(null);
 
-    (async () => {
+  useEffect(() => {
+    // debounce 150ms
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      // abort anterior
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setLoading(true);
       setError("");
 
-      const qs = new URLSearchParams();
-      qs.set("month", monthFilter);
-      qs.set("client", clientFilter);
+      try {
+        const qs = new URLSearchParams();
+        qs.set("month", monthFilter);
+        qs.set("client", clientFilter);
 
-      const res = await fetch(`/api/admin/dashboard?${qs.toString()}`, { method: "GET" });
-      const data = await res.json().catch(() => ({}));
-      if (!alive) return;
+        const res = await fetch(`/api/admin/dashboard?${qs.toString()}`, {
+          method: "GET",
+          signal: controller.signal,
+          headers: { "Content-Type": "application/json" },
+        });
 
-      if (!res.ok) {
-        setError(data?.error || "No se pudo cargar el dashboard");
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          setError(data?.error || "No se pudo cargar el dashboard");
+          setLoading(false);
+          return;
+        }
+
+        setKpis(data.kpis || { activos: 0, entregados: 0, cancelados: 0 });
+        setMonths(Array.isArray(data.months) ? data.months : []);
+        setClientOptions(Array.isArray(data.clientOptions) ? data.clientOptions : []);
+
+        setIncomeTotal(Number(data.incomeTotal || 0));
+        setIncomeByDay(Array.isArray(data.incomeByDay) ? data.incomeByDay : []);
+        setIncomeByMonth(Array.isArray(data.incomeByMonth) ? data.incomeByMonth : []);
+        setShareRows(Array.isArray(data.shareRows) ? data.shareRows : []);
+
+        setRecentActive(
+          Array.isArray(data.recentActive)
+            ? data.recentActive
+            : Array.isArray(data.recentPending)
+            ? data.recentPending
+            : []
+        );
+        setRecentUpdates(Array.isArray(data.recentUpdates) ? data.recentUpdates : []);
+
+        setActivePieIndex(0);
         setLoading(false);
-        return;
+      } catch (e) {
+        if (e?.name === "AbortError") return; // normal
+        setError("Error cargando dashboard");
+        setLoading(false);
       }
-
-      setKpis(data.kpis || { activos: 0, entregados: 0, cancelados: 0 });
-      setMonths(Array.isArray(data.months) ? data.months : []);
-      setClientOptions(Array.isArray(data.clientOptions) ? data.clientOptions : []);
-
-      setIncomeTotal(Number(data.incomeTotal || 0));
-      setIncomeByDay(Array.isArray(data.incomeByDay) ? data.incomeByDay : []);
-      setIncomeByMonth(Array.isArray(data.incomeByMonth) ? data.incomeByMonth : []);
-      setShareRows(Array.isArray(data.shareRows) ? data.shareRows : []);
-
-      setRecentActive(
-        Array.isArray(data.recentActive)
-          ? data.recentActive
-          : Array.isArray(data.recentPending)
-          ? data.recentPending
-          : []
-      );
-      setRecentUpdates(Array.isArray(data.recentUpdates) ? data.recentUpdates : []);
-
-      setActivePieIndex(0);
-      setLoading(false);
-    })();
+    }, 150);
 
     return () => {
-      alive = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      // NO abort aquí siempre, para no cancelar al desmontar normal: pero sí es válido
     };
   }, [monthFilter, clientFilter]);
 
@@ -227,7 +254,7 @@ export default function AdminDashboard() {
         <div>
           <div className="text-sm text-neutral-600">Panel</div>
           <h1 className="mt-1 text-5xl font-semibold tracking-tight text-black">
-            Rendimiento del negocio
+            Rendimiento de Xhunco®
           </h1>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -241,6 +268,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* ✅ Si ya moviste accesos al layout, aquí puedes quitar estos 2 botones si quieres */}
         <div className="flex items-center gap-3">
           <a
             href="/portal/admin/pedidos"
@@ -260,18 +288,13 @@ export default function AdminDashboard() {
 
       {/* Filters */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Chip>
-          <Filter className="h-4 w-4" />
-          Filtros
-        </Chip>
-
         <div className="relative">
           <select
             className="h-11 min-w-[190px] appearance-none rounded-full border border-neutral-200 bg-white px-4 pr-10 text-sm text-black outline-none hover:bg-neutral-50"
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
           >
-            <option value="ALL">Todos los meses</option>
+            <option value="ALL">Meses</option>
             {months.map((m) => (
               <option key={m} value={m}>
                 {prettyMonth(m)}
@@ -287,7 +310,7 @@ export default function AdminDashboard() {
             value={clientFilter}
             onChange={(e) => setClientFilter(e.target.value)}
           >
-            <option value="ALL">Todos los clientes</option>
+            <option value="ALL">Clientes</option>
             {clientOptions.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
@@ -300,6 +323,7 @@ export default function AdminDashboard() {
         <div className="ml-auto">
           <Card className="px-5 py-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-black">
+              <div className="text-sm font-semibold text-black">Total:</div>
               <DollarSign className="h-4 w-4" />
               {loading ? "—" : money(incomeTotal)}
             </div>
@@ -311,23 +335,29 @@ export default function AdminDashboard() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="p-6">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-black">Pedidos activos</div>
+            <div className="text-sm font-semibold text-black">Pedidos Pendientes</div>
             <div className="rounded-2xl border border-neutral-200 bg-white p-2">
               <Package className="h-5 w-5 text-black" />
             </div>
           </div>
-          <div className="mt-4 text-5xl font-semibold text-black">{loading ? "—" : kpis.activos}</div>
-          <div className="mt-2 text-xs text-neutral-600">Pendiente / Confirmado / En preparación</div>
+          <div className="mt-4 text-5xl font-semibold text-black">
+            {loading ? "—" : kpis.activos}
+          </div>
+          <div className="mt-2 text-xs text-neutral-600">
+            Pendiente / Confirmado / En preparación
+          </div>
         </Card>
 
         <Card className="p-6">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-black">Entregas</div>
+            <div className="text-sm font-semibold text-black">Pedidos Entregados</div>
             <div className="rounded-2xl border border-neutral-200 bg-white p-2">
               <Truck className="h-5 w-5 text-black" />
             </div>
           </div>
-          <div className="mt-4 text-5xl font-semibold text-black">{loading ? "—" : kpis.entregados}</div>
+          <div className="mt-4 text-5xl font-semibold text-black">
+            {loading ? "—" : kpis.entregados}
+          </div>
           <div className="mt-2 text-xs text-neutral-600">Entregado</div>
           <div className="mt-6 flex gap-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -338,12 +368,14 @@ export default function AdminDashboard() {
 
         <Card className="p-6">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-black">Cancelados</div>
+            <div className="text-sm font-semibold text-black">Pedidos Cancelados</div>
             <div className="rounded-2xl border border-neutral-200 bg-white p-2">
               <Ban className="h-5 w-5 text-black" />
             </div>
           </div>
-          <div className="mt-4 text-5xl font-semibold text-black">{loading ? "—" : kpis.cancelados}</div>
+          <div className="mt-4 text-5xl font-semibold text-black">
+            {loading ? "—" : kpis.cancelados}
+          </div>
           <div className="mt-2 text-xs text-neutral-600">Pedidos cancelados</div>
         </Card>
       </div>
@@ -364,7 +396,13 @@ export default function AdminDashboard() {
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={kFmt} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="ingresos" stroke={BRAND_GREEN} strokeWidth={3} dot={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="ingresos"
+                    stroke={BRAND_GREEN}
+                    strokeWidth={3}
+                    dot={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -374,7 +412,6 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <Card className="p-6">
             <div className="text-lg font-semibold text-black">Ingresos por mes</div>
-            <div className="mt-1 text-sm text-neutral-600">Tendencia · respeta cliente</div>
 
             {!incomeByMonth.length ? (
               <Empty title="Sin datos para ingresos por mes." />
@@ -396,31 +433,10 @@ export default function AdminDashboard() {
           <Card className="p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-semibold text-black">Participación por cliente</div>
+                <div className="text-lg font-semibold text-black">Ingresos por cliente</div>
                 <div className="mt-1 text-sm text-neutral-600">
                   {monthFilter === "ALL" ? "Global" : `Mes: ${prettyMonth(monthFilter)}`}
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={topN}
-                  onChange={(e) => setTopN(Number(e.target.value))}
-                  className="h-10 rounded-full border border-neutral-200 bg-white px-3 text-xs text-black outline-none hover:bg-neutral-50"
-                >
-                  <option value={5}>Top 5</option>
-                  <option value={10}>Top 10</option>
-                  <option value={20}>Top 20</option>
-                </select>
-
-                <button
-                  type="button"
-                  onClick={() => setGroupOthers((v) => !v)}
-                  className="h-10 rounded-full px-3 text-xs font-semibold text-white transition hover:opacity-95"
-                  style={{ backgroundColor: BRAND_GREEN }}
-                >
-                  Otros: {groupOthers ? "ON" : "OFF"}
-                </button>
               </div>
             </div>
 
@@ -497,10 +513,8 @@ export default function AdminDashboard() {
       {/* Pendientes + Actualizaciones */}
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card className="p-6">
-          <div className="text-sm font-semibold text-black">Pendientes</div>
-          <div className="mt-1 text-sm text-neutral-600">
-            Últimos pedidos activos (pendiente / confirmado / en preparación).
-          </div>
+          <div className="text-sm font-semibold text-black">Pedidos Pendientes</div>
+          <div className="mt-1 text-sm text-neutral-600">Últimos pedidos Pendiente.</div>
 
           <div className="mt-4 space-y-3">
             {loading ? (
@@ -521,10 +535,8 @@ export default function AdminDashboard() {
         </Card>
 
         <Card className="p-6">
-          <div className="text-sm font-semibold text-black">Actualizaciones</div>
-          <div className="mt-1 text-sm text-neutral-600">
-            Actividad reciente (últimos pedidos).
-          </div>
+          <div className="text-sm font-semibold text-black">Actualizaciones de Pedidos</div>
+          <div className="mt-1 text-sm text-neutral-600">Actividad reciente (últimos pedidos).</div>
 
           <div className="mt-4 space-y-3">
             {loading ? (
@@ -547,3 +559,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+  

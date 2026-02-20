@@ -44,13 +44,18 @@ export default function NotificationsBell({ className = "" }) {
   const btnRef = useRef(null);
   const panelRef = useRef(null);
 
-
   const [mounted, setMounted] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 360 });
 
   const hasUnread = unread > 0;
 
-  async function load() {
+  async function loadBadge() {
+    const r = await fetch("/api/notifications?mode=badge", { cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) setUnread(Number(j.unread || 0));
+  }
+
+  async function loadList() {
     setLoading(true);
     try {
       const r = await fetch("/api/notifications?limit=25", { cache: "no-store" });
@@ -76,25 +81,21 @@ export default function NotificationsBell({ className = "" }) {
   }
 
   async function markAllRead() {
-    const unreadIds = rows.filter((n) => !n.is_read).map((n) => n.id);
-    if (!unreadIds.length) return;
+    if (!rows.some((n) => !n.is_read)) return;
 
+    // UI optimista
     setRows((prev) => prev.map((n) => ({ ...n, is_read: true })));
     setUnread(0);
 
-    await Promise.all(
-      unreadIds.map((id) =>
-        fetch(`/api/notifications/${encodeURIComponent(id)}`, {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ is_read: true }),
-        }).catch(() => null)
-      )
-    );
+    await fetch("/api/notifications/mark-all", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+    }).catch(() => {});
   }
 
+  // ✅ al montar: solo badge
   useEffect(() => {
-    load();
+    loadBadge().catch(() => {});
   }, []);
 
   useEffect(() => setMounted(true), []);
@@ -105,21 +106,12 @@ export default function NotificationsBell({ className = "" }) {
 
     const rect = el.getBoundingClientRect();
     const vw = window.innerWidth;
-
     const desired = vw < 420 ? Math.min(340, vw - 24) : 360;
 
-    // default: abre a la derecha del botón
     let left = rect.right + 12;
+    if (left + desired > vw - 12) left = Math.max(12, vw - desired - 12);
 
-    // si se sale por la derecha, lo pegamos al viewport
-    if (left + desired > vw - 12) {
-      left = Math.max(12, vw - desired - 12);
-    }
-
-    // alineado vertical al botón
     let top = rect.top;
-
-    // evita que quede pegado arriba/abajo
     top = Math.max(12, Math.min(top, window.innerHeight - 12));
 
     setPos({ top, left, width: desired });
@@ -133,7 +125,6 @@ export default function NotificationsBell({ className = "" }) {
     const onScroll = () => computePosition();
     const onResize = () => computePosition();
 
-    // capture=true para que funcione incluso en contenedores con scroll (sidebar)
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onResize);
 
@@ -143,22 +134,17 @@ export default function NotificationsBell({ className = "" }) {
     };
   }, [open]);
 
-useEffect(() => {
-  function onDoc(e) {
-    const root = rootRef.current;
-    const panel = panelRef.current;
-
-    // si el click fue en el botón (root) o dentro del panel (portal), NO cerrar
-    if (root && root.contains(e.target)) return;
-    if (panel && panel.contains(e.target)) return;
-
-    setOpen(false);
-  }
-
-  document.addEventListener("mousedown", onDoc);
-  return () => document.removeEventListener("mousedown", onDoc);
-}, []);
-
+  useEffect(() => {
+    function onDoc(e) {
+      const root = rootRef.current;
+      const panel = panelRef.current;
+      if (root && root.contains(e.target)) return;
+      if (panel && panel.contains(e.target)) return;
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
 
   useEffect(() => {
     function onKey(e) {
@@ -168,14 +154,27 @@ useEffect(() => {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // ✅ cuando se abre: carga lista
+  useEffect(() => {
+    if (!open) return;
+    loadList().catch(() => {});
+  }, [open]);
+
+  // ✅ polling suave SOLO cuando está abierto
+  useEffect(() => {
+    if (!open) return;
+    const t = setInterval(() => loadList().catch(() => {}), 25000);
+    return () => clearInterval(t);
+  }, [open]);
+
   const visibleRows = useMemo(() => rows.slice(0, 25), [rows]);
 
   const dropdown = open ? (
-   <div
-  ref={panelRef}
-  className="fixed z-[9999] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
-  style={{ top: pos.top, left: pos.left, width: pos.width }}
->
+    <div
+      ref={panelRef}
+      className="fixed z-[9999] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+      style={{ top: pos.top, left: pos.left, width: pos.width }}
+    >
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-gray-900">Notificaciones</div>
@@ -186,7 +185,7 @@ useEffect(() => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={load}
+            onClick={loadList}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
             title="Recargar"
           >
@@ -285,10 +284,7 @@ useEffect(() => {
         <div className="text-[11px] text-gray-500">
           Mostrando {Math.min(visibleRows.length, 25)} de {rows.length}
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          className="text-xs font-semibold text-gray-700 hover:underline"
-        >
+        <button onClick={() => setOpen(false)} className="text-xs font-semibold text-gray-700 hover:underline">
           Cerrar
         </button>
       </div>
@@ -299,11 +295,7 @@ useEffect(() => {
     <div ref={rootRef} className={cx("relative", className)}>
       <button
         ref={btnRef}
-        onClick={() => {
-          const next = !open;
-          setOpen(next);
-          if (next) load();
-        }}
+        onClick={() => setOpen((v) => !v)}
         className={cx(
           "relative rounded-xl border bg-white p-2 transition",
           "border-gray-200 hover:bg-gray-50 active:scale-[0.99]",
@@ -319,7 +311,6 @@ useEffect(() => {
         )}
       </button>
 
-      {/* ✅ Portal: evita recortes por overflow del sidebar */}
       {mounted && dropdown ? createPortal(dropdown, document.body) : null}
     </div>
   );

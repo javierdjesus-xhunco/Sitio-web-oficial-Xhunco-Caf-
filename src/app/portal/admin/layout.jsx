@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Menu, X } from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
 
 const BRAND_GREEN = "#31572c";
+const BRAND_GREEN_HOVER = "#3f6b38";
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -31,71 +32,75 @@ function displayName(p) {
   return (p?.email || "Administrador").trim();
 }
 
-function NavItem({ href, label, onNavigate }) {
+function NavItem({ href, label, onNavigate, prefetch = true }) {
   const pathname = usePathname();
   const active = pathname?.startsWith(href);
 
   return (
     <Link
       href={href}
+      prefetch={prefetch}
       onClick={() => onNavigate?.({ href })}
-      className={cx(
-        "block rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200",
-        active
-          ? "bg-black text-white"
-          : "text-black hover:bg-gray-100 active:scale-[0.99]"
-      )}
+      className="block rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200"
+      style={{
+        backgroundColor: active ? BRAND_GREEN : "transparent",
+        color: active ? "white" : "black",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = BRAND_GREEN_HOVER;
+          e.currentTarget.style.color = "white";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = "transparent";
+          e.currentTarget.style.color = "black";
+        }
+      }}
     >
       {label}
     </Link>
   );
 }
 
-function ConfirmModal({
-  open,
-  title,
-  description,
-  confirmText,
-  cancelText,
-  onConfirm,
-  onCancel,
-  disabled,
-}) {
-  if (!open) return null;
+function QuickNavItem({ href, title, subtitle, onNavigate, prefetch = false }) {
+  const pathname = usePathname();
+  const active = pathname?.startsWith(href);
 
   return (
-    <div className="fixed inset-0 z-[70]">
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"
-        onClick={disabled ? undefined : onCancel}
-      />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-xl">
-          <div className="p-5">
-            <div className="text-lg font-semibold text-black">{title}</div>
-            <div className="mt-1 text-sm text-gray-600">{description}</div>
-
-            <div className="mt-5 flex items-center justify-end gap-3">
-              <button
-                onClick={onCancel}
-                disabled={disabled}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {cancelText}
-              </button>
-              <button
-                onClick={onConfirm}
-                disabled={disabled}
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-50"
-                style={{ background: "#b91c1c" }}
-              >
-                {confirmText}
-              </button>
-            </div>
-          </div>
+    <Link
+      href={href}
+      prefetch={prefetch}
+      onClick={() => onNavigate?.({ href })}
+      className="block rounded-2xl border border-gray-200 px-4 py-3 transition-all duration-200"
+      style={{
+        backgroundColor: active ? BRAND_GREEN : "white",
+        color: active ? "white" : "black",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = BRAND_GREEN_HOVER;
+          e.currentTarget.style.color = "white";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.backgroundColor = "white";
+          e.currentTarget.style.color = "black";
+        }
+      }}
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-semibold">{title}</div>
+        <div
+          className="truncate text-xs"
+          style={{ color: active ? "rgba(255,255,255,0.85)" : "#6b7280" }}
+        >
+          {subtitle}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -105,7 +110,8 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
 
   return (
     <div className="flex h-full flex-col p-4">
-      <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-3 transition hover:shadow-sm">
+      {/* Profile + Bell */}
+      <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div
@@ -126,70 +132,82 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
             </div>
           </div>
 
+          {/* ✅ Campanita restaurada */}
           <NotificationsBell />
         </div>
       </div>
 
+      {/* Nav principal */}
       <div className="space-y-2">
         <NavItem href="/portal/admin/dashboard" label="Inicio" onNavigate={onNavigate} />
         <NavItem href="/portal/admin/pedidos" label="Pedidos" onNavigate={onNavigate} />
       </div>
 
-      <button
+      {/* Accesos rápidos */}
+      <div className="mt-4 space-y-2">
+        <QuickNavItem
+          href="/portal/admin/clientes"
+          title="Clientes"
+          subtitle="Visualizar y agregar clientes"
+          onNavigate={onNavigate}
+        />
+        <QuickNavItem
+          href="/portal/admin/suministros"
+          title="Suministros"
+          subtitle="Agregar productos"
+          onNavigate={onNavigate}
+        />
+        <QuickNavItem
+          href="/portal/admin/inventario"
+          title="Inventario"
+          subtitle="Revisar stock general"
+          onNavigate={onNavigate}
+        />
+        <QuickNavItem
+          href="/portal/admin/reportes"
+          title="Reportes"
+          subtitle="Descargar rendimiento"
+          onNavigate={onNavigate}
+        />
+         <button
         className="mt-6 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:opacity-95 active:scale-[0.99]"
         style={{ background: BRAND_GREEN }}
         onClick={() => onNavigate?.({ href: "/portal/admin/pedidos/nuevo" })}
       >
         Crear pedido manual
       </button>
-
-      <div className="flex-1" />
-
+      </div>
       <button
         onClick={onLogoutClick}
-        className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition-all duration-200 hover:bg-red-100 active:scale-[0.99]"
+        className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-100"
       >
         Cerrar sesión
       </button>
-
       <div className="mt-3 text-[11px] text-gray-400">Xhunco · Admin Panel</div>
     </div>
   );
 }
 
-/** Panel derecho (solo layout) */
-function RightNavItem({ href, title, subtitle }) {
-  return (
-    <Link
-      href={href}
-      className="group block rounded-[22px] border border-gray-200 bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)] transition hover:shadow-[0_16px_44px_rgba(0,0,0,0.09)]"
-    >
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-black">{title}</div>
-          <div className="truncate text-xs text-gray-600">{subtitle}</div>
-        </div>
-
-        <span
-          className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold text-white transition group-hover:opacity-95"
-          style={{ backgroundColor: BRAND_GREEN }}
-        >
-          Abrir
-        </span>
-      </div>
-    </Link>
-  );
-}
-
 export default function AdminLayout({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleNavigate = useCallback(
+    (payload) => {
+      if (payload?.href) router.push(payload.href);
+      setDrawerOpen(false);
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     let alive = true;
@@ -199,7 +217,6 @@ export default function AdminLayout({ children }) {
       try {
         const { data: auth } = await supabase.auth.getUser();
         const user = auth?.user;
-
         if (!user) {
           if (alive) setProfile(null);
           return;
@@ -230,44 +247,16 @@ export default function AdminLayout({ children }) {
     };
   }, []);
 
-  const pathname = usePathname();
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [pathname]);
-
-  async function handleLogoutConfirm() {
-    setLoggingOut(true);
-    try {
-      await supabase.auth.signOut();
-      setLogoutOpen(false);
-      setDrawerOpen(false);
-      router.push("/login");
-      router.refresh();
-    } finally {
-      setLoggingOut(false);
-    }
-  }
-
-  function handleNavigate(payload) {
-    if (payload?.href) router.push(payload.href);
-    setDrawerOpen(false);
-  }
-
   const headerName = useMemo(() => displayName(profile), [profile]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 text-black">
-      <ConfirmModal
-        open={logoutOpen}
-        title="¿Cerrar sesión?"
-        description="Vas a salir del panel de administración. Puedes volver a iniciar sesión cuando quieras."
-        confirmText={loggingOut ? "Cerrando…" : "Sí, cerrar sesión"}
-        cancelText="Cancelar"
-        disabled={loggingOut}
-        onConfirm={handleLogoutConfirm}
-        onCancel={() => setLogoutOpen(false)}
-      />
-
       {/* Mobile Header */}
       <div className="sticky top-0 z-40 border-b border-gray-200 bg-white md:hidden">
         <div className="flex items-center justify-between px-4 py-3">
@@ -280,13 +269,12 @@ export default function AdminLayout({ children }) {
           </button>
 
           <div className="min-w-0 px-3">
-            <div className="truncate text-sm font-semibold">
-              {headerName || "Administrador"}
-            </div>
+            <div className="truncate text-sm font-semibold">{headerName || "Administrador"}</div>
             <div className="truncate text-[11px] text-gray-500">Panel Admin</div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* ✅ Campanita también en mobile */}
             <NotificationsBell />
             <div
               className="grid h-9 w-9 place-items-center rounded-xl text-sm font-extrabold text-white"
@@ -323,7 +311,7 @@ export default function AdminLayout({ children }) {
               <SidebarContent
                 profile={profile}
                 loadingProfile={loadingProfile}
-                onLogoutClick={() => setLogoutOpen(true)}
+                onLogoutClick={handleLogout}
                 onNavigate={handleNavigate}
               />
             </div>
@@ -332,64 +320,23 @@ export default function AdminLayout({ children }) {
       )}
 
       {/* Desktop shell */}
-      <div className="hidden md:flex min-h-[calc(100vh-0px)]">
+      <div className="hidden md:flex min-h-screen">
         <aside className="w-[280px] shrink-0 border-r border-gray-200 bg-white">
           <div className="sticky top-0 h-screen">
             <div className="h-full overflow-y-auto">
               <SidebarContent
                 profile={profile}
                 loadingProfile={loadingProfile}
-                onLogoutClick={() => setLogoutOpen(true)}
+                onLogoutClick={handleLogout}
                 onNavigate={handleNavigate}
               />
             </div>
           </div>
         </aside>
 
-        {/* ✅ Aquí está el grid correcto (contenido + panel derecho) */}
         <main className="flex-1 overflow-y-auto">
           <div className="px-6 py-6">
-            <div className="mx-auto max-w-[1720px]">
-              <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-w-0">{children}</div>
-
-                <aside className="hidden xl:block">
-                  <div className="sticky top-6 space-y-3">
-                    <RightNavItem
-                      href="/portal/admin/clientes"
-                      title="Clientes"
-                      subtitle="Ver y administrar clientes"
-                    />
-                    <RightNavItem
-                      href="/portal/admin/pedidos"
-                      title="Pedidos"
-                      subtitle="Compras recientes y entrega"
-                    />
-                    <RightNavItem
-                      href="/portal/admin/pagos"
-                      title="Pagos"
-                      subtitle="Transacciones y liquidaciones"
-                    />
-                    <RightNavItem
-                      href="/portal/admin/marketing"
-                      title="Marketing"
-                      subtitle="Campañas y promociones"
-                    />
-                    <RightNavItem
-                      href="/portal/admin/automatizacion"
-                      title="Automatización"
-                      subtitle="Reglas y flujos"
-                    />
-                    <RightNavItem
-                      href="/portal/admin/reportes"
-                      title="Reportes"
-                      subtitle="Desempeño e insights"
-                    />
-                    {/* ✅ SIN Ayuda y soporte */}
-                  </div>
-                </aside>
-              </div>
-            </div>
+            <div className="mx-auto max-w-[1680px]">{children}</div>
           </div>
         </main>
       </div>

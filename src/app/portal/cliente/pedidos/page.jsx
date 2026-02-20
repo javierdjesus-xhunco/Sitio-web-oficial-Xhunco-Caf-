@@ -221,7 +221,7 @@ export default function ClientePedidosPage() {
 
         <div className="mt-6 flex flex-col sm:flex-row gap-3">
           <Link
-            href="/portal/cliente/pedidos/(acciones)/nuevo"
+            href="/portal/cliente/pedidos/nuevo"
             className="inline-flex justify-center rounded-full px-6 py-3 text-sm text-white transition"
             style={{ backgroundColor: BRAND_GREEN }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
