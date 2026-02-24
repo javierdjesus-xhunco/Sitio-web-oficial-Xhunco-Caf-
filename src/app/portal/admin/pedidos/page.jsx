@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 const BRAND_GREEN = "#31572c";
 
@@ -10,76 +9,130 @@ function money(n) {
   return v.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 }
 
-function normalizeTier(tier) {
-  const t = String(tier || "").toLowerCase().trim();
-
-  if (t === "precio_web" || t === "web") return "precio_web";
-
-  // lista -> precio_publico
-  if (
-    t === "precio_publico" ||
-    t === "publico" ||
-    t === "lista" ||
-    t === "precio_lista"
-  )
-    return "precio_publico";
-
-  if (t === "precio_mayoreo" || t === "mayoreo") return "precio_mayoreo";
-  if (t === "precio_medio" || t === "medio") return "precio_medio";
-
-  return "precio_publico";
+function fmtDate(iso) {
+  try {
+    return new Date(iso).toLocaleString("es-MX");
+  } catch {
+    return iso || "—";
+  }
 }
 
-function priceFromTier(product, tier) {
-  const t = normalizeTier(tier);
-
-  if (t === "precio_web") return Number(product?.precio_web ?? 0);
-  if (t === "precio_publico") return Number(product?.precio_publico ?? 0);
-  if (t === "precio_mayoreo") return Number(product?.precio_mayoreo ?? 0);
-  if (t === "precio_medio") return Number(product?.precio_medio ?? 0);
-
-  return Number(product?.precio_publico ?? 0);
+// ✅ AGREGADO: etiquetas legibles
+function deliveryLabel(v) {
+  const s = String(v || "").toLowerCase().trim();
+  if (s === "delivery") return "Entrega a domicilio";
+  if (s === "pickup") return "Recolección";
+  // por si guardas otros valores
+  if (!s) return "—";
+  return s;
 }
 
-export default function AdminPedidoManualPage() {
-  const router = useRouter();
+// ✅ AGREGADO: etiquetas legibles
+function paymentLabel(v) {
+  const s = String(v || "").toLowerCase().trim();
+  if (s === "cash") return "Efectivo";
+  if (s === "tpv") return "TPV";
+  if (s === "online") return "En línea";
+  if (!s) return "—";
+  return s;
+}
 
+const STATUS = [
+  { v: "all", label: "Todos" },
+  { v: "pendiente", label: "Pendiente" },
+  { v: "confirmado", label: "Confirmado" },
+  { v: "entregado", label: "Entregado" },
+  { v: "cancelado", label: "Cancelado" },
+];
+
+export default function AdminPedidosPage() {
   const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState(null);
+
   const [clients, setClients] = useState([]);
-  const [suministros, setSuministros] = useState([]);
+  const [rows, setRows] = useState([]);
 
+  const [status, setStatus] = useState("all");
   const [clientUserId, setClientUserId] = useState("");
-  const [clientTier, setClientTier] = useState("precio_publico");
 
-  const [deliveryMethod, setDeliveryMethod] = useState("pickup");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
+  // ✅ Paginación optimizada (cursor)
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
-  // filtros
-  const [q, setQ] = useState("");
-  const [category, setCategory] = useState("all");
-  const [sort, setSort] = useState("az"); // az | price_desc | stock_desc
+  const [hasNext, setHasNext] = useState(false);
+  const [currentCursor, setCurrentCursor] = useState(null);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [cursorStack, setCursorStack] = useState([]);
 
-  // carrito
-  // { suministro_id, nombre, sku, marca, presentacion, unit_price, qty }
-  const [cart, setCart] = useState([]);
-  const [saving, setSaving] = useState(false);
+  // ✅ Total real con filtros (si ya creaste /api/admin/orders/count)
+  const [total, setTotal] = useState(0);
 
-  async function load() {
+  async function loadClients() {
+    const r = await fetch("/api/admin/clientes?page=1&pageSize=200", { cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j?.error || "Error cargando clientes");
+    setClients(j?.data || []);
+  }
+
+  // ✅ Conteo ligero
+  async function loadTotal(next = {}) {
+    const st = next.status ?? status;
+    const cu = next.clientUserId ?? clientUserId;
+
+    const sp = new URLSearchParams();
+    sp.set("status", st);
+    if (cu) sp.set("client_user_id", cu);
+
+    const r = await fetch(`/api/admin/orders/count?${sp.toString()}`, { cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j?.error || "Error contando pedidos");
+
+    setTotal(Number(j?.total || 0));
+  }
+
+  async function loadOrders(next = {}) {
+    const st = next.status ?? status;
+    const cu = next.clientUserId ?? clientUserId;
+
+    const cursorToUse =
+      Object.prototype.hasOwnProperty.call(next, "cursor") ? next.cursor : currentCursor;
+
+    const sp = new URLSearchParams();
+    sp.set("pageSize", String(pageSize));
+    sp.set("status", st);
+    if (cu) sp.set("client_user_id", cu);
+    if (cursorToUse) sp.set("cursor", cursorToUse);
+
+    const r = await fetch(`/api/admin/orders?${sp.toString()}`, { cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j?.error || "Error cargando pedidos");
+
+    setRows(j?.data || []);
+    setHasNext(Boolean(j?.hasNext));
+    setNextCursor(j?.nextCursor || null);
+    setCurrentCursor(cursorToUse ?? null);
+  }
+
+  async function resetAndLoad(next = {}) {
+    setPage(1);
+    setCursorStack([]);
+    setCurrentCursor(null);
+    setNextCursor(null);
+
+    // ✅ al cambiar filtros recalcula total y carga página 1
+    try {
+      await Promise.all([loadTotal(next), loadOrders({ ...next, cursor: null })]);
+    } catch (e) {
+      // si count falla por algo, igual carga pedidos
+      await loadOrders({ ...next, cursor: null }).catch(() => {});
+      console.error(e);
+    }
+  }
+
+  async function loadAll() {
     setLoading(true);
     try {
-      const [r1, r2] = await Promise.all([
-        fetch("/api/admin/clients", { cache: "no-store" }),
-        fetch("/api/admin/suministros", { cache: "no-store" }),
-      ]);
-
-      const j1 = await r1.json().catch(() => ({}));
-      const j2 = await r2.json().catch(() => ({}));
-
-      if (!r1.ok) throw new Error(j1?.error || "Error cargando clientes");
-      if (!r2.ok) throw new Error(j2?.error || "Error cargando suministros");
-
-      setClients(j1?.data || []);
-      setSuministros(j2?.data || []);
+      await Promise.all([loadClients(), resetAndLoad({ status: "all", clientUserId: "" })]);
     } catch (e) {
       alert(String(e?.message || e));
     } finally {
@@ -88,472 +141,261 @@ export default function AdminPedidoManualPage() {
   }
 
   useEffect(() => {
-    load();
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // lookup rápido: stock por producto
-  const stockById = useMemo(() => {
+  const clientLabelById = useMemo(() => {
     const m = new Map();
-    (suministros || []).forEach((s) => {
-      m.set(s.id, Math.max(0, Number(s.stock || 0)));
+    (clients || []).forEach((c) => {
+      if (c?.user_id) m.set(c.user_id, c.label || c.user_id);
     });
     return m;
-  }, [suministros]);
+  }, [clients]);
 
-  const categories = useMemo(() => {
-    const set = new Set((suministros || []).map((s) => s?.categoria).filter(Boolean));
-    return ["all", ...Array.from(set).sort((a, b) => String(a).localeCompare(String(b), "es"))];
-  }, [suministros]);
-
-  const filteredSuministros = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    let list = [...(suministros || [])];
-
-    if (category !== "all") {
-      list = list.filter((s) => String(s.categoria || "") === String(category));
-    }
-
-    if (term) {
-      list = list.filter((s) => {
-        const hay = `${s.nombre} ${s.sku} ${s.marca} ${s.presentacion} ${s.categoria}`.toLowerCase();
-        return hay.includes(term);
-      });
-    }
-
-    if (sort === "az") {
-      list.sort((a, b) => String(a.nombre || "").localeCompare(String(b.nombre || ""), "es"));
-    } else if (sort === "price_desc") {
-      list.sort((a, b) => priceFromTier(b, clientTier) - priceFromTier(a, clientTier));
-    } else if (sort === "stock_desc") {
-      list.sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0));
-    }
-
-    return list.slice(0, 100);
-  }, [q, suministros, category, sort, clientTier]);
-
-  const subtotal = useMemo(() => {
-    return cart.reduce((acc, it) => acc + Number(it.qty) * Number(it.unit_price), 0);
-  }, [cart]);
-
-  function currentQtyInCart(productId) {
-    const it = cart.find((x) => x.suministro_id === productId);
-    return it ? Number(it.qty) : 0;
-  }
-
-  function clampQtyToStock(productId, qty) {
-    const stock = stockById.get(productId);
-    const max = Number.isFinite(stock) ? stock : 0;
-    return Math.min(Math.max(1, Number(qty || 1)), Math.max(1, max));
-  }
-
-  function canAddOneMore(productId) {
-    const stock = stockById.get(productId) ?? 0;
-    const inCart = currentQtyInCart(productId);
-    return stock > 0 && inCart < stock;
-  }
-
-  function addItem(s) {
-    const stock = Math.max(0, Number(s?.stock || 0));
-    if (stock <= 0) return; // sin stock
-
-    setCart((prev) => {
-      const ix = prev.findIndex((x) => x.suministro_id === s.id);
-      const price = priceFromTier(s, clientTier);
-
-      if (ix >= 0) {
-        const current = Number(prev[ix].qty);
-        if (current >= stock) return prev; // no pasar stock
-
-        const copy = [...prev];
-        copy[ix] = { ...copy[ix], qty: current + 1 };
-        return copy;
-      }
-
-      return [
-        ...prev,
-        {
-          suministro_id: s.id,
-          nombre: s.nombre,
-          sku: s.sku,
-          marca: s.marca,
-          presentacion: s.presentacion,
-          unit_price: price,
-          qty: 1,
-        },
-      ];
-    });
-  }
-
-  function setQty(id, next) {
-    const stock = stockById.get(id) ?? 0;
-    if (stock <= 0) return;
-
-    const v = Math.min(Math.max(1, Number(next || 1)), stock);
-    setCart((prev) => prev.map((it) => (it.suministro_id === id ? { ...it, qty: v } : it)));
-  }
-
-  function inc(id) {
-    const stock = stockById.get(id) ?? 0;
-    if (stock <= 0) return;
-
-    setCart((prev) =>
-      prev.map((it) => {
-        if (it.suministro_id !== id) return it;
-        const next = Math.min(Number(it.qty) + 1, stock);
-        return { ...it, qty: next };
-      })
-    );
-  }
-
-  function dec(id) {
-    setCart((prev) =>
-      prev.map((it) => {
-        if (it.suministro_id !== id) return it;
-        return { ...it, qty: Math.max(1, Number(it.qty) - 1) };
-      })
-    );
-  }
-
-  function setPrice(id, price) {
-    const v = Math.max(0, Number(price || 0));
-    setCart((prev) => prev.map((it) => (it.suministro_id === id ? { ...it, unit_price: v } : it)));
-  }
-
-  function removeItem(id) {
-    setCart((prev) => prev.filter((it) => it.suministro_id !== id));
-  }
-
-  async function createOrder() {
-    if (!clientUserId) return alert("Selecciona un negocio.");
-    if (cart.length === 0) return alert("Agrega al menos 1 producto.");
-
-    // Validación final: nada debe exceder stock
-    for (const it of cart) {
-      const stock = stockById.get(it.suministro_id) ?? 0;
-      if (stock <= 0) return alert(`Sin stock para: ${it.nombre}`);
-      if (Number(it.qty) > stock) return alert(`"${it.nombre}" excede stock (máx ${stock}).`);
-    }
-
-    setSaving(true);
+  async function updateStatus(orderId, nextStatus) {
+    setSavingId(orderId);
     try {
-      const r = await fetch("/api/admin/orders/manual", {
-        method: "POST",
+      const r = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_user_id: clientUserId,
-          delivery_method: deliveryMethod,
-          payment_method: paymentMethod,
-          items: cart.map((it) => ({
-            suministro_id: it.suministro_id,
-            qty: it.qty,
-            unit_price: it.unit_price,
-          })),
-        }),
+        body: JSON.stringify({ status: nextStatus }),
       });
 
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      if (!r.ok) throw new Error(j?.error || "No se pudo actualizar el status");
 
-      alert("Pedido creado correctamente.");
-      router.push("/portal/admin/pedidos");
-      router.refresh();
+      setRows((prev) => prev.map((x) => (x.id === orderId ? { ...x, status: nextStatus } : x)));
+
+      // ✅ si estás filtrando, el total puede cambiar cuando cambias status
+      await loadTotal({ status, clientUserId });
     } catch (e) {
       alert(String(e?.message || e));
     } finally {
-      setSaving(false);
+      setSavingId(null);
     }
+  }
+
+  async function goNext() {
+    if (!hasNext || !nextCursor) return;
+
+    setCursorStack((prev) => [...prev, currentCursor]);
+    setPage((p) => p + 1);
+    await loadOrders({ cursor: nextCursor });
+  }
+
+  async function goPrev() {
+    if (page <= 1) return;
+
+    const prevCursor = cursorStack[cursorStack.length - 1] ?? null;
+    setCursorStack((prev) => prev.slice(0, -1));
+
+    setPage((p) => Math.max(1, p - 1));
+    await loadOrders({ cursor: prevCursor });
   }
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-black">Crear pedido manual</h1>
-          <p className="text-sm text-gray-500">
-            Tier del cliente:{" "}
-            <span className="font-semibold text-black">{normalizeTier(clientTier)}</span>
-          </p>
+          <h1 className="text-3xl font-semibold text-black">Pedidos</h1>
+          <p className="text-sm text-gray-500">Cambia el status y los clientes verán el avance en su portal.</p>
         </div>
 
         <button
-          onClick={createOrder}
-          disabled={saving || loading}
+          onClick={() => resetAndLoad({ status, clientUserId })}
+          disabled={loading}
           className="rounded-xl px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
           style={{ background: BRAND_GREEN }}
         >
-          {saving ? "Creando…" : "Crear pedido"}
+          Recargar
         </button>
       </div>
 
-      {loading ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
-          Cargando…
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Col 1 */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
-            <div>
-              <div className="text-sm font-semibold text-black mb-2">Negocio</div>
-              <select
-                value={clientUserId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setClientUserId(id);
-                  const c = (clients || []).find((x) => x.user_id === id);
-                  setClientTier(c?.price_tier || "precio_publico");
-                }}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold outline-none"
-              >
-                <option value="">Selecciona un negocio…</option>
-                {(clients || [])
-                  .filter((c) => c?.user_id)
-                  .map((c, idx) => (
-                    <option key={`${c.user_id}-${idx}`} value={c.user_id}>
-                      {c.label}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <div className="text-sm font-semibold text-black mb-2">Método de entrega</div>
-                <select
-                  value={deliveryMethod}
-                  onChange={(e) => setDeliveryMethod(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold outline-none"
-                >
-                  <option value="pickup">Recolección</option>
-                  <option value="delivery">Entrega a domicilio</option>
-                </select>
-              </div>
-
-              <div>
-                <div className="text-sm font-semibold text-black mb-2">Método de pago</div>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold outline-none"
-                >
-                  <option value="cash">Efectivo</option>
-                  <option value="tpv">TPV</option>
-                  <option value="online">En línea</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-gray-50 p-4 border border-gray-200">
-              <div className="text-sm text-gray-600">Subtotal</div>
-              <div className="text-2xl font-semibold text-black">{money(subtotal)}</div>
-            </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div>
+            <div className="text-xs font-semibold text-gray-700 mb-1">Status</div>
+            <select
+              value={status}
+              onChange={async (e) => {
+                const v = e.target.value;
+                setStatus(v);
+                await resetAndLoad({ status: v, clientUserId });
+              }}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
+            >
+              {STATUS.map((s) => (
+                <option key={s.v} value={s.v}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Col 2 */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
-            <div className="text-sm font-semibold text-black">Suministros</div>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold outline-none"
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c === "all" ? "Todas las categorías" : c}
+          <div>
+            <div className="text-xs font-semibold text-gray-700 mb-1">Negocio</div>
+            <select
+              value={clientUserId}
+              onChange={async (e) => {
+                const v = e.target.value;
+                setClientUserId(v);
+                await resetAndLoad({ status, clientUserId: v });
+              }}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
+            >
+              <option value="">Todos los negocios</option>
+              {(clients || [])
+                .filter((c) => c?.user_id)
+                .map((c) => (
+                  <option key={c.user_id} value={c.user_id}>
+                    {c.label}
                   </option>
                 ))}
-              </select>
-
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold outline-none"
-              >
-                <option value="az">A–Z</option>
-                <option value="price_desc">Precio: mayor a menor</option>
-                <option value="stock_desc">Stock: mayor a menor</option>
-              </select>
-
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar…"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm outline-none"
-              />
-            </div>
-
-            <div className="max-h-[560px] overflow-auto space-y-2">
-              {filteredSuministros.map((s) => {
-                const stock = Math.max(0, Number(s.stock || 0));
-                const disabled = stock <= 0;
-                const canAdd = canAddOneMore(s.id);
-
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => addItem(s)}
-                    disabled={disabled || !canAdd}
-                    className={[
-                      "w-full rounded-xl border p-3 text-left transition",
-                      disabled || !canAdd
-                        ? "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
-                        : "border-gray-200 bg-white hover:bg-gray-50",
-                    ].join(" ")}
-                    title={disabled ? "Sin stock" : !canAdd ? "Ya alcanzaste el máximo por stock" : "Agregar"}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-black">
-                          {s.nombre} <span className="text-xs text-gray-500">({s.sku})</span>
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {s.categoria ? `${s.categoria} · ` : ""}
-                          {s.marca ? `${s.marca} · ` : ""}
-                          {s.presentacion || ""}
-                        </div>
-
-                        <div className="text-xs font-semibold text-gray-900 mt-1">
-                          {money(priceFromTier(s, clientTier))}
-                        </div>
-
-                        {disabled ? (
-                          <div className="mt-1 text-[11px] font-semibold text-red-600">Sin stock</div>
-                        ) : (
-                          <div className="mt-1 text-[11px] text-gray-500">Stock: {stock}</div>
-                        )}
-                      </div>
-
-                      <div className="text-right">
-                        <div className="text-[11px] text-gray-500">Stock</div>
-                        <div className="text-sm font-semibold text-black">{stock}</div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            </select>
           </div>
 
-          {/* Col 3 carrito */}
-          <div>
-            <div className="sticky top-24 rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
-              <div className="text-sm font-semibold text-black">Carrito</div>
-
-              {cart.length === 0 ? (
-                <div className="text-sm text-gray-600">Aún no agregas productos.</div>
-              ) : (
-                <div className="max-h-[55vh] overflow-auto space-y-3 pr-1">
-                  {cart.map((it) => {
-                    const stock = stockById.get(it.suministro_id) ?? 0;
-                    const atMax = Number(it.qty) >= stock;
-
-                    return (
-                      <div key={it.suministro_id} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-black">
-                              {it.nombre} <span className="text-xs text-gray-500">({it.sku})</span>
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {it.marca ? `${it.marca} · ` : ""}
-                              {it.presentacion || ""}
-                            </div>
-
-                            <div className="mt-1 text-[11px] text-gray-500">
-                              Stock disponible: <span className="font-semibold text-black">{stock}</span>
-                            </div>
-
-                            <div className="text-xs font-semibold text-gray-900 mt-1">
-                              Línea: {money(Number(it.qty) * Number(it.unit_price))}
-                            </div>
-
-                            {Number(it.qty) > stock ? (
-                              <div className="mt-1 text-[11px] font-semibold text-red-600">
-                                Excede stock. Máximo permitido: {stock}
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <button
-                            onClick={() => removeItem(it.suministro_id)}
-                            className="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                          >
-                            Quitar
-                          </button>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <div>
-                            <div className="text-xs font-semibold text-gray-700 mb-1">Cantidad</div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => dec(it.suministro_id)}
-                                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-gray-50"
-                              >
-                                -
-                              </button>
-
-                              <input
-                                type="number"
-                                min="1"
-                                max={Math.max(1, stock)}
-                                value={it.qty}
-                                onChange={(e) => setQty(it.suministro_id, e.target.value)}
-                                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none text-center"
-                              />
-
-                              <button
-                                onClick={() => inc(it.suministro_id)}
-                                disabled={stock <= 0 || atMax}
-                                className={[
-                                  "rounded-lg border px-3 py-2 text-sm font-semibold",
-                                  stock <= 0 || atMax
-                                    ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "border-gray-200 bg-white hover:bg-gray-50",
-                                ].join(" ")}
-                                title={atMax ? "Ya alcanzaste el máximo por stock" : "Aumentar"}
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-semibold text-gray-700 mb-1">Precio unitario</div>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={it.unit_price}
-                              onChange={(e) => setPrice(it.suministro_id, e.target.value)}
-                              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="border-t border-gray-200 pt-4 flex items-center justify-between">
-                <div className="text-sm text-gray-600">Subtotal</div>
-                <div className="text-lg font-semibold text-black">{money(subtotal)}</div>
-              </div>
-
-              <button
-                onClick={createOrder}
-                disabled={saving || cart.length === 0 || !clientUserId}
-                className="w-full rounded-xl px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: BRAND_GREEN }}
-              >
-                {saving ? "Creando…" : "Crear pedido"}
-              </button>
+          <div className="rounded-xl bg-gray-50 border border-gray-200 p-3">
+            <div className="text-xs text-gray-600">
+              Mostrando {rows.length} de {total} (pág. {page})
             </div>
+            <div className="text-lg font-semibold text-black">Total: {total} pedidos</div>
           </div>
         </div>
+      </div>
+
+      {loading ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600">Cargando…</div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
+          No hay pedidos con esos filtros.
+        </div>
+      ) : (
+        <>
+          <div className="space-y-3">
+            {rows.map((o) => {
+              const busy = savingId === o.id;
+
+              const negocioNombre =
+                o?.negocio_nombre ||
+                clientLabelById.get(o.client_user_id) ||
+                o.client_user_id ||
+                "—";
+
+              const clienteNombre = o?.cliente_nombre || "—";
+
+              return (
+                <div key={o.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0 w-full">
+                      <div className="text-sm font-semibold text-black truncate">Pedido: {o.id}</div>
+
+                      <div className="text-xs text-gray-600">
+                        Cliente: <span className="font-semibold text-black">{clienteNombre}</span>
+                      </div>
+
+                      <div className="text-xs text-gray-600">
+                        Negocio: <span className="font-semibold text-black">{negocioNombre}</span>
+                      </div>
+
+                      {/* ✅ AGREGADO: Tipo de entrega */}
+                      <div className="text-xs text-gray-600">
+                        Entrega:{" "}
+                        <span className="font-semibold text-black">{deliveryLabel(o.delivery_method)}</span>
+                      </div>
+
+                      {/* ✅ AGREGADO: Método de pago (si lo quieres) */}
+                      <div className="text-xs text-gray-600">
+                        Método de Pago:{" "}
+                        <span className="font-semibold text-black">{paymentLabel(o.payment_method)}</span>
+                      </div>
+
+                      <div className="text-xs text-gray-600">Creado el: {fmtDate(o.created_at)}</div>
+                      <div className="text-xs text-gray-600">Total: {money(o.total ?? o.subtotal)}</div>
+
+                      <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                        <div className="text-xs font-semibold text-gray-700 mb-2">Productos</div>
+
+                        {Array.isArray(o.items) && o.items.length > 0 ? (
+                          <div className="space-y-2">
+                            {o.items.map((it) => {
+                              const meta = [it?.marca, it?.presentacion, it?.unidad]
+                                .filter(Boolean)
+                                .join(" · ");
+
+                              const qty = Number(it?.qty || 0);
+                              const unit = Number(it?.unit_price || 0);
+                              const line = Number(it?.line_total || qty * unit);
+
+                              return (
+                                <div key={it.id} className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-semibold text-black truncate">
+                                      {it?.nombre || "Producto"}{" "}
+                                      <span className="text-xs text-gray-500">({it?.sku || "—"})</span>
+                                    </div>
+
+                                    {meta ? <div className="text-xs text-gray-600">{meta}</div> : null}
+
+                                    <div className="text-[11px] text-gray-500">
+                                      {qty} × {money(unit)}
+                                    </div>
+                                  </div>
+
+                                  <div className="text-sm font-semibold text-black">{money(line)}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-600">Sin detalle de productos.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="w-full md:w-[280px]">
+                      <div className="text-xs font-semibold text-gray-700 mb-1">Cambiar status</div>
+                      <select
+                        value={o.status || "pendiente"}
+                        disabled={busy}
+                        onChange={(e) => updateStatus(o.id, e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none disabled:opacity-60"
+                      >
+                        <option value="pendiente">Pendiente</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="entregado">Entregado</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+
+                      {busy ? <div className="mt-1 text-[11px] text-gray-500">Actualizando…</div> : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <button
+              disabled={page <= 1}
+              onClick={goPrev}
+              className="px-4 py-2 rounded-lg border border-gray-200 bg-white disabled:opacity-40"
+            >
+              Anterior
+            </button>
+
+            <div className="text-sm font-semibold">{page}</div>
+
+            <button
+              disabled={!hasNext}
+              onClick={goNext}
+              className="px-4 py-2 rounded-lg text-white disabled:opacity-40"
+              style={{ background: BRAND_GREEN }}
+            >
+              Siguiente
+            </button>
+          </div>
+        </>
       )}
     </section>
   );

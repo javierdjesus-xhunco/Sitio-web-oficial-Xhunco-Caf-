@@ -25,7 +25,9 @@ export async function GET(req) {
   if (!prof?.active) {
     return NextResponse.json({ error: "Usuario inactivo" }, { status: 403 });
   }
-  if (!["admin", "superadmin"].includes(prof.role)) {
+
+  // ✅ SOLO AGREGADO: soportar super_admin también
+  if (!["admin", "superadmin", "super_admin"].includes(prof.role)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -40,12 +42,15 @@ export async function GET(req) {
   const to = from + pageSize - 1;
 
   // ✅ Query (alineado a tu DB real)
+  // ✅ SOLO AGREGADO: "price_tier" en el select (para precios)
   let query = supabase
     .from("clients")
     .select(
       [
         "id",
+        "user_id", // ✅ ya lo tenías
         "business_name",
+        "price_tier", // ✅ AGREGADO
         "owner_name",
         "owner_first_name",
         "owner_middle_name",
@@ -82,6 +87,8 @@ export async function GET(req) {
   }
 
   // ✅ Normalización: si owner_name viene vacío, lo armamos con los campos por partes
+  // ✅ Agregamos un "user_id" de salida consistente (fallback: id)
+  // ✅ Agregamos label para UI
   const normalized = (data || []).map((c) => {
     const builtOwner = [
       c.owner_first_name,
@@ -94,10 +101,13 @@ export async function GET(req) {
       .join(" ");
 
     const owner = (c.owner_name || "").trim() || builtOwner || null;
+    const label = (c.business_name || "").trim() || owner || "—";
 
     return {
       ...c,
       owner_name: owner,
+      user_id: c.user_id || c.id, // ✅ ya lo tenías
+      label, // ✅ ya lo tenías
     };
   });
 

@@ -491,7 +491,7 @@ export default function AdminDashboard() {
                       <div className="min-w-0 flex items-center gap-3">
                         <span
                           className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: idx % 2 === 0 ? BRAND_GREEN : BRAND_GREEN_DARK }}
+                          style={{ backgroundColor: idx % 2 === 0 ? BRAND_GREEN : BRAND_GREEN}}
                         />
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-black">{r.name}</div>

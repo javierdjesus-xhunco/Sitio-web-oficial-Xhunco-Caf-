@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 const BRAND_GREEN = "#31572c";
@@ -17,6 +17,7 @@ function normalizeTier(tier) {
   if (
     t === "precio_publico" ||
     t === "publico" ||
+    t === "público" ||
     t === "lista" ||
     t === "precio_lista"
   )
@@ -38,6 +39,16 @@ function priceFromTier(product, tier) {
   return Number(product?.precio_publico ?? 0);
 }
 
+// ✅ Debounce para que el filtro no recalculé con cada tecla
+function useDebounced(value, ms = 200) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+}
+
 export default function AdminPedidoManualPage() {
   const router = useRouter();
 
@@ -46,6 +57,7 @@ export default function AdminPedidoManualPage() {
   const [suministros, setSuministros] = useState([]);
 
   const [clientUserId, setClientUserId] = useState("");
+  // ✅ Desde el inicio: precio público
   const [clientTier, setClientTier] = useState("precio_publico");
 
   const [deliveryMethod, setDeliveryMethod] = useState("pickup");
@@ -53,6 +65,7 @@ export default function AdminPedidoManualPage() {
 
   // filtros
   const [q, setQ] = useState("");
+  const dq = useDebounced(q, 200);
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState("az"); // az | price_desc | stock_desc
 
@@ -60,24 +73,87 @@ export default function AdminPedidoManualPage() {
   const [cart, setCart] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // ✅ Cache en memoria (evita refetch pesado si vuelves a la página)
+  const clientsCacheRef = useRef(null);
+  const suppliesCacheRef = useRef(null);
+
+  // ✅ AbortController para cancelar requests
+  const abortRef = useRef(null);
+
+  // ✅ Traer TODO el catálogo paginando (tu API es paginada)
+  const fetchAllSuministros = useCallback(async () => {
+    const pageSize = 50; // max en tu API
+    let page = 1;
+    let all = [];
+
+    while (true) {
+      const url = `/api/admin/suministros?page=${page}&pageSize=${pageSize}`;
+
+      const r = await fetch(url, {
+        cache: "no-store",
+        signal: abortRef.current?.signal,
+      });
+
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "Error cargando suministros");
+
+      const data = j?.data || [];
+      all = all.concat(data);
+
+      const totalPages = Number(j?.totalPages || 1);
+      if (page >= totalPages) break;
+
+      page++;
+      if (page > 500) break; // safety
+    }
+
+    return all;
+  }, []);
+
   async function load() {
+    // ✅ usa cache si existe
+    if (clientsCacheRef.current && suppliesCacheRef.current) {
+      setClients(clientsCacheRef.current);
+      setSuministros(suppliesCacheRef.current);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const [r1, r2] = await Promise.all([
-        fetch("/api/admin/clients", { cache: "no-store" }),
-        fetch("/api/admin/suministros", { cache: "no-store" }),
+      if (abortRef.current) abortRef.current.abort();
+      abortRef.current = new AbortController();
+
+      // ✅ tu ruta real es /api/admin/clientes
+      const [r1, suministrosAll] = await Promise.all([
+        fetch("/api/admin/clientes", {
+          cache: "no-store",
+          signal: abortRef.current.signal,
+        }),
+        fetchAllSuministros(),
       ]);
 
       const j1 = await r1.json().catch(() => ({}));
-      const j2 = await r2.json().catch(() => ({}));
-
       if (!r1.ok) throw new Error(j1?.error || "Error cargando clientes");
-      if (!r2.ok) throw new Error(j2?.error || "Error cargando suministros");
 
-      setClients(j1?.data || []);
-      setSuministros(j2?.data || []);
+      // ✅ Normaliza tier de cada cliente (para que siempre funcione)
+      const rawClients = j1?.data || [];
+      const normalizedClients = rawClients.map((c) => ({
+        ...c,
+        price_tier: normalizeTier(c?.price_tier || "precio_publico"),
+      }));
+
+      const sup = suministrosAll || [];
+
+      clientsCacheRef.current = normalizedClients;
+      suppliesCacheRef.current = sup;
+
+      setClients(normalizedClients);
+      setSuministros(sup);
     } catch (e) {
-      alert(String(e?.message || e));
+      if (String(e?.name) !== "AbortError") {
+        alert(String(e?.message || e));
+      }
     } finally {
       setLoading(false);
     }
@@ -85,6 +161,10 @@ export default function AdminPedidoManualPage() {
 
   useEffect(() => {
     load();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // lookup stock por id
@@ -129,7 +209,7 @@ export default function AdminPedidoManualPage() {
   }, [suministros]);
 
   const filteredSuministros = useMemo(() => {
-    const term = q.trim().toLowerCase();
+    const term = dq.trim().toLowerCase();
     let list = [...(suministros || [])];
 
     if (category !== "all") {
@@ -155,8 +235,9 @@ export default function AdminPedidoManualPage() {
       list.sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0));
     }
 
-    return list.slice(0, 100);
-  }, [q, suministros, category, sort, clientTier]);
+    // ✅ límite para no renderizar demasiado
+    return list.slice(0, 150);
+  }, [dq, suministros, category, sort, clientTier]);
 
   const subtotal = useMemo(() => {
     return cart.reduce(
@@ -284,13 +365,12 @@ export default function AdminPedidoManualPage() {
   }
 
   return (
-    // ✅ FULL WIDTH controlado (segunda opción): ancho grande pero no infinito
     <section className="w-full max-w-[1680px] space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-black">Crear pedido manual</h1>
+          <h1 className="text-3xl font-semibold text-black">Crear Pedido Manual</h1>
           <p className="text-sm text-gray-500">
-            Tier del cliente:{" "}
+            Precio del cliente:{" "}
             <span className="font-semibold text-black">
               {normalizeTier(clientTier)}
             </span>
@@ -312,7 +392,6 @@ export default function AdminPedidoManualPage() {
           Cargando…
         </div>
       ) : (
-        // ✅ Mejor proporción: el carrito no queda “enano”
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
           {/* Col 1 */}
           <div className="xl:col-span-4 rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
@@ -323,8 +402,11 @@ export default function AdminPedidoManualPage() {
                 onChange={(e) => {
                   const id = e.target.value;
                   setClientUserId(id);
+
                   const c = (clients || []).find((x) => x.user_id === id);
-                  setClientTier(c?.price_tier || "precio_publico");
+
+                  // ✅ Si no existe o viene raro, cae a público
+                  setClientTier(normalizeTier(c?.price_tier || "precio_publico"));
                 }}
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold outline-none"
               >
@@ -407,6 +489,7 @@ export default function AdminPedidoManualPage() {
               />
             </div>
 
+            {/* ✅ SIEMPRE mostrar listado: por defecto precio_publico, y cambia al seleccionar negocio */}
             <div className="max-h-[560px] overflow-auto space-y-2">
               {filteredSuministros.map((s) => {
                 const stock = Math.max(0, Number(s.stock || 0));
@@ -472,7 +555,6 @@ export default function AdminPedidoManualPage() {
 
           {/* Col 3 carrito */}
           <div className="xl:col-span-3">
-            {/* ✅ top-6 para que no deje un hueco gigante */}
             <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
               <div className="text-sm font-semibold text-black">Carrito</div>
 

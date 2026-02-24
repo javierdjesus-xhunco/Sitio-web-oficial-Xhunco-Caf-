@@ -50,12 +50,15 @@ export async function PATCH(req, ctx) {
 
   const prof = profRows?.[0];
   if (!prof?.active) return NextResponse.json({ error: "Usuario inactivo" }, { status: 403 });
-  if (!["admin", "superadmin"].includes(prof.role)) {
+
+  // ✅ AGREGADO: super_admin por si existe en tu DB
+  if (!["admin", "superadmin", "super_admin"].includes(String(prof.role || "").trim())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
-  const nextStatus = String(body?.status || "").trim();
+  // ✅ AGREGADO: normaliza a lowercase
+  const nextStatus = String(body?.status || "").trim().toLowerCase();
 
   if (!ALLOWED.has(nextStatus)) {
     return NextResponse.json({ error: "Status inválido" }, { status: 400 });
@@ -71,7 +74,7 @@ export async function PATCH(req, ctx) {
   if (ordErr) return NextResponse.json({ error: ordErr.message }, { status: 400 });
   if (!order) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
 
-  const prevStatus = String(order.status || "").trim();
+  const prevStatus = String(order.status || "").trim().toLowerCase();
   const clientUserId = order.client_user_id;
 
   // Si no cambia nada, no hacemos nada
@@ -80,10 +83,7 @@ export async function PATCH(req, ctx) {
   }
 
   // ✅ 4) Actualizar status
-  const { error: updErr } = await supabaseAdmin
-    .from("orders")
-    .update({ status: nextStatus })
-    .eq("id", id);
+  const { error: updErr } = await supabaseAdmin.from("orders").update({ status: nextStatus }).eq("id", id);
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 });
 
@@ -137,7 +137,7 @@ export async function PATCH(req, ctx) {
     }
   }
 
-  // ✅ 5) Si se cancela (y antes NO estaba cancelado), reponer stock
+  // ✅ 5) Si se cancela (y antes NO estaba cancelado), reponer stock (OPTIMIZADO)
   if (nextStatus === "cancelado" && prevStatus !== "cancelado") {
     const { data: items, error: itemsErr } = await supabaseAdmin
       .from("order_items")
@@ -160,32 +160,50 @@ export async function PATCH(req, ctx) {
       agg.set(suministroId, (agg.get(suministroId) || 0) + qty);
     }
 
-    // Reponer stock: stock = stock + qty
-    for (const [suministro_id, qty] of agg.entries()) {
-      const { data: prod, error: prodErr } = await supabaseAdmin
+    const ids = Array.from(agg.keys());
+    if (ids.length > 0) {
+      // ✅ OPTIMIZADO: 1 sola lectura de todos los productos
+      const { data: prods, error: prodsErr } = await supabaseAdmin
         .from("suministros_xhunco")
         .select("id, stock")
-        .eq("id", suministro_id)
-        .single();
+        .in("id", ids);
 
-      if (prodErr) {
+      if (prodsErr) {
         return NextResponse.json(
-          { error: `Pedido cancelado pero no se pudo leer stock (${suministro_id}): ${prodErr.message}` },
+          { error: `Pedido cancelado pero no se pudo leer suministros: ${prodsErr.message}` },
           { status: 400 }
         );
       }
 
-      const current = Math.max(0, Number(prod?.stock || 0));
-      const nextStock = current + qty;
+      const stockById = new Map((prods || []).map((p) => [p.id, Math.max(0, Number(p.stock || 0))]));
 
-      const { error: stockUpdErr } = await supabaseAdmin
-        .from("suministros_xhunco")
-        .update({ stock: nextStock })
-        .eq("id", suministro_id);
+      // ✅ OPTIMIZADO: updates en paralelo (más rápido)
+      const updates = ids.map(async (suministro_id) => {
+        const current = stockById.get(suministro_id);
+        if (current == null) {
+          // si un suministro ya no existe, no reventamos todo, pero lo reportamos
+          console.error("Stock restore: suministro no encontrado:", suministro_id);
+          return;
+        }
 
-      if (stockUpdErr) {
+        const qty = agg.get(suministro_id) || 0;
+        const nextStock = Math.max(0, Number(current) + Number(qty));
+
+        const { error: stockUpdErr } = await supabaseAdmin
+          .from("suministros_xhunco")
+          .update({ stock: nextStock })
+          .eq("id", suministro_id);
+
+        if (stockUpdErr) {
+          throw new Error(`No se pudo reponer stock (${suministro_id}): ${stockUpdErr.message}`);
+        }
+      });
+
+      try {
+        await Promise.all(updates);
+      } catch (e) {
         return NextResponse.json(
-          { error: `Pedido cancelado pero no se pudo reponer stock (${suministro_id}): ${stockUpdErr.message}` },
+          { error: `Pedido cancelado pero falló la reposición de stock: ${String(e?.message || e)}` },
           { status: 400 }
         );
       }
