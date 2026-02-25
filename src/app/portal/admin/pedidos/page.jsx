@@ -22,7 +22,6 @@ function deliveryLabel(v) {
   const s = String(v || "").toLowerCase().trim();
   if (s === "delivery") return "Entrega a domicilio";
   if (s === "pickup") return "Recolección";
-  // por si guardas otros valores
   if (!s) return "—";
   return s;
 }
@@ -37,10 +36,29 @@ function paymentLabel(v) {
   return s;
 }
 
+// ✅ AGREGADO: status legible (soporta underscore)
+function statusLabel(v) {
+  const s = String(v || "").toLowerCase().trim();
+  if (s === "pendiente") return "Pendiente";
+  if (s === "confirmado") return "Confirmado";
+  if (s === "en_preparacion") return "En preparación";
+  if (s === "en preparación") return "En preparación";
+  if (s === "en ruta") return "En ruta";
+  if (s === "en_ruta") return "En ruta";
+  if (s === "entregado") return "Entregado";
+  if (s === "cancelado") return "Cancelado";
+  return v || "—";
+}
+
 const STATUS = [
   { v: "all", label: "Todos" },
   { v: "pendiente", label: "Pendiente" },
   { v: "confirmado", label: "Confirmado" },
+
+  // ✅ AGREGADO
+  { v: "en_preparacion", label: "En preparación" },
+  { v: "en_ruta", label: "En ruta" },
+
   { v: "entregado", label: "Entregado" },
   { v: "cancelado", label: "Cancelado" },
 ];
@@ -199,7 +217,9 @@ export default function AdminPedidosPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-black">Pedidos</h1>
-          <p className="text-sm text-gray-500">Cambia el status y los clientes verán el avance en su portal.</p>
+          <p className="text-sm text-gray-500">
+            Cambia el status y los clientes verán el avance en su portal.
+          </p>
         </div>
 
         <button
@@ -298,13 +318,11 @@ export default function AdminPedidosPage() {
                         Negocio: <span className="font-semibold text-black">{negocioNombre}</span>
                       </div>
 
-                      {/* ✅ AGREGADO: Tipo de entrega */}
                       <div className="text-xs text-gray-600">
                         Entrega:{" "}
                         <span className="font-semibold text-black">{deliveryLabel(o.delivery_method)}</span>
                       </div>
 
-                      {/* ✅ AGREGADO: Método de pago (si lo quieres) */}
                       <div className="text-xs text-gray-600">
                         Método de Pago:{" "}
                         <span className="font-semibold text-black">{paymentLabel(o.payment_method)}</span>
@@ -312,6 +330,10 @@ export default function AdminPedidosPage() {
 
                       <div className="text-xs text-gray-600">Creado el: {fmtDate(o.created_at)}</div>
                       <div className="text-xs text-gray-600">Total: {money(o.total ?? o.subtotal)}</div>
+
+                      <div className="text-xs text-gray-600">
+                        Status actual: <span className="font-semibold text-black">{statusLabel(o.status)}</span>
+                      </div>
 
                       <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
                         <div className="text-xs font-semibold text-gray-700 mb-2">Productos</div>
@@ -363,6 +385,11 @@ export default function AdminPedidosPage() {
                       >
                         <option value="pendiente">Pendiente</option>
                         <option value="confirmado">Confirmado</option>
+
+                        {/* ✅ AGREGADO */}
+                        <option value="en_preparacion">En preparación</option>
+                        <option value="en_ruta">En ruta</option>
+
                         <option value="entregado">Entregado</option>
                         <option value="cancelado">Cancelado</option>
                       </select>

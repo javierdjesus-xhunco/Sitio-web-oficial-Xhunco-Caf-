@@ -21,6 +21,19 @@ function getIdFromUrl(req) {
   }
 }
 
+// ✅ AGREGADO: normaliza variantes “humanas” a canonical con underscore
+function normalizeStatus(input) {
+  const s = String(input || "").trim().toLowerCase();
+
+  if (!s) return "";
+
+  // variantes comunes
+  if (s === "en preparación" || s === "en preparacion") return "en_preparacion";
+  if (s === "en ruta") return "en_ruta";
+
+  return s;
+}
+
 export async function PATCH(req, ctx) {
   const supabase = await supabaseServer();
 
@@ -51,17 +64,18 @@ export async function PATCH(req, ctx) {
   const prof = profRows?.[0];
   if (!prof?.active) return NextResponse.json({ error: "Usuario inactivo" }, { status: 403 });
 
-  // ✅ AGREGADO: super_admin por si existe en tu DB
+  // ✅ admin / superadmin / super_admin
   if (!["admin", "superadmin", "super_admin"].includes(String(prof.role || "").trim())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
-  // ✅ AGREGADO: normaliza a lowercase
-  const nextStatus = String(body?.status || "").trim().toLowerCase();
+
+  // ✅ Normaliza
+  const nextStatus = normalizeStatus(body?.status);
 
   if (!ALLOWED.has(nextStatus)) {
-    return NextResponse.json({ error: "Status inválido" }, { status: 400 });
+    return NextResponse.json({ error: "Status inválido", received: nextStatus }, { status: 400 });
   }
 
   // ✅ 3) Leer status anterior + client_user_id (para notificar)
@@ -74,7 +88,7 @@ export async function PATCH(req, ctx) {
   if (ordErr) return NextResponse.json({ error: ordErr.message }, { status: 400 });
   if (!order) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
 
-  const prevStatus = String(order.status || "").trim().toLowerCase();
+  const prevStatus = normalizeStatus(order.status);
   const clientUserId = order.client_user_id;
 
   // Si no cambia nada, no hacemos nada
@@ -82,10 +96,27 @@ export async function PATCH(req, ctx) {
     return NextResponse.json({ ok: true, id, status: nextStatus, message: "Sin cambios" });
   }
 
-  // ✅ 4) Actualizar status
-  const { error: updErr } = await supabaseAdmin.from("orders").update({ status: nextStatus }).eq("id", id);
+  // ✅ 4) Actualizar status (guardar canonical)
+  const { error: updErr } = await supabaseAdmin
+    .from("orders")
+    .update({ status: nextStatus })
+    .eq("id", id);
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 });
+
+  // ✅ 4.0) AUDITORÍA (no rompe si falla)
+  try {
+    await supabaseAdmin.from("order_status_logs").insert([
+      {
+        order_id: id,
+        changed_by: auth.user.id,
+        from_status: prevStatus || null,
+        to_status: nextStatus,
+      },
+    ]);
+  } catch (e) {
+    console.error("order_status_logs insert failed:", e);
+  }
 
   // ✅ 4.1) 🔔 Notificar al CLIENTE cuando pasa a CONFIRMADO (solo 1 vez)
   if (nextStatus === "confirmado" && prevStatus !== "confirmado" && clientUserId) {
@@ -103,37 +134,9 @@ export async function PATCH(req, ctx) {
       const { error: nErr } = await supabaseAdmin.from("notifications").insert([notif]);
       if (nErr) console.error("Error insert order_confirmed notification:", nErr);
 
-      // 📧 (Opcional) correo al cliente si ya tienes /api/notify/email
-      /*
-      const { data: clientProf } = await supabaseAdmin
-        .from("profiles")
-        .select("email")
-        .eq("id", clientUserId)
-        .single();
-
-      const clientEmail = clientProf?.email;
-      const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
-      if (clientEmail && origin) {
-        fetch(`${origin}/api/notify/email`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            to: [clientEmail],
-            subject: "Xhunco: Tu pedido fue confirmado",
-            html: `
-              <div style="font-family: Arial, sans-serif; line-height: 1.4;">
-                <h2>Tu pedido fue confirmado ✅</h2>
-                <p>Pedido: <b>${id}</b></p>
-                <p>En breve continuamos con la preparación.</p>
-              </div>
-            `,
-          }),
-        }).catch((e) => console.error("email send error:", e));
-      }
-      */
+      // 📧 (Opcional) correo...
     } catch (e) {
       console.error("Error notifying client on confirmado:", e);
-      // NO tumbamos el PATCH por falla de notificación
     }
   }
 
@@ -181,7 +184,6 @@ export async function PATCH(req, ctx) {
       const updates = ids.map(async (suministro_id) => {
         const current = stockById.get(suministro_id);
         if (current == null) {
-          // si un suministro ya no existe, no reventamos todo, pero lo reportamos
           console.error("Stock restore: suministro no encontrado:", suministro_id);
           return;
         }

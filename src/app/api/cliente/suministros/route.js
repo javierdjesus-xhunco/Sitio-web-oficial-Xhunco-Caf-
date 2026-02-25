@@ -8,15 +8,22 @@ const tierToColumn = {
   precio_mayoreo: "precio_mayoreo",
 };
 
+function norm(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 export async function GET() {
   const supabase = await supabaseServer();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData?.user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   // leer tier del cliente
-    const { data: client, error: clientErr } = await supabase
+  const { data: client, error: clientErr } = await supabase
     .from("clients")
-    .select("user_id, email, price_tier")
+    .select("user_id, email, price_tier, business_name")
     .eq("user_id", authData.user.id)
     .maybeSingle();
 
@@ -52,6 +59,9 @@ export async function GET() {
 
   if (sErr) return NextResponse.json({ error: sErr.message }, { status: 400 });
 
+  const businessName = client.business_name || "";
+  const barroNegroDiscount = norm(businessName) === "barro negro";
+
   // mapear a price “final” según tier
   const items = (rows || []).map((r) => ({
     id: r.id,
@@ -67,5 +77,11 @@ export async function GET() {
     price_tier: client.price_tier,
   }));
 
-  return NextResponse.json({ ok: true, price_tier: client.price_tier, items });
+  return NextResponse.json({
+    ok: true,
+    price_tier: client.price_tier,
+    business_name: businessName,
+    barro_negro_discount: barroNegroDiscount,
+    items,
+  });
 }

@@ -1,9 +1,58 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  CalendarDays,
+  Clock,
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  PlusCircle,
+  ClipboardList,
+  RefreshCw,
+} from "lucide-react";
 
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
+
+/** ✅ Paleta tipo la imagen (pasteles + acento) */
+const KPI_THEMES = {
+  blue: {
+    bg: "#EEF5FF",
+    border: "#D9E7FF",
+    title: "#6B8AC9",
+    value: "#2563EB",
+    note: "#5B7BBE",
+  },
+  yellow: {
+    bg: "#FFF7E8",
+    border: "#FFE6B8",
+    title: "#C48A1C",
+    value: "#D97706",
+    note: "#B7791F",
+  },
+  purple: {
+    bg: "#F4F0FF",
+    border: "#E3D8FF",
+    title: "#7C6FD1",
+    value: "#7C3AED",
+    note: "#6D62C6",
+  },
+  green: {
+    bg: "#EAFBF2",
+    border: "#CFF5DF",
+    title: "#2E9B6F",
+    value: "#059669",
+    note: "#268A63",
+  },
+  neutral: {
+    bg: "#FFFFFF",
+    border: "rgba(0,0,0,0.10)",
+    title: "rgba(0,0,0,0.50)",
+    value: "#000000",
+    note: BRAND_GREEN,
+  },
+};
 
 function formatMoney(n) {
   const v = Number(n || 0);
@@ -87,7 +136,6 @@ export default function ClienteDashboard() {
       setProductsTop(Array.isArray(data?.products?.top) ? data.products.top : []);
       setProductsBottom(Array.isArray(data?.products?.bottom) ? data.products.bottom : []);
 
-      // Ajustar selectedYm a un mes válido
       if (m.length) {
         const hasCurrent = m.some((x) => x.ym === currentYm);
         setSelectedYm(hasCurrent ? currentYm : m[0].ym);
@@ -113,7 +161,6 @@ export default function ClienteDashboard() {
 
   const monthsAvailable = useMemo(() => months.map((m) => m.ym), [months]);
 
-  // ✅ Escala global para que Top y Bottom usen el mismo máximo (se ve “coherente”)
   const globalMaxQty = useMemo(() => {
     return Number(productsTop?.[0]?.qty || 0) || 1;
   }, [productsTop]);
@@ -123,9 +170,65 @@ export default function ClienteDashboard() {
       <div className="rounded-3xl border border-black/10 bg-white p-8 shadow-sm">
         <div className="text-sm text-black/60">Bienvenido</div>
 
-        <h1 className="mt-1 text-4xl font-semibold text-black">
-          {businessName ? businessName : "Panel del cliente"}
-        </h1>
+        {/* ✅ Header: nombre + botones al lado */}
+        <div className="mt-1 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <h1 className="text-5xl font-semibold text-black/60">
+            {businessName ? businessName : "Panel del cliente"}
+          </h1>
+
+          {/* ✅ Accesos rápidos a la derecha del nombre */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-start lg:justify-end">
+            <a
+              href="/portal/cliente/pedidos/nuevo"
+              className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm text-white transition shadow-sm"
+              style={{ backgroundColor: BRAND_GREEN }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+              onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
+              onMouseUp={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+            >
+              <PlusCircle size={18} />
+              Crear pedido
+            </a>
+
+            <a
+              href="/portal/cliente/pedidos"
+              className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm transition bg-white shadow-sm"
+              style={{ borderColor: BRAND_GREEN, color: "#000" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "white";
+                e.currentTarget.style.color = "#000";
+              }}
+              onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
+            >
+              <ClipboardList size={18} />
+              Ver mis pedidos
+            </a>
+
+            <button
+              onClick={load}
+              type="button"
+              className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm transition bg-white shadow-sm"
+              style={{ borderColor: BRAND_GREEN, color: "#000" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "white";
+                e.currentTarget.style.color = "#000";
+              }}
+              onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
+            >
+              <RefreshCw size={18} />
+              Actualizar
+            </button>
+          </div>
+        </div>
 
         <p className="mt-2 text-sm text-black/60">
           Aquí podrás revisar tu historial y crear nuevos pedidos.
@@ -148,6 +251,8 @@ export default function ClienteDashboard() {
                 ? `Mes: ${selectedYm}`
                 : "Aún no hay pedidos"
             }
+            theme="blue"
+            icon={CalendarDays}
           >
             {!loading && monthsAvailable.length > 0 && (
               <div className="mt-3">
@@ -177,6 +282,8 @@ export default function ClienteDashboard() {
                 ? `${STATUS_LABEL[lastOrder.status] || lastOrder.status} · ${formatMoney(lastOrder.total)}`
                 : "Sin registros"
             }
+            theme="purple"
+            icon={Clock}
           />
 
           <KPI
@@ -189,6 +296,8 @@ export default function ClienteDashboard() {
                 ? `${pendientes.count} pedidos pendientes · Total ${formatMoney(pendientes.total)}`
                 : "Sin pedidos pendientes"
             }
+            theme="yellow"
+            icon={AlertCircle}
           />
         </div>
 
@@ -198,11 +307,15 @@ export default function ClienteDashboard() {
             title="TU PRODUCTO MÁS COMPRADO ES: "
             value={loading ? "…" : productsTop?.[0]?.name || "—"}
             note={loading ? "Cargando…" : productsTop?.[0] ? `Cantidad: ${productsTop[0].qty}` : "Sin datos"}
+            theme="neutral"
+            icon={TrendingUp}
           />
           <KPI
             title="TU PRODUCTO MENOS COMPRADO ES:"
             value={loading ? "…" : productsBottom?.[0]?.name || "—"}
             note={loading ? "Cargando…" : productsBottom?.[0] ? `Cantidad: ${productsBottom[0].qty}` : "Sin datos"}
+            theme="neutral"
+            icon={TrendingDown}
           />
         </div>
 
@@ -224,73 +337,41 @@ export default function ClienteDashboard() {
           )}
         </div>
 
-        <div className="mt-8 flex flex-col sm:flex-row gap-3">
-          <a
-            href="/portal/cliente/pedidos/nuevo"
-            className="inline-flex justify-center rounded-full px-6 py-3 text-sm text-white transition"
-            style={{ backgroundColor: BRAND_GREEN }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
-            onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-            onMouseUp={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
-          >
-            Crear pedido
-          </a>
-
-          <a
-            href="/portal/cliente/pedidos"
-            className="inline-flex justify-center rounded-full border px-6 py-3 text-sm transition"
-            style={{ borderColor: BRAND_GREEN, color: "#000" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = BRAND_GREEN;
-              e.currentTarget.style.color = "#fff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#000";
-            }}
-            onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-          >
-            Ver mis pedidos
-          </a>
-
-          <button
-            onClick={load}
-            type="button"
-            className="inline-flex justify-center rounded-full border px-6 py-3 text-sm transition"
-            style={{ borderColor: BRAND_GREEN, color: "#000" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = BRAND_GREEN;
-              e.currentTarget.style.color = "#fff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#000";
-            }}
-            onMouseDown={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-          >
-            Actualizar
-          </button>
-        </div>
+        {/* ✅ IMPORTANTE: ya NO dejamos los botones aquí abajo (para que no se dupliquen) */}
       </div>
     </div>
   );
 }
 
-function KPI({ title, value, note, children }) {
+function KPI({ title, value, note, children, theme = "neutral", icon: Icon }) {
+  const t = KPI_THEMES[theme] || KPI_THEMES.neutral;
+
   return (
-    <div className="rounded-2xl border border-black/10 bg-white p-5">
-      <div className="text-xs tracking-wider text-black/50">{title}</div>
-      <div className="mt-2 text-3xl font-semibold text-black">{value}</div>
-      <div className="mt-2 text-xs" style={{ color: BRAND_GREEN }}>
+    <div
+      className="rounded-2xl border p-5"
+      style={{
+        backgroundColor: t.bg,
+        borderColor: t.border,
+      }}
+    >
+      <div className="flex items-center gap-2 text-xs tracking-wider" style={{ color: t.title }}>
+        {Icon ? <Icon size={16} /> : null}
+        <span>{title}</span>
+      </div>
+
+      <div className="mt-2 text-3xl font-semibold" style={{ color: t.value }}>
+        {value}
+      </div>
+
+      <div className="mt-2 text-xs" style={{ color: t.note }}>
         {note}
       </div>
+
       {children ? <div>{children}</div> : null}
     </div>
   );
 }
 
-// ✅ BarList con escala global (top y bottom comparables)
 function BarList({ title, items, maxScale }) {
   const max = Math.max(1, Number(maxScale || 0));
 

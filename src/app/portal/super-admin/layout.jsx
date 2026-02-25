@@ -19,7 +19,7 @@ export default function SuperAdminLayout({ children }) {
             <PortalSideItem href="/portal/super-admin/clientes/nuevo" label="Alta de clientes" />
             <PortalSideItem href="/portal/super-admin/suministros" label="Suministros" />
             <PortalSideItem href="/portal/super-admin/pedidos" label="Pedidos" />
-            <PortalSideItem href="/portal/super-admin/usuarios" label="Usuarios y roles" />
+            <PortalSideItem href="/portal/super-admin/usuarios-y-roles" label="Usuarios y roles" />
             <PortalSideItem href="/portal/super-admin/configuracion" label="Configuración" />
             <PortalSideItem href="/portal/super-admin/reportes" label="Reportes" />
             

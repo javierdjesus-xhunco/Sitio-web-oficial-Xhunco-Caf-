@@ -9,7 +9,29 @@ function formatMoney(n) {
 }
 
 function norm(s) {
-  return String(s || "").toLowerCase().trim();
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function isCafe1Kg(it) {
+  const nombre = norm(it?.nombre);
+  const categoria = norm(it?.categoria);
+  const presentacion = norm(it?.presentacion);
+
+  const looks1kg =
+    presentacion === "1kg" ||
+    presentacion === "1 kg" ||
+    nombre.includes("1kg") ||
+    nombre.includes("1 kg") ||
+    nombre.includes("1000g") ||
+    nombre.includes("1000 g");
+
+  const looksCafe = categoria.includes("cafe") || nombre.includes("cafe");
+  return looksCafe && looks1kg;
 }
 
 const LS_DRAFT = "xhunco_cart_draft";
@@ -18,6 +40,8 @@ const LS_RESUMEN = "xhunco_nuevo_pedido";
 
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
+
+const DISCOUNT_PER_KG = 9;
 
 function safeParse(json, fallback) {
   try {
@@ -44,15 +68,18 @@ export default function NuevoPedidoPage() {
 
   const [draftNo, setDraftNo] = useState(null);
 
-  // ✅ IMPORTANTÍSIMO: evita que se sobrescriba LS_DRAFT vacío al montar
+  // ✅ evita sobrescribir LS_DRAFT vacío al montar
   const [hydrated, setHydrated] = useState(false);
+
+  // ✅ NUEVO: regla Barro Negro (solo UI; backend ya la aplica real)
+  const [barroNegroDiscount, setBarroNegroDiscount] = useState(false);
 
   // modal imagen
   const [imgOpen, setImgOpen] = useState(false);
   const [imgSrc, setImgSrc] = useState("");
   const [imgAlt, setImgAlt] = useState("");
 
-  // ✅ Modal resumen móvil (no borra nada)
+  // ✅ Modal resumen móvil
   const [cartModalOpen, setCartModalOpen] = useState(false);
 
   const loadSuministros = async () => {
@@ -65,6 +92,7 @@ export default function NuevoPedidoPage() {
     }
     setItems(data.items || []);
     setPriceTier(data.price_tier || "");
+    setBarroNegroDiscount(Boolean(data.barro_negro_discount));
     return true;
   };
 
@@ -78,11 +106,10 @@ export default function NuevoPedidoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2) Restaurar carrito (draft) al entrar a la pantalla
+  // 2) Restaurar carrito
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Evita rehidrataciones dobles
     setHydrated(false);
 
     const savedDraftNo = localStorage.getItem(LS_DRAFT_NO);
@@ -99,26 +126,21 @@ export default function NuevoPedidoPage() {
       }
     }
 
-    // ✅ Ya restauramos, ahora sí se permite persistir
     setHydrated(true);
   }, []);
 
-  // 3) Guardar carrito automáticamente en localStorage (persistente)
+  // 3) Persistir carrito
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    // ✅ CLAVE: no escribas LS_DRAFT hasta que ya rehidrataste
     if (!hydrated) return;
 
     const hasItems = Object.keys(cart || {}).length > 0;
 
-    // Si el usuario agrega su primer producto y aún no hay draftNo, genera consecutivo
     if (hasItems && !draftNo) {
       const current = Number(localStorage.getItem(LS_DRAFT_NO) || "0");
       const next = current + 1;
       localStorage.setItem(LS_DRAFT_NO, String(next));
       setDraftNo(next);
-      // Nota: no hacemos return; seguimos guardando draft con next
     }
 
     const persistedNo =
@@ -149,12 +171,20 @@ export default function NuevoPedidoPage() {
     return cartItems.reduce((acc, it) => acc + Number(it?.qty || 0), 0);
   }, [cartItems]);
 
+  const effectiveUnitPrice = (it) => {
+    const base = Number(it?.price || 0);
+    if (!barroNegroDiscount) return { base, final: base, applies: false };
+    if (!isCafe1Kg(it)) return { base, final: base, applies: false };
+    const final = Math.max(0, base - DISCOUNT_PER_KG);
+    return { base, final, applies: true };
+  };
+
   const total = useMemo(() => {
-    return cartItems.reduce(
-      (acc, it) => acc + Number(it.price || 0) * Number(it.qty || 0),
-      0,
-    );
-  }, [cartItems]);
+    return cartItems.reduce((acc, it) => {
+      const { final } = effectiveUnitPrice(it);
+      return acc + final * Number(it.qty || 0);
+    }, 0);
+  }, [cartItems, barroNegroDiscount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getStock = (id) => {
     const p = items.find((x) => x.id === id);
@@ -183,7 +213,15 @@ export default function NuevoPedidoPage() {
         return next;
       }
 
-      next[p.id] = { id: p.id, nombre: p.nombre, price: p.price, qty };
+      // ✅ guardamos también categoria/presentacion para poder detectar 1kg
+      next[p.id] = {
+        id: p.id,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        presentacion: p.presentacion,
+        price: p.price,
+        qty,
+      };
       return next;
     });
 
@@ -255,7 +293,6 @@ export default function NuevoPedidoPage() {
       const aStock = Number(a?.stock ?? 0);
       const bStock = Number(b?.stock ?? 0);
 
-      // con stock primero
       const aHas = Number.isFinite(aStock) && aStock > 0 ? 1 : 0;
       const bHas = Number.isFinite(bStock) && bStock > 0 ? 1 : 0;
       if (aHas !== bHas) return bHas - aHas;
@@ -280,7 +317,6 @@ export default function NuevoPedidoPage() {
       return;
     }
 
-    // Validación extra por si cambió stock
     for (const it of cartItems) {
       const stock = getStock(it.id);
       if (it.qty > stock) {
@@ -298,6 +334,7 @@ export default function NuevoPedidoPage() {
       total,
       priceTier,
       ts: Date.now(),
+      barroNegroDiscount,
     };
 
     localStorage.setItem(LS_RESUMEN, JSON.stringify(payload));
@@ -321,6 +358,11 @@ export default function NuevoPedidoPage() {
           <p className="mt-2 text-sm text-gray-600">
             Precios aplicados:{" "}
             <span className="text-gray-900 font-medium">{priceTier || "—"}</span>
+            {barroNegroDiscount ? (
+              <span className="ml-2 text-xs text-emerald-700">
+                · Descuento Barro Negro activo (-$9 en café 1kg)
+              </span>
+            ) : null}
           </p>
         </div>
 
@@ -349,6 +391,7 @@ export default function NuevoPedidoPage() {
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lista */}
         <div className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white p-4 sm:p-6">
+          {/* ... (SIN CAMBIOS en tu lista, se mantiene tal cual) ... */}
           <div className="flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="text-sm font-semibold text-gray-900">Suministros</div>
@@ -544,13 +587,24 @@ export default function NuevoPedidoPage() {
                 const stock = getStock(it.id);
                 const atMax = it.qty >= stock;
 
+                const { base, final, applies } = effectiveUnitPrice(it);
+
                 return (
                   <div key={it.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-sm text-gray-900 truncate">{it.nombre}</div>
                         <div className="text-xs text-gray-600">
-                          {formatMoney(it.price)} c/u · Stock: {stock}
+                          {applies ? (
+                            <>
+                              <span className="line-through text-gray-500">{formatMoney(base)}</span>{" "}
+                              <span className="text-emerald-700 font-semibold">{formatMoney(final)}</span>{" "}
+                              <span className="text-emerald-700">(-$9 Barro Negro)</span>
+                            </>
+                          ) : (
+                            <>{formatMoney(base)}</>
+                          )}{" "}
+                          c/u · Stock: {stock}
                         </div>
                       </div>
 
@@ -585,7 +639,7 @@ export default function NuevoPedidoPage() {
                     </div>
 
                     <div className="mt-2 text-xs text-gray-600">
-                      Subtotal: {formatMoney(Number(it.price || 0) * Number(it.qty || 0))}
+                      Subtotal: {formatMoney(final * Number(it.qty || 0))}
                     </div>
                   </div>
                 );
@@ -622,7 +676,7 @@ export default function NuevoPedidoPage() {
         </div>
       </div>
 
-      {/* ✅ Botón flotante móvil: SOLO ícono, SOLO si hay productos */}
+      {/* ✅ Botón flotante móvil */}
       {cartCount > 0 ? (
         <button
           type="button"
@@ -650,7 +704,7 @@ export default function NuevoPedidoPage() {
         </button>
       ) : null}
 
-      {/* ✅ Modal resumen móvil (NO borra carrito al cerrar) */}
+      {/* ✅ Modal resumen móvil */}
       {cartModalOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setCartModalOpen(false)} />
@@ -689,16 +743,27 @@ export default function NuevoPedidoPage() {
                       const stock = getStock(it.id);
                       const atMax = it.qty >= stock;
 
+                      const { base, final, applies } = effectiveUnitPrice(it);
+
                       return (
                         <div key={it.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="text-sm font-medium text-gray-900">{it.nombre}</div>
                               <div className="mt-1 text-xs text-gray-600">
-                                {formatMoney(it.price)} c/u · Stock: {stock}
+                                {applies ? (
+                                  <>
+                                    <span className="line-through text-gray-500">{formatMoney(base)}</span>{" "}
+                                    <span className="text-emerald-700 font-semibold">{formatMoney(final)}</span>{" "}
+                                    <span className="text-emerald-700">(-$9 Barro Negro)</span>
+                                  </>
+                                ) : (
+                                  <>{formatMoney(base)}</>
+                                )}{" "}
+                                c/u · Stock: {stock}
                               </div>
                               <div className="mt-1 text-xs text-gray-600">
-                                Subtotal: {formatMoney(Number(it.price || 0) * Number(it.qty || 0))}
+                                Subtotal: {formatMoney(final * Number(it.qty || 0))}
                               </div>
                             </div>
 
