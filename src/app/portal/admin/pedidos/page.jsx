@@ -36,6 +36,15 @@ function paymentLabel(v) {
   return s;
 }
 
+// ✅ NUEVO: estado de pago legible
+function paymentStatusLabel(v) {
+  const s = String(v || "").toLowerCase().trim();
+  if (s === "paid") return "Pagado";
+  if (s === "pending") return "Pendiente de pago";
+  if (!s) return "—";
+  return s;
+}
+
 // ✅ AGREGADO: status legible (soporta underscore)
 function statusLabel(v) {
   const s = String(v || "").toLowerCase().trim();
@@ -194,6 +203,42 @@ export default function AdminPedidosPage() {
     }
   }
 
+  // ✅ NUEVO: actualiza pago (independiente del status)
+  async function updatePaymentStatus(orderId, nextPaymentStatus) {
+    setSavingId(orderId);
+    try {
+      const r = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_status: nextPaymentStatus }),
+      });
+
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "No se pudo actualizar el estado de pago");
+
+      // Si tu API responde paid_at / paid_by, los mantenemos en UI
+      const nextPaidAt = j?.paid_at ?? null;
+      const nextPaidBy = j?.paid_by ?? null;
+
+      setRows((prev) =>
+        prev.map((x) =>
+          x.id === orderId
+            ? {
+                ...x,
+                payment_status: nextPaymentStatus,
+                ...(nextPaidAt !== null ? { paid_at: nextPaidAt } : {}),
+                ...(nextPaidBy !== null ? { paid_by: nextPaidBy } : {}),
+              }
+            : x
+        )
+      );
+    } catch (e) {
+      alert(String(e?.message || e));
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   async function goNext() {
     if (!hasNext || !nextCursor) return;
 
@@ -328,6 +373,17 @@ export default function AdminPedidosPage() {
                         <span className="font-semibold text-black">{paymentLabel(o.payment_method)}</span>
                       </div>
 
+                      {/* ✅ NUEVO: estado de pago */}
+                      <div className="text-xs text-gray-600">
+                        Pago:{" "}
+                        <span className="font-semibold text-black">
+                          {paymentStatusLabel(o.payment_status)}
+                        </span>
+                        {o?.paid_at ? (
+                          <span className="text-gray-500"> · {fmtDate(o.paid_at)}</span>
+                        ) : null}
+                      </div>
+
                       <div className="text-xs text-gray-600">Creado el: {fmtDate(o.created_at)}</div>
                       <div className="text-xs text-gray-600">Total: {money(o.total ?? o.subtotal)}</div>
 
@@ -375,26 +431,39 @@ export default function AdminPedidosPage() {
                       </div>
                     </div>
 
-                    <div className="w-full md:w-[280px]">
-                      <div className="text-xs font-semibold text-gray-700 mb-1">Cambiar status</div>
-                      <select
-                        value={o.status || "pendiente"}
-                        disabled={busy}
-                        onChange={(e) => updateStatus(o.id, e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none disabled:opacity-60"
-                      >
-                        <option value="pendiente">Pendiente</option>
-                        <option value="confirmado">Confirmado</option>
+                    <div className="w-full md:w-[280px] space-y-3">
+                      <div>
+                        <div className="text-xs font-semibold text-gray-700 mb-1">Cambiar status</div>
+                        <select
+                          value={o.status || "pendiente"}
+                          disabled={busy}
+                          onChange={(e) => updateStatus(o.id, e.target.value)}
+                          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none disabled:opacity-60"
+                        >
+                          <option value="pendiente">Pendiente</option>
+                          <option value="confirmado">Confirmado</option>
+                          <option value="en_preparacion">En preparación</option>
+                          <option value="en_ruta">En ruta</option>
+                          <option value="entregado">Entregado</option>
+                          <option value="cancelado">Cancelado</option>
+                        </select>
+                      </div>
 
-                        {/* ✅ AGREGADO */}
-                        <option value="en_preparacion">En preparación</option>
-                        <option value="en_ruta">En ruta</option>
+                      {/* ✅ NUEVO: pago independiente */}
+                      <div>
+                        <div className="text-xs font-semibold text-gray-700 mb-1">Pago</div>
+                        <select
+                          value={String(o.payment_status || "pending").toLowerCase()}
+                          disabled={busy}
+                          onChange={(e) => updatePaymentStatus(o.id, e.target.value)}
+                          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none disabled:opacity-60"
+                        >
+                          <option value="pending">Pendiente de pago</option>
+                          <option value="paid">Pagado</option>
+                        </select>
+                      </div>
 
-                        <option value="entregado">Entregado</option>
-                        <option value="cancelado">Cancelado</option>
-                      </select>
-
-                      {busy ? <div className="mt-1 text-[11px] text-gray-500">Actualizando…</div> : null}
+                      {busy ? <div className="text-[11px] text-gray-500">Actualizando…</div> : null}
                     </div>
                   </div>
                 </div>

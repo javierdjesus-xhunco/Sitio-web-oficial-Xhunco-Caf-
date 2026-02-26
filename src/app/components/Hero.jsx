@@ -4,12 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const images = [
-  "/hero/hero1.png",
-  "/hero/hero2.png",
-  "/hero/hero3.png",
-  "/hero/hero4.png",
-  "/hero/hero5.png",
-  "/hero/hero6.png",
+  "/hero/hero1.avif",
+  "/hero/hero2.avif",
+  "/hero/hero3.avif",
+  "/hero/hero4.avif"
 ];
 
 export default function Hero() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, RefreshCw, CheckCheck } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -49,27 +49,34 @@ export default function NotificationsBell({ className = "" }) {
 
   const hasUnread = unread > 0;
 
-  async function loadBadge() {
+  // ✅ evita setState si ya está igual (menos re-render)
+  const setUnreadSafe = useCallback((next) => {
+    const n = Number(next || 0);
+    setUnread((prev) => (prev === n ? prev : n));
+  }, []);
+
+  const loadBadge = useCallback(async () => {
     const r = await fetch("/api/notifications?mode=badge", { cache: "no-store" });
     const j = await r.json().catch(() => ({}));
-    if (r.ok) setUnread(Number(j.unread || 0));
-  }
+    if (r.ok) setUnreadSafe(j.unread);
+  }, [setUnreadSafe]);
 
-  async function loadList() {
+  const loadList = useCallback(async () => {
     setLoading(true);
     try {
       const r = await fetch("/api/notifications?limit=25", { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
       if (r.ok) {
-        setRows(j.data || []);
-        setUnread(Number(j.unread || 0));
+        setRows(Array.isArray(j.data) ? j.data : []);
+        setUnreadSafe(j.unread);
       }
     } finally {
       setLoading(false);
     }
-  }
+  }, [setUnreadSafe]);
 
-  async function markRead(id) {
+  const markRead = useCallback(async (id) => {
+    // UI optimista
     setRows((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     setUnread((u) => Math.max(0, u - 1));
 
@@ -78,29 +85,29 @@ export default function NotificationsBell({ className = "" }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ is_read: true }),
     }).catch(() => {});
-  }
+  }, []);
 
-  async function markAllRead() {
-    if (!rows.some((n) => !n.is_read)) return;
-
-    // UI optimista
-    setRows((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnread(0);
+  const markAllRead = useCallback(async () => {
+    setRows((prev) => {
+      if (!prev.some((n) => !n.is_read)) return prev;
+      return prev.map((n) => ({ ...n, is_read: true }));
+    });
+    setUnreadSafe(0);
 
     await fetch("/api/notifications/mark-all", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
     }).catch(() => {});
-  }
+  }, [setUnreadSafe]);
+
+  useEffect(() => setMounted(true), []);
 
   // ✅ al montar: solo badge
   useEffect(() => {
     loadBadge().catch(() => {});
-  }, []);
+  }, [loadBadge]);
 
-  useEffect(() => setMounted(true), []);
-
-  function computePosition() {
+  const computePosition = useCallback(() => {
     const el = btnRef.current;
     if (!el) return;
 
@@ -114,9 +121,14 @@ export default function NotificationsBell({ className = "" }) {
     let top = rect.top;
     top = Math.max(12, Math.min(top, window.innerHeight - 12));
 
-    setPos({ top, left, width: desired });
-  }
+    setPos((p) => {
+      // ✅ evita setState si no cambia
+      if (p.top === top && p.left === left && p.width === desired) return p;
+      return { top, left, width: desired };
+    });
+  }, []);
 
+  // ✅ posición solo cuando está abierto
   useEffect(() => {
     if (!open) return;
 
@@ -132,8 +144,9 @@ export default function NotificationsBell({ className = "" }) {
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
     };
-  }, [open]);
+  }, [open, computePosition]);
 
+  // ✅ cerrar al click afuera
   useEffect(() => {
     function onDoc(e) {
       const root = rootRef.current;
@@ -146,6 +159,7 @@ export default function NotificationsBell({ className = "" }) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // ✅ cerrar con ESC
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") setOpen(false);
@@ -154,18 +168,57 @@ export default function NotificationsBell({ className = "" }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // ✅ cuando se abre: carga lista
+  // ✅ cuando se abre: carga lista (y badge ya queda sincronizado)
   useEffect(() => {
     if (!open) return;
     loadList().catch(() => {});
-  }, [open]);
+  }, [open, loadList]);
 
-  // ✅ polling suave SOLO cuando está abierto
+  // ✅ polling suave SOLO cuando está abierto (lista completa)
   useEffect(() => {
     if (!open) return;
     const t = setInterval(() => loadList().catch(() => {}), 25000);
     return () => clearInterval(t);
-  }, [open]);
+  }, [open, loadList]);
+
+  // ✅ NUEVO: polling barato del BADGE cuando está CERRADO
+  // - solo cada 12s (ajusta)
+  // - solo si la pestaña está visible (ahorra)
+  useEffect(() => {
+    if (open) return;
+
+    let t = null;
+
+    const tick = async () => {
+      if (document.visibilityState !== "visible") return;
+      await loadBadge().catch(() => {});
+    };
+
+    // primer tick inmediato
+    tick();
+
+    t = setInterval(tick, 12000);
+
+    return () => {
+      if (t) clearInterval(t);
+    };
+  }, [open, loadBadge]);
+
+  // ✅ NUEVO: refrescar badge al volver a la pestaña / focus
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") loadBadge().catch(() => {});
+    };
+    const onFocus = () => loadBadge().catch(() => {});
+
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [loadBadge]);
 
   const visibleRows = useMemo(() => rows.slice(0, 25), [rows]);
 
@@ -178,9 +231,7 @@ export default function NotificationsBell({ className = "" }) {
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-gray-900">Notificaciones</div>
-          <div className="text-[11px] text-gray-500">
-            {hasUnread ? `${unread} sin leer` : "Todo al día"}
-          </div>
+          <div className="text-[11px] text-gray-500">{hasUnread ? `${unread} sin leer` : "Todo al día"}</div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -188,6 +239,7 @@ export default function NotificationsBell({ className = "" }) {
             onClick={loadList}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
             title="Recargar"
+            type="button"
           >
             <RefreshCw className={cx("h-4 w-4", loading && "animate-spin")} />
             {loading ? "Cargando" : "Recargar"}
@@ -199,6 +251,7 @@ export default function NotificationsBell({ className = "" }) {
             className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
             style={{ background: "#31572c" }}
             title="Marcar todas como leídas"
+            type="button"
           >
             <CheckCheck className="h-4 w-4" />
             Listo
@@ -234,9 +287,7 @@ export default function NotificationsBell({ className = "" }) {
                       <div className="truncate text-sm font-semibold text-gray-900">{n.title}</div>
                     </div>
 
-                    {n.body && (
-                      <div className="mt-1 text-xs text-gray-600 line-clamp-2">{n.body}</div>
-                    )}
+                    {n.body && <div className="mt-1 text-xs text-gray-600 line-clamp-2">{n.body}</div>}
 
                     <div className="mt-2 text-[11px] text-gray-500">{timeAgo(n.created_at)}</div>
                   </div>
@@ -257,6 +308,7 @@ export default function NotificationsBell({ className = "" }) {
                       <button
                         onClick={() => !n.is_read && markRead(n.id)}
                         className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-50"
+                        type="button"
                       >
                         Marcar
                       </button>
@@ -269,6 +321,7 @@ export default function NotificationsBell({ className = "" }) {
                     <button
                       onClick={() => markRead(n.id)}
                       className="text-xs font-semibold text-gray-700 hover:underline"
+                      type="button"
                     >
                       Marcar como leída
                     </button>
@@ -284,7 +337,7 @@ export default function NotificationsBell({ className = "" }) {
         <div className="text-[11px] text-gray-500">
           Mostrando {Math.min(visibleRows.length, 25)} de {rows.length}
         </div>
-        <button onClick={() => setOpen(false)} className="text-xs font-semibold text-gray-700 hover:underline">
+        <button onClick={() => setOpen(false)} className="text-xs font-semibold text-gray-700 hover:underline" type="button">
           Cerrar
         </button>
       </div>
@@ -302,6 +355,7 @@ export default function NotificationsBell({ className = "" }) {
           open && "ring-2 ring-gray-200"
         )}
         aria-label="Notificaciones"
+        type="button"
       >
         <Bell className="h-5 w-5 text-gray-900" />
         {hasUnread && (

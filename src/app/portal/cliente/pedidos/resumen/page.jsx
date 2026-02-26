@@ -8,6 +8,14 @@ function formatMoney(n) {
   return v.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 }
 
+function safeParse(json, fallback) {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return fallback;
+  }
+}
+
 function norm(s) {
   return String(s || "")
     .trim()
@@ -34,6 +42,42 @@ function isCafe1Kg(it) {
   return looksCafe && looks1kg;
 }
 
+/** ✅ Copiar sin librerías */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** (se mantiene por compatibilidad, ya no se usa en transfer) */
+function buildProductsRef(cart, maxLen = 140) {
+  const parts = (cart || [])
+    .filter((it) => it && Number(it.qty || 0) > 0)
+    .map((it) => `${it.nombre} x${it.qty}`);
+
+  let s = parts.join(", ");
+  if (!s) return "Compra Xhunco";
+
+  if (s.length > maxLen) s = s.slice(0, maxLen - 1).trimEnd() + "…";
+  return s;
+}
+
 const LS_RESUMEN = "xhunco_nuevo_pedido";
 const LS_DRAFT = "xhunco_cart_draft";
 const LS_DRAFT_NO = "xhunco_cart_draft_no";
@@ -43,13 +87,14 @@ const BRAND_GREEN_DARK = "#25441f";
 
 const DISCOUNT_PER_KG = 9;
 
-function safeParse(json, fallback) {
-  try {
-    return JSON.parse(json);
-  } catch {
-    return fallback;
-  }
-}
+/** =========================
+ * ✅ Transferencia (EDITA AQUÍ)
+ * ========================= */
+const TRANSFER_INFO = {
+  bank_name: "MIFEL", // ej. BBVA / Banorte / Santander
+  account_holder: "XHUNCO CAFE",
+  clabe: "042180010034607185", // ✅ sin espacios (18 dígitos)
+};
 
 function StepTitle({ n, title, right }) {
   return (
@@ -73,7 +118,7 @@ export default function ResumenPedidoPage() {
   const [cart, setCart] = useState([]);
   const [priceTier, setPriceTier] = useState("");
 
-  // ✅ NUEVO: regla Barro Negro para UI
+  // ✅ regla Barro Negro para UI
   const [barroNegroDiscount, setBarroNegroDiscount] = useState(false);
 
   const effectiveUnitPrice = (it) => {
@@ -91,28 +136,23 @@ export default function ResumenPedidoPage() {
     }, 0);
   }, [cart, barroNegroDiscount]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** (se mantiene por compatibilidad, ya no se usa en transfer) */
+  const productsRef = useMemo(() => buildProductsRef(cart, 140), [cart]);
+
   // entrega
   const [deliveryMethod, setDeliveryMethod] = useState("pickup"); // pickup | delivery
   const [addressLoading, setAddressLoading] = useState(false);
-
   const [address, setAddress] = useState(null);
 
-  // pago
-  const [paymentMethod, setPaymentMethod] = useState("cash"); // cash | tpv | online
-  const [cardType, setCardType] = useState("credit"); // credit | debit
-  const [card, setCard] = useState({
-    number: "",
-    exp: "",
-    cvc: "",
-    holder: "",
-    remember: false,
-  });
+  // pago (solo cash | transfer)
+  const [paymentMethod, setPaymentMethod] = useState("cash"); // cash | transfer
 
+  const [copied, setCopied] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState(
-    "Pedido exitoso. En un momento nos comunicamos con ustedes para el seguimiento.",
+    "Pedido exitoso. En un momento nos comunicamos con ustedes para el seguimiento."
   );
 
   useEffect(() => {
@@ -183,15 +223,6 @@ export default function ResumenPedidoPage() {
 
   const backToCart = () => router.push("/portal/cliente/pedidos/nuevo");
 
-  const validateCardUI = () => {
-    const num = card.number.replace(/\s+/g, "");
-    if (num.length < 12) return "Número de tarjeta inválido.";
-    if (!/^\d{2}\/\d{2}$/.test(card.exp)) return "Caducidad inválida (MM/AA).";
-    if (!/^\d{3,4}$/.test(card.cvc)) return "CVC inválido.";
-    if (!card.holder.trim()) return "Titular requerido.";
-    return "";
-  };
-
   const confirmOrder = async () => {
     setSaving(true);
     setError("");
@@ -208,32 +239,22 @@ export default function ResumenPedidoPage() {
       return;
     }
 
-    if (paymentMethod === "online") {
-      const msg = validateCardUI();
-      if (msg) {
-        setSaving(false);
-        setError(msg);
-        return;
-      }
-    }
+    // ✅ SOLO 3 campos + sanitizar CLABE (sin espacios)
+    const transferDetails =
+      paymentMethod === "transfer"
+        ? {
+            bank_name: TRANSFER_INFO.bank_name,
+            account_holder: TRANSFER_INFO.account_holder,
+            clabe: String(TRANSFER_INFO.clabe || "").replace(/\s+/g, ""),
+          }
+        : null;
 
     const payload = {
       items: cart.map((it) => ({ suministro_id: it.id, qty: it.qty })),
       delivery_method: deliveryMethod,
       address: deliveryMethod === "delivery" ? address : null,
-      payment_method: paymentMethod,
-      payment_details:
-        paymentMethod === "online"
-          ? {
-              card_type: cardType,
-              card_ui: {
-                number_last4: card.number.replace(/\s+/g, "").slice(-4),
-                exp: card.exp,
-                holder: card.holder,
-                remember: card.remember,
-              },
-            }
-          : null,
+      payment_method: paymentMethod, // cash | transfer
+      payment_details: transferDetails,
       draft_no: draftNo || null,
     };
 
@@ -272,22 +293,13 @@ export default function ResumenPedidoPage() {
   if (loading) return <div className="text-gray-600">Cargando resumen...</div>;
 
   return (
-    <div className="max-w-[1100px] w-full">
+    <div className="w-full max-w-none min-w-0">
       <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">
-            Resumen de tus Compras{" "}
-            {draftNo ? (
-              <span className="text-gray-500 text-xl align-middle">· Pedido #{draftNo}</span>
-            ) : null}
-          </h1>
+          <h1 className="text-3xl font-semibold text-gray-900 leading-tight">Resumen de tus Compras</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Precios aplicados:{" "}
-            <span className="text-gray-900 font-medium">{priceTier || "—"}</span>
             {barroNegroDiscount ? (
-              <span className="ml-2 text-xs text-emerald-700">
-                · Descuento Barro Negro activo (-$9 en café 1kg)
-              </span>
+              <span className="ml-2 text-xs text-emerald-700">· Descuento Barro Negro activo (-$9 en café 1kg)</span>
             ) : null}
           </p>
         </div>
@@ -320,9 +332,7 @@ export default function ResumenPedidoPage() {
       </div>
 
       {error ? (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -382,16 +392,18 @@ export default function ResumenPedidoPage() {
             {/* Paso 2 */}
             <div className="p-5">
               <StepTitle n={2} title="Método de pago" />
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { key: "cash", title: "Efectivo", desc: "Pago contra entrega / recolección." },
-                  { key: "tpv", title: "TPV", desc: "Pago con terminal al recibir." },
-                  { key: "online", title: "En línea", desc: "Pago con tarjeta." },
+                  { key: "transfer", title: "Transferencia", desc: "Recibe los datos para transferir." },
                 ].map((opt) => (
                   <button
                     key={opt.key}
                     type="button"
-                    onClick={() => setPaymentMethod(opt.key)}
+                    onClick={() => {
+                      setPaymentMethod(opt.key);
+                      setCopied("");
+                    }}
                     className={optionBtn(paymentMethod === opt.key)}
                   >
                     <div className="font-medium text-gray-900">{opt.title}</div>
@@ -400,8 +412,50 @@ export default function ResumenPedidoPage() {
                 ))}
               </div>
 
-              {/* (tu UI de tarjeta queda igual) */}
-              {/* ... */}
+              {paymentMethod === "transfer" ? (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="text-sm font-semibold text-gray-900">Datos para transferencia</div>
+
+                  <div className="mt-3 space-y-2 text-sm text-gray-800">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-600">Banco</span>
+                      <span className="font-medium">{TRANSFER_INFO.bank_name}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-600">Beneficiario</span>
+                      <span className="font-medium">{TRANSFER_INFO.account_holder}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-600">CLABE</span>
+                      <span className="font-mono font-semibold">
+                        {String(TRANSFER_INFO.clabe || "").replace(/\s+/g, "")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full border px-4 py-2 text-sm bg-white hover:bg-gray-50 transition"
+                      onClick={async () => {
+                        const text = [
+                          `Banco: ${TRANSFER_INFO.bank_name}`,
+                          `Beneficiario: ${TRANSFER_INFO.account_holder}`,
+                          `CLABE: ${String(TRANSFER_INFO.clabe || "").replace(/\s+/g, "")}`,
+                        ].join("\n");
+
+                        const ok = await copyToClipboard(text);
+                        setCopied(ok ? "Datos copiados." : "No se pudo copiar. Copia manualmente.");
+                        setTimeout(() => setCopied(""), 2000);
+                      }}
+                    >
+                      Copiar datos
+                    </button>
+                  </div>
+
+                  {copied ? <div className="mt-2 text-xs text-emerald-700">{copied}</div> : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -409,11 +463,7 @@ export default function ResumenPedidoPage() {
         <div className="lg:col-span-5">
           <div className="rounded-3xl border border-gray-200 bg-white">
             <div className="p-5">
-              <StepTitle
-                n={3}
-                title="Confirmar"
-                right={cart.length ? `Resumen (${cart.length} artículos)` : "Resumen"}
-              />
+              <StepTitle n={3} title="Confirmar" right={cart.length ? `Resumen (${cart.length} artículos)` : "Resumen"} />
 
               <div className="mt-4 space-y-3">
                 {cart.length === 0 ? (
@@ -441,9 +491,7 @@ export default function ResumenPedidoPage() {
                               c/u · Cantidad: <b>{it.qty}</b>
                             </div>
                           </div>
-                          <div className="text-sm font-semibold text-gray-900">
-                            {formatMoney(lineTotal)}
-                          </div>
+                          <div className="text-sm font-semibold text-gray-900">{formatMoney(lineTotal)}</div>
                         </div>
                       </div>
                     );

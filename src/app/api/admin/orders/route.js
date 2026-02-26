@@ -63,7 +63,22 @@ export async function GET(req) {
     // ✅ Query base: ORDER BY created_at DESC, id DESC (estable)
     let ordersQuery = supabase
       .from("orders")
-      .select("id, client_user_id, status, subtotal, total, created_at, delivery_method, payment_method")
+      .select(
+        [
+          "id",
+          "client_user_id",
+          "status",
+          "subtotal",
+          "total",
+          "created_at",
+          "delivery_method",
+          "payment_method",
+          // ✅ NUEVO:
+          "payment_status",
+          "paid_at",
+          "paid_by",
+        ].join(",")
+      )
       .order("created_at", { ascending: false })
       .order("id", { ascending: false });
 
@@ -72,15 +87,14 @@ export async function GET(req) {
 
     // ✅ Keyset: traer registros "después" del cursor (siguiente página)
     // Regla: (created_at < ts) OR (created_at = ts AND id < id)
-   if (cursor) {
-  const ts = cursor.created_at;
-  const id = cursor.id;
+    if (cursor) {
+      const ts = cursor.created_at;
+      const id = cursor.id;
 
-  // ✅ IMPORTANTE: timestamp con comillas para que PostgREST lo parse bien
-  ordersQuery = ordersQuery.or(
-    `created_at.lt."${ts}",and(created_at.eq."${ts}",id.lt.${id})`
-  );
-}
+      // ✅ IMPORTANTE: timestamp con comillas para que PostgREST lo parse bien
+      ordersQuery = ordersQuery.or(`created_at.lt."${ts}",and(created_at.eq."${ts}",id.lt.${id})`);
+    }
+
     // ✅ Trae 1 extra para saber si hay siguiente
     const { data: ordersRaw, error: ordersErr } = await ordersQuery.limit(pageSize + 1);
     if (ordersErr) return NextResponse.json({ error: ordersErr.message }, { status: 400 });
@@ -185,6 +199,11 @@ export async function GET(req) {
         created_at: o.created_at,
         delivery_method: o.delivery_method,
         payment_method: o.payment_method,
+
+        // ✅ NUEVO:
+        payment_status: o.payment_status,
+        paid_at: o.paid_at,
+        paid_by: o.paid_by,
 
         cliente_nombre: owner || "—",
         negocio_nombre: (c?.business_name || "").trim() || "—",

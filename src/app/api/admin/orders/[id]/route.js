@@ -11,6 +11,9 @@ const ALLOWED = new Set([
   "cancelado",
 ]);
 
+// ✅ NUEVO: estados permitidos para pago
+const ALLOWED_PAYMENT = new Set(["pending", "paid"]);
+
 function getIdFromUrl(req) {
   try {
     const url = new URL(req.url);
@@ -24,13 +27,19 @@ function getIdFromUrl(req) {
 // ✅ AGREGADO: normaliza variantes “humanas” a canonical con underscore
 function normalizeStatus(input) {
   const s = String(input || "").trim().toLowerCase();
-
   if (!s) return "";
-
-  // variantes comunes
   if (s === "en preparación" || s === "en preparacion") return "en_preparacion";
   if (s === "en ruta") return "en_ruta";
+  return s;
+}
 
+// ✅ NUEVO: normaliza payment_status
+function normalizePaymentStatus(input) {
+  const s = String(input || "").trim().toLowerCase();
+  if (!s) return "";
+  // Por si alguien manda "pagado"/"pendiente"
+  if (s === "pagado") return "paid";
+  if (s === "pendiente" || s === "pendiente_de_pago") return "pending";
   return s;
 }
 
@@ -71,17 +80,34 @@ export async function PATCH(req, ctx) {
 
   const body = await req.json().catch(() => ({}));
 
-  // ✅ Normaliza
-  const nextStatus = normalizeStatus(body?.status);
+  // ✅ Normaliza inputs (pueden venir ambos o solo uno)
+  const wantsStatus = Object.prototype.hasOwnProperty.call(body || {}, "status");
+  const wantsPayment = Object.prototype.hasOwnProperty.call(body || {}, "payment_status");
 
-  if (!ALLOWED.has(nextStatus)) {
+  const nextStatus = wantsStatus ? normalizeStatus(body?.status) : "";
+  const nextPaymentStatus = wantsPayment ? normalizePaymentStatus(body?.payment_status) : "";
+
+  if (!wantsStatus && !wantsPayment) {
+    return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
+  }
+
+  // ✅ valida status si viene
+  if (wantsStatus && !ALLOWED.has(nextStatus)) {
     return NextResponse.json({ error: "Status inválido", received: nextStatus }, { status: 400 });
   }
 
-  // ✅ 3) Leer status anterior + client_user_id (para notificar)
+  // ✅ valida payment_status si viene
+  if (wantsPayment && !ALLOWED_PAYMENT.has(nextPaymentStatus)) {
+    return NextResponse.json(
+      { error: "payment_status inválido", received: nextPaymentStatus },
+      { status: 400 }
+    );
+  }
+
+  // ✅ leer estado anterior (para saber si cambió algo y para notificaciones/stock)
   const { data: order, error: ordErr } = await supabaseAdmin
     .from("orders")
-    .select("id, status, client_user_id")
+    .select("id, status, client_user_id, payment_status")
     .eq("id", id)
     .single();
 
@@ -89,128 +115,156 @@ export async function PATCH(req, ctx) {
   if (!order) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
 
   const prevStatus = normalizeStatus(order.status);
+  const prevPaymentStatus = normalizePaymentStatus(order.payment_status);
   const clientUserId = order.client_user_id;
 
-  // Si no cambia nada, no hacemos nada
-  if (prevStatus === nextStatus) {
-    return NextResponse.json({ ok: true, id, status: nextStatus, message: "Sin cambios" });
+  const statusChanged = wantsStatus && prevStatus !== nextStatus;
+  const paymentChanged = wantsPayment && prevPaymentStatus !== nextPaymentStatus;
+
+  if (!statusChanged && !paymentChanged) {
+    return NextResponse.json({ ok: true, id, status: prevStatus, payment_status: prevPaymentStatus, message: "Sin cambios" });
   }
 
-  // ✅ 4) Actualizar status (guardar canonical)
-  const { error: updErr } = await supabaseAdmin
-    .from("orders")
-    .update({ status: nextStatus })
-    .eq("id", id);
+  // ✅ construir patch (solo lo que cambió)
+  const patch = {};
 
+  if (statusChanged) {
+    patch.status = nextStatus;
+  }
+
+  if (paymentChanged) {
+    patch.payment_status = nextPaymentStatus;
+
+    // ✅ auditoría de pago (si tienes columnas)
+    if (nextPaymentStatus === "paid") {
+      patch.paid_at = new Date().toISOString();
+      patch.paid_by = auth.user.id;
+    } else if (nextPaymentStatus === "pending") {
+      patch.paid_at = null;
+      patch.paid_by = null;
+    }
+  }
+
+  // ✅ aplicar update una sola vez
+  const { error: updErr } = await supabaseAdmin.from("orders").update(patch).eq("id", id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 });
 
-  // ✅ 4.0) AUDITORÍA (no rompe si falla)
-  try {
-    await supabaseAdmin.from("order_status_logs").insert([
-      {
-        order_id: id,
-        changed_by: auth.user.id,
-        from_status: prevStatus || null,
-        to_status: nextStatus,
-      },
-    ]);
-  } catch (e) {
-    console.error("order_status_logs insert failed:", e);
-  }
-
-  // ✅ 4.1) 🔔 Notificar al CLIENTE cuando pasa a CONFIRMADO (solo 1 vez)
-  if (nextStatus === "confirmado" && prevStatus !== "confirmado" && clientUserId) {
+  // ======================
+  // TODO lo de abajo SOLO si cambió status
+  // ======================
+  if (statusChanged) {
+    // ✅ AUDITORÍA (no rompe si falla)
     try {
-      const notif = {
-        recipient_user_id: clientUserId,
-        recipient_role: "cliente",
-        type: "order_confirmed",
-        title: "Tu pedido fue confirmado",
-        body: `Tu pedido ${id} fue confirmado. En breve seguimos con la preparación.`,
-        url: `/portal/cliente/pedidos/${id}`,
-        is_read: false,
-      };
-
-      const { error: nErr } = await supabaseAdmin.from("notifications").insert([notif]);
-      if (nErr) console.error("Error insert order_confirmed notification:", nErr);
-
-      // 📧 (Opcional) correo...
+      await supabaseAdmin.from("order_status_logs").insert([
+        {
+          order_id: id,
+          changed_by: auth.user.id,
+          from_status: prevStatus || null,
+          to_status: nextStatus,
+        },
+      ]);
     } catch (e) {
-      console.error("Error notifying client on confirmado:", e);
-    }
-  }
-
-  // ✅ 5) Si se cancela (y antes NO estaba cancelado), reponer stock (OPTIMIZADO)
-  if (nextStatus === "cancelado" && prevStatus !== "cancelado") {
-    const { data: items, error: itemsErr } = await supabaseAdmin
-      .from("order_items")
-      .select("suministro_id, qty")
-      .eq("order_id", id);
-
-    if (itemsErr) {
-      return NextResponse.json(
-        { error: `Status actualizado pero no se pudo leer order_items: ${itemsErr.message}` },
-        { status: 400 }
-      );
+      console.error("order_status_logs insert failed:", e);
     }
 
-    // Agrupar por suministro_id (por si hay duplicados)
-    const agg = new Map();
-    for (const it of items || []) {
-      const suministroId = it?.suministro_id;
-      const qty = Math.max(0, Number(it?.qty || 0));
-      if (!suministroId || qty <= 0) continue;
-      agg.set(suministroId, (agg.get(suministroId) || 0) + qty);
-    }
-
-    const ids = Array.from(agg.keys());
-    if (ids.length > 0) {
-      // ✅ OPTIMIZADO: 1 sola lectura de todos los productos
-      const { data: prods, error: prodsErr } = await supabaseAdmin
-        .from("suministros_xhunco")
-        .select("id, stock")
-        .in("id", ids);
-
-      if (prodsErr) {
-        return NextResponse.json(
-          { error: `Pedido cancelado pero no se pudo leer suministros: ${prodsErr.message}` },
-          { status: 400 }
-        );
-      }
-
-      const stockById = new Map((prods || []).map((p) => [p.id, Math.max(0, Number(p.stock || 0))]));
-
-      // ✅ OPTIMIZADO: updates en paralelo (más rápido)
-      const updates = ids.map(async (suministro_id) => {
-        const current = stockById.get(suministro_id);
-        if (current == null) {
-          console.error("Stock restore: suministro no encontrado:", suministro_id);
-          return;
-        }
-
-        const qty = agg.get(suministro_id) || 0;
-        const nextStock = Math.max(0, Number(current) + Number(qty));
-
-        const { error: stockUpdErr } = await supabaseAdmin
-          .from("suministros_xhunco")
-          .update({ stock: nextStock })
-          .eq("id", suministro_id);
-
-        if (stockUpdErr) {
-          throw new Error(`No se pudo reponer stock (${suministro_id}): ${stockUpdErr.message}`);
-        }
-      });
-
+    // ✅ Notificar al CLIENTE cuando pasa a CONFIRMADO (solo 1 vez)
+    if (nextStatus === "confirmado" && prevStatus !== "confirmado" && clientUserId) {
       try {
-        await Promise.all(updates);
+        const notif = {
+          recipient_user_id: clientUserId,
+          recipient_role: "cliente",
+          type: "order_confirmed",
+          title: "Tu pedido fue confirmado",
+          body: `Tu pedido ${id} fue confirmado. En breve seguimos con la preparación.`,
+          url: `/portal/cliente/pedidos/${id}`,
+          is_read: false,
+        };
+
+        const { error: nErr } = await supabaseAdmin.from("notifications").insert([notif]);
+        if (nErr) console.error("Error insert order_confirmed notification:", nErr);
       } catch (e) {
+        console.error("Error notifying client on confirmado:", e);
+      }
+    }
+
+    // ✅ Si se cancela (y antes NO estaba cancelado), reponer stock (OPTIMIZADO)
+    if (nextStatus === "cancelado" && prevStatus !== "cancelado") {
+      const { data: items, error: itemsErr } = await supabaseAdmin
+        .from("order_items")
+        .select("suministro_id, qty")
+        .eq("order_id", id);
+
+      if (itemsErr) {
         return NextResponse.json(
-          { error: `Pedido cancelado pero falló la reposición de stock: ${String(e?.message || e)}` },
+          { error: `Status actualizado pero no se pudo leer order_items: ${itemsErr.message}` },
           { status: 400 }
         );
+      }
+
+      // Agrupar por suministro_id (por si hay duplicados)
+      const agg = new Map();
+      for (const it of items || []) {
+        const suministroId = it?.suministro_id;
+        const qty = Math.max(0, Number(it?.qty || 0));
+        if (!suministroId || qty <= 0) continue;
+        agg.set(suministroId, (agg.get(suministroId) || 0) + qty);
+      }
+
+      const ids = Array.from(agg.keys());
+      if (ids.length > 0) {
+        // ✅ OPTIMIZADO: 1 sola lectura de todos los productos
+        const { data: prods, error: prodsErr } = await supabaseAdmin
+          .from("suministros_xhunco")
+          .select("id, stock")
+          .in("id", ids);
+
+        if (prodsErr) {
+          return NextResponse.json(
+            { error: `Pedido cancelado pero no se pudo leer suministros: ${prodsErr.message}` },
+            { status: 400 }
+          );
+        }
+
+        const stockById = new Map((prods || []).map((p) => [p.id, Math.max(0, Number(p.stock || 0))]));
+
+        // ✅ OPTIMIZADO: updates en paralelo (más rápido)
+        const updates = ids.map(async (suministro_id) => {
+          const current = stockById.get(suministro_id);
+          if (current == null) {
+            console.error("Stock restore: suministro no encontrado:", suministro_id);
+            return;
+          }
+
+          const qty = agg.get(suministro_id) || 0;
+          const nextStock = Math.max(0, Number(current) + Number(qty));
+
+          const { error: stockUpdErr } = await supabaseAdmin
+            .from("suministros_xhunco")
+            .update({ stock: nextStock })
+            .eq("id", suministro_id);
+
+          if (stockUpdErr) {
+            throw new Error(`No se pudo reponer stock (${suministro_id}): ${stockUpdErr.message}`);
+          }
+        });
+
+        try {
+          await Promise.all(updates);
+        } catch (e) {
+          return NextResponse.json(
+            { error: `Pedido cancelado pero falló la reposición de stock: ${String(e?.message || e)}` },
+            { status: 400 }
+          );
+        }
       }
     }
   }
 
-  return NextResponse.json({ ok: true, id, status: nextStatus });
+  // ✅ responder con lo nuevo
+  return NextResponse.json({
+    ok: true,
+    id,
+    status: statusChanged ? nextStatus : prevStatus,
+    payment_status: paymentChanged ? nextPaymentStatus : prevPaymentStatus,
+  });
 }

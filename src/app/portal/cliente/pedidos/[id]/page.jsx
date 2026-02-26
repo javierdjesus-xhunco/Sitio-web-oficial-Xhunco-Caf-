@@ -33,10 +33,11 @@ function formatDelivery(method) {
 }
 
 function formatPayment(method) {
-  const v = String(method || "").toLowerCase();
+  const v = String(method || "").toLowerCase().trim();
   if (v === "cash") return "Efectivo";
   if (v === "tpv") return "TPV";
   if (v === "online") return "En línea";
+  if (v === "transfer" || v === "transferencia") return "Transferencia";
   return method ? String(method) : "—";
 }
 
@@ -224,6 +225,27 @@ export default function PedidoDetallePage() {
 
   const total = useMemo(() => formatMoney(order?.total), [order?.total]);
   const address = order?.delivery_address_snapshot || null;
+
+  // ✅ Snapshot de pago (banco/beneficiario/clabe)
+  const paymentSnapshot = useMemo(() => {
+    const snap = order?.payment_snapshot;
+    return snap && typeof snap === "object" ? snap : null;
+  }, [order?.payment_snapshot]);
+
+  const isTransfer = useMemo(() => {
+    const m = String(order?.payment_method || "").toLowerCase().trim();
+    return m === "transfer" || m === "transferencia";
+  }, [order?.payment_method]);
+
+  const transferInfo = useMemo(() => {
+    if (!isTransfer || !paymentSnapshot) return null;
+    const bank = String(paymentSnapshot.bank_name || "").trim();
+    const holder = String(paymentSnapshot.account_holder || "").trim();
+    const clabe = String(paymentSnapshot.clabe || "").replace(/\s+/g, "");
+    // Solo mostrar si hay algo
+    if (!bank && !holder && !clabe) return null;
+    return { bank, holder, clabe };
+  }, [isTransfer, paymentSnapshot]);
 
   const load = async (silent = false) => {
     if (!id) {
@@ -549,7 +571,7 @@ export default function PedidoDetallePage() {
   if (loading) return <div className="text-gray-600">Cargando pedido…</div>;
 
   return (
-    <div className="max-w-[1100px] w-full text-black">
+    <div className="w-full max-w-none min-w-0 text-black">
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">Detalle del pedido</h1>
@@ -592,15 +614,11 @@ export default function PedidoDetallePage() {
       </div>
 
       {error ? (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
 
       {!order ? (
-        <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 text-gray-600">
-          No hay información del pedido.
-        </div>
+        <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 text-gray-600">No hay información del pedido.</div>
       ) : (
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Izquierda */}
@@ -698,9 +716,31 @@ export default function PedidoDetallePage() {
               ) : null}
             </div>
 
+            {/* ✅ Pago + Datos de transferencia */}
             <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">Pago</div>
               <div className="text-sm font-semibold text-gray-900">{formatPayment(order?.payment_method)}</div>
+
+              {isTransfer && transferInfo ? (
+                <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="text-xs font-semibold text-gray-900">Datos para transferencia</div>
+
+                  <div className="mt-2 space-y-2 text-sm text-gray-800">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-600">Banco</span>
+                      <span className="font-medium">{transferInfo.bank || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-600">Beneficiario</span>
+                      <span className="font-medium">{transferInfo.holder || "—"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-gray-600">CLABE</span>
+                      <span className="font-mono font-semibold">{transferInfo.clabe || "—"}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

@@ -347,11 +347,11 @@ export default function NuevoPedidoPage() {
   }
 
   return (
-    <div className="max-w-[1200px] w-full text-black">
+    <div className="w-full max-w-none text-black">
       {/* Header */}
       <div className="flex items-start justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">
+          <h1 className="text-3xl font-semibold text-gray-900 leading-tight">
             Nuevo pedido{" "}
             {draftNo ? <span className="text-gray-500">#{draftNo}</span> : null}
           </h1>

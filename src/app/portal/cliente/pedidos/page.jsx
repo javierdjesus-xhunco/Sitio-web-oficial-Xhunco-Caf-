@@ -193,7 +193,7 @@ export default function ClientePedidosPage() {
   };
 
   return (
-    <div className="max-w-[1100px] w-full text-black">
+     <div className="w-full max-w-none min-w-0 text-black">
       <div className="rounded-3xl border border-black/10 bg-white p-6 md:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
