@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Home, PlusCircle, Package, LogOut } from "lucide-react";
+import { Home, PlusCircle, Package, LogOut, ClipboardList } from "lucide-react";
 
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
@@ -31,8 +31,9 @@ export default function ClienteLayout({ children }) {
   const links = useMemo(
     () => [
       { href: "/portal/cliente/dashboard", label: "Inicio", icon: Home },
-      { href: "/portal/cliente/pedidos/nuevo", label: "Crear pedido", icon: PlusCircle },
-      { href: "/portal/cliente/pedidos", label: "Mis pedidos", icon: Package },
+      { href: "/portal/cliente/pedidos/nuevo", label: "Crear Pedido", icon: PlusCircle },
+      { href: "/portal/cliente/pedidos", label: "Mis Pedidos", icon: Package },
+      { href: "/portal/cliente/suministros/solicitudes", label: "Mis Solicitudes", icon: ClipboardList },
     ],
     []
   );

@@ -11,7 +11,20 @@ export async function GET() {
 
   const { data: rows, error } = await supabase
     .from("orders")
-    .select("id, status, price_tier_snapshot, subtotal, total, created_at")
+    .select(
+      [
+        "id",
+        "status",
+        // ✅ pago independiente
+        "payment_status",
+        "paid_at",
+        // lo que ya tenías:
+        "price_tier_snapshot",
+        "subtotal",
+        "total",
+        "created_at",
+      ].join(",")
+    )
     .eq("client_user_id", authData.user.id)
     .order("created_at", { ascending: false })
     .limit(200);

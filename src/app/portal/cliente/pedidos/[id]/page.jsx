@@ -41,6 +41,14 @@ function formatPayment(method) {
   return method ? String(method) : "—";
 }
 
+// ✅ NUEVO: estado de pago legible
+function formatPaymentStatus(s) {
+  const v = String(s || "pending").toLowerCase().trim();
+  if (v === "paid") return "Pagado";
+  if (v === "pending") return "Pendiente de pago";
+  return s ? String(s) : "—";
+}
+
 /** ===== Status (alineado a tu sistema real) ===== */
 const STATUS_FLOW = [
   { key: "pendiente", label: "Pendiente" },
@@ -52,7 +60,6 @@ const STATUS_FLOW = [
 
 function normalizeStatusKey(statusRaw) {
   const s = String(statusRaw || "pendiente").toLowerCase().trim();
-  // tolerancia legacy
   if (s === "en proceso" || s === "proceso") return "en_preparacion";
   if (s === "finalizado") return "entregado";
   return s || "pendiente";
@@ -91,9 +98,7 @@ function StatusTimeline({ statusRaw, createdAt }) {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
         <div className="text-sm font-semibold text-red-800">Pedido cancelado</div>
-        <div className="mt-1 text-xs text-red-700">
-          {createdAt ? `Creado: ${formatDateTime(createdAt)}` : null}
-        </div>
+        <div className="mt-1 text-xs text-red-700">{createdAt ? `Creado: ${formatDateTime(createdAt)}` : null}</div>
       </div>
     );
   }
@@ -115,7 +120,6 @@ function StatusTimeline({ statusRaw, createdAt }) {
 
           return (
             <div key={step.key} className="flex items-start gap-3">
-              {/* Rail */}
               <div className="relative flex flex-col items-center">
                 <div
                   className={[
@@ -136,7 +140,6 @@ function StatusTimeline({ statusRaw, createdAt }) {
                 ) : null}
               </div>
 
-              {/* Text */}
               <div className="min-w-0 pt-0.5">
                 <div
                   className={[
@@ -175,7 +178,6 @@ function getBusinessNameFromAddressSnapshot(order) {
   return a?.business_name || a?.company || a?.negocio || a?.razon_social || a?.nombre_negocio || "";
 }
 
-// ✅ sirve para /public o URL absoluta (supabase)
 async function toDataUrlFromAny(src) {
   const res = await fetch(src, { cache: "no-store" });
   if (!res.ok) throw new Error(`No se pudo cargar ${src}`);
@@ -188,7 +190,6 @@ async function toDataUrlFromAny(src) {
   });
 }
 
-// ✅ dibujar imagen manteniendo proporción y límite de alto
 function addImageFit(doc, dataUrl, x, y, targetW, maxH) {
   const props = doc.getImageProperties(dataUrl);
   const ratio = props.height / props.width;
@@ -217,16 +218,12 @@ export default function PedidoDetallePage() {
   const [items, setItems] = useState([]);
   const [downloading, setDownloading] = useState(false);
 
-  // 👇 nombre del negocio (para UI y PDF)
   const [businessName, setBusinessName] = useState("");
-
-  // ✅ logo del cliente
   const [clientLogoUrl, setClientLogoUrl] = useState("");
 
   const total = useMemo(() => formatMoney(order?.total), [order?.total]);
   const address = order?.delivery_address_snapshot || null;
 
-  // ✅ Snapshot de pago (banco/beneficiario/clabe)
   const paymentSnapshot = useMemo(() => {
     const snap = order?.payment_snapshot;
     return snap && typeof snap === "object" ? snap : null;
@@ -242,7 +239,6 @@ export default function PedidoDetallePage() {
     const bank = String(paymentSnapshot.bank_name || "").trim();
     const holder = String(paymentSnapshot.account_holder || "").trim();
     const clabe = String(paymentSnapshot.clabe || "").replace(/\s+/g, "");
-    // Solo mostrar si hay algo
     if (!bank && !holder && !clabe) return null;
     return { bank, holder, clabe };
   }, [isTransfer, paymentSnapshot]);
@@ -271,13 +267,11 @@ export default function PedidoDetallePage() {
     if (!silent) setLoading(false);
   };
 
-  // Cargar pedido
   useEffect(() => {
     load(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Auto-refresh status (detener si entregado/cancelado)
   useEffect(() => {
     if (!id) return;
 
@@ -289,7 +283,6 @@ export default function PedidoDetallePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, order?.status]);
 
-  // ✅ Traer negocio y logo desde /api/cliente/me
   useEffect(() => {
     const run = async () => {
       try {
@@ -299,14 +292,11 @@ export default function PedidoDetallePage() {
           if (data?.client?.business_name) setBusinessName(data.client.business_name);
           if (data?.client?.logo_url) setClientLogoUrl(data.client.logo_url);
         }
-      } catch {
-        // no rompemos
-      }
+      } catch {}
     };
     run();
   }, []);
 
-  // Fallback: del snapshot si viene
   useEffect(() => {
     if (!order) return;
     const fromSnap = getBusinessNameFromAddressSnapshot(order);
@@ -321,14 +311,12 @@ export default function PedidoDetallePage() {
       const { jsPDF } = await import("jspdf");
       const autoTable = (await import("jspdf-autotable")).default;
 
-      // ===== Config =====
       const BRAND_RGB = [49, 87, 44];
       const doc = new jsPDF({ unit: "mm", format: "a4" });
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
       const margin = 14;
 
-      // ===== Cargar ambos logos =====
       let xhuncoLogo = null;
       let clientLogo = null;
 
@@ -346,7 +334,6 @@ export default function PedidoDetallePage() {
         }
       }
 
-      // ===== Datos =====
       const business = safeText(businessName || getBusinessNameFromAddressSnapshot(order) || "Cliente");
       const folioShort = String(order?.id || "").slice(0, 8).toUpperCase();
       const uuid = safeText(order?.id, "—");
@@ -358,24 +345,20 @@ export default function PedidoDetallePage() {
       const a = order?.delivery_address_snapshot || null;
       const isDelivery = String(order?.delivery_method || "").toLowerCase() === "delivery";
 
-      // ===== Header =====
       doc.setFillColor(247, 248, 249);
       doc.rect(0, 0, pageW, 26, "F");
       doc.setFillColor(...BRAND_RGB);
       doc.rect(0, 25, pageW, 1.2, "F");
 
-      // ===== Logos =====
       const logoY = 8.7;
       const maxH = 14;
 
-      // Xhunco izquierda
       let leftW = 0;
       if (xhuncoLogo) {
         const r = addImageFit(doc, xhuncoLogo, margin, logoY, 38, maxH);
         leftW = r.w;
       }
 
-      // ===== Bloque derecho: [logoCliente] Pedido #XXXX =====
       const pedidoText = `Pedido #${folioShort}`;
 
       doc.setFontSize(10);
@@ -399,20 +382,16 @@ export default function PedidoDetallePage() {
         const blockW = clientW + gap + pedidoTextW;
         const blockX = pageW - margin - blockW;
 
-        // logo cliente ANTES
         doc.addImage(clientLogo, "PNG", blockX, 9.2, clientW, clientH);
-        // texto después del logo
         doc.text(pedidoText, blockX + clientW + gap, 11);
       } else {
         doc.text(pedidoText, pageW - margin, 11, { align: "right" });
       }
 
-      // Fecha abajo derecha
       doc.setFontSize(9);
       doc.setTextColor(90, 90, 90);
       doc.text(fecha, pageW - margin, 17, { align: "right" });
 
-      // ===== Texto principal (izquierda-centro) =====
       const textX = xhuncoLogo ? margin + leftW + 6 : margin;
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(12);
@@ -422,7 +401,6 @@ export default function PedidoDetallePage() {
       doc.setTextColor(80, 80, 80);
       doc.text(business, textX, 17);
 
-      // ===== Bloque Cliente / Pedido =====
       let y = 34;
       doc.setDrawColor(230, 230, 230);
       doc.setFillColor(255, 255, 255);
@@ -447,7 +425,6 @@ export default function PedidoDetallePage() {
 
       y += 36;
 
-      // ===== Entrega / Pago =====
       doc.setDrawColor(230, 230, 230);
       doc.setFillColor(255, 255, 255);
       doc.roundedRect(margin, y, pageW - margin * 2, isDelivery ? 34 : 20, 3, 3, "FD");
@@ -482,7 +459,6 @@ export default function PedidoDetallePage() {
         y += 28;
       }
 
-      // ===== Tabla Productos =====
       const rows = items.map((it, idx) => {
         const name =
           it?.suministros_xhunco?.nombre ||
@@ -516,7 +492,6 @@ export default function PedidoDetallePage() {
         },
       });
 
-      // ===== Total =====
       const tableEndY = doc.lastAutoTable?.finalY || y;
       const panelY = tableEndY + 8;
 
@@ -532,7 +507,6 @@ export default function PedidoDetallePage() {
       doc.setTextColor(0, 0, 0);
       doc.text(formatMoney(order?.total), pageW - margin - 74, panelY + 15);
 
-      // ===== Footer =====
       const footerY = Math.min(panelY + 34, pageH - 18);
       doc.setDrawColor(235, 235, 235);
       doc.line(margin, footerY - 6, pageW - margin, footerY - 6);
@@ -546,7 +520,6 @@ export default function PedidoDetallePage() {
       doc.setTextColor(120, 120, 120);
       doc.text("Este documento es un comprobante interno de pedido.", margin, footerY + 11);
 
-      // ✅ Abrir + descargar
       const filename = `Xhunco_Pedido_${folioShort}.pdf`;
       const pdfBlob = doc.output("blob");
       const url = URL.createObjectURL(pdfBlob);
@@ -684,7 +657,6 @@ export default function PedidoDetallePage() {
           <div className="lg:col-span-4 rounded-3xl border border-gray-200 bg-white p-6">
             <div className="text-sm font-semibold text-gray-900">Resumen</div>
 
-            {/* ✅ TIMELINE PRO */}
             <div className="mt-4">
               <StatusTimeline statusRaw={order?.status} createdAt={order?.created_at} />
             </div>
@@ -692,6 +664,15 @@ export default function PedidoDetallePage() {
             <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">Total</div>
               <div className="text-lg font-semibold text-gray-900">{total}</div>
+            </div>
+
+            {/* ✅ NUEVO: Estado de pago independiente */}
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="text-xs text-gray-500">Estado de pago</div>
+              <div className="text-sm font-semibold text-gray-900">{formatPaymentStatus(order?.payment_status)}</div>
+              {String(order?.payment_status || "").toLowerCase() === "paid" && order?.paid_at ? (
+                <div className="mt-1 text-xs text-gray-500">Pagado: {formatDateTime(order?.paid_at)}</div>
+              ) : null}
             </div>
 
             <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">

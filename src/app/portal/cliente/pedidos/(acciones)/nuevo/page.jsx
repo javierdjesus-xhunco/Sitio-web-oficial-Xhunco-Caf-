@@ -82,6 +82,14 @@ export default function NuevoPedidoPage() {
   // ✅ Modal resumen móvil
   const [cartModalOpen, setCartModalOpen] = useState(false);
 
+  // ✅ Solicitudes (solo pendientes) - ultra ligero
+  const [reqOpen, setReqOpen] = useState(false);
+  const [reqProduct, setReqProduct] = useState(null);
+  const [reqQty, setReqQty] = useState(1);
+  const [reqSending, setReqSending] = useState(false);
+  const [reqError, setReqError] = useState("");
+  const [myPendingRequests, setMyPendingRequests] = useState([]);
+
   const loadSuministros = async () => {
     setError("");
     const res = await fetch("/api/cliente/suministros", { cache: "no-store" });
@@ -96,11 +104,19 @@ export default function NuevoPedidoPage() {
     return true;
   };
 
+  const loadMyPendingRequests = async () => {
+    const res = await fetch("/api/cliente/suministros/solicitudes", { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return;
+    setMyPendingRequests(data.items || []);
+  };
+
   // 1) Cargar suministros
   useEffect(() => {
     (async () => {
       setLoading(true);
       await loadSuministros();
+      await loadMyPendingRequests(); // ✅ solicitudes pendientes
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -263,6 +279,60 @@ export default function NuevoPedidoPage() {
     setImgOpen(false);
     setImgSrc("");
     setImgAlt("");
+  };
+
+  // ✅ Map de solicitudes pendientes por suministro (O(1) en render)
+  const pendingReqBySuministro = useMemo(() => {
+    const m = new Map();
+    for (const r of myPendingRequests || []) {
+      if (r?.suministro_id) m.set(r.suministro_id, r);
+    }
+    return m;
+  }, [myPendingRequests]);
+
+  const openRequestModal = (p) => {
+    setReqError("");
+    setReqQty(1);
+    setReqProduct(p);
+    setReqOpen(true);
+  };
+
+  const closeRequestModal = () => {
+    setReqOpen(false);
+    setReqProduct(null);
+    setReqQty(1);
+    setReqError("");
+  };
+
+  const sendRequest = async () => {
+    if (!reqProduct?.id) return;
+    setReqSending(true);
+    setReqError("");
+    setNotice("");
+    setError("");
+
+    try {
+      const res = await fetch("/api/cliente/suministros/solicitudes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ suministro_id: reqProduct.id, qty: reqQty }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setReqError(data?.error || "No se pudo enviar la solicitud");
+        setReqSending(false);
+        return;
+      }
+
+      await loadMyPendingRequests(); // ✅ refresco ligero
+      setNotice("Solicitud enviada. Te avisaremos cuando sea confirmada.");
+      closeRequestModal();
+    } catch (e) {
+      setReqError("Error de red al enviar solicitud");
+    } finally {
+      setReqSending(false);
+    }
   };
 
   // filtro combinado
@@ -448,7 +518,8 @@ export default function NuevoPedidoPage() {
             </div>
 
             <div className="text-xs text-gray-500">
-              Mostrando: <span className="text-gray-900">{filteredItems.length}</span> productos
+              Mostrando: <span className="text-gray-900">{filteredItems.length}</span>{" "}
+              productos
             </div>
           </div>
 
@@ -491,7 +562,9 @@ export default function NuevoPedidoPage() {
                       {p.nombre}
                     </div>
 
-                    <div className="mt-1 text-[11px] text-gray-600">{p.categoria || ""}</div>
+                    <div className="mt-1 text-[11px] text-gray-600">
+                      {p.categoria || ""}
+                    </div>
 
                     <div className="mt-1 text-[11px] text-gray-500">
                       {p.marca ? `${p.marca} · ` : ""}
@@ -515,41 +588,71 @@ export default function NuevoPedidoPage() {
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => removeOne(p)}
-                      disabled={inCart <= 0}
-                      className="rounded-xl border bg-white py-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
-                    >
-                      −
-                    </button>
+                  {/* ✅ Acciones */}
+                  {outOfStock ? (
+                    <div className="mt-3">
+                      {pendingReqBySuministro.has(p.id) ? (
+                        <div className="mb-2 text-center text-[11px] text-amber-800">
+                          Solicitud pendiente · Cantidad:{" "}
+                          <span className="font-semibold">
+                            {pendingReqBySuministro.get(p.id)?.qty}
+                          </span>
+                        </div>
+                      ) : null}
 
-                    <div
-                      className="rounded-xl border bg-white py-2 text-sm text-gray-900 text-center"
-                      style={{ borderColor: "rgba(0,0,0,0.12)" }}
-                    >
-                      {inCart}
+                      <button
+                        type="button"
+                        onClick={() => openRequestModal(p)}
+                        className="w-full rounded-xl py-2 text-sm text-white transition"
+                        style={{ backgroundColor: BRAND_GREEN }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                        }}
+                      >
+                        Solicitar
+                      </button>
                     </div>
+                  ) : (
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => removeOne(p)}
+                        disabled={inCart <= 0}
+                        className="rounded-xl border bg-white py-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
+                      >
+                        −
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => addOne(p)}
-                      disabled={outOfStock || atMax}
-                      className="rounded-xl py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
-                      style={{ backgroundColor: BRAND_GREEN }}
-                      onMouseEnter={(e) => {
-                        if (!outOfStock && !atMax) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = BRAND_GREEN;
-                      }}
-                      title={outOfStock ? "Sin stock" : atMax ? "Máximo por stock" : "Agregar"}
-                    >
-                      +
-                    </button>
-                  </div>
+                      <div
+                        className="rounded-xl border bg-white py-2 text-sm text-gray-900 text-center"
+                        style={{ borderColor: "rgba(0,0,0,0.12)" }}
+                      >
+                        {inCart}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => addOne(p)}
+                        disabled={outOfStock || atMax}
+                        className="rounded-xl py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        style={{ backgroundColor: BRAND_GREEN }}
+                        onMouseEnter={(e) => {
+                          if (!outOfStock && !atMax)
+                            e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                        }}
+                        title={outOfStock ? "Sin stock" : atMax ? "Máximo por stock" : "Agregar"}
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -687,12 +790,7 @@ export default function NuevoPedidoPage() {
           title="Ver carrito"
         >
           <div className="relative p-3">
-            <img
-              src="/carrito.png"
-              alt="Carrito"
-              className="h-8 w-8 object-contain"
-              loading="eager"
-            />
+            <img src="/carrito.png" alt="Carrito" className="h-8 w-8 object-contain" loading="eager" />
 
             <span
               className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 rounded-full grid place-items-center text-[11px] font-semibold"
@@ -830,6 +928,111 @@ export default function NuevoPedidoPage() {
                 >
                   Ir a resumen
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ✅ Modal solicitar */}
+      {reqOpen ? (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/50" onClick={closeRequestModal} />
+
+          <div className="absolute inset-0 flex items-end sm:items-center justify-center p-3">
+            <div className="w-full max-w-[520px] rounded-3xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+              <div className="p-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-900">Solicitar suministro</div>
+                  <div className="mt-1 text-xs text-gray-600 line-clamp-2">
+                    {reqProduct?.nombre || "—"}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeRequestModal}
+                  className="rounded-full border px-4 py-2 text-sm transition"
+                  style={{
+                    borderColor: "rgba(0,0,0,0.12)",
+                    color: BRAND_GREEN,
+                    backgroundColor: "white",
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div className="border-t border-gray-200" />
+
+              <div className="p-4">
+                <div className="text-xs text-gray-600 mb-2">Selecciona cantidad</div>
+
+                {/* Selector cantidad tipo - 0 + */}
+              <div className="mt-2 grid grid-cols-3 gap-2">
+             <button
+              type="button"
+              onClick={() => setReqQty((q) => Math.max(1, Number(q || 1) - 1))}
+              className="rounded-xl border bg-white py-2 text-sm transition"
+              style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
+              disabled={reqSending}
+               >
+              −
+              </button>
+
+              <div
+             className="rounded-xl border bg-white py-2 text-sm text-gray-900 text-center"
+             style={{ borderColor: "rgba(0,0,0,0.12)" }}
+              >
+              {reqQty}
+             </div>
+
+             <button
+              type="button"
+              onClick={() => setReqQty((q) => Math.min(999, Number(q || 1) + 1))}
+              className="rounded-xl py-2 text-sm text-white transition disabled:opacity-60"
+              style={{ backgroundColor: BRAND_GREEN }}
+              disabled={reqSending}
+              onMouseEnter={(e) => {
+              if (!reqSending) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+              }}
+              onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = BRAND_GREEN;
+              }}
+              >
+              +
+              </button>
+              </div>
+
+              <div className="mt-2 text-[11px] text-gray-500">
+               Cantidad mínima: 1 · Máxima: 999
+              </div>
+
+                {reqError ? (
+                  <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {reqError}
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  disabled={reqSending}
+                  onClick={sendRequest}
+                  className="mt-4 w-full rounded-full px-6 py-3 text-sm text-white disabled:opacity-60 transition"
+                  style={{ backgroundColor: BRAND_GREEN }}
+                  onMouseEnter={(e) => {
+                    if (!reqSending) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                  }}
+                >
+                  {reqSending ? "Enviando..." : "Enviar solicitud"}
+                </button>
+
+                <div className="mt-2 text-[11px] text-gray-500">
+                  El admin confirmará tu solicitud para que puedas dar seguimiento.
+                </div>
               </div>
             </div>
           </div>

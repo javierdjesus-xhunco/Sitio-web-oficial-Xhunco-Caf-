@@ -2,9 +2,21 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Menu, X } from "lucide-react";
+import {
+  Menu,
+  X,
+  LayoutDashboard,
+  ShoppingBag,
+  Users,
+  Package,
+  Boxes,
+  BarChart3,
+  ClipboardList,
+  PlusCircle,
+  LogOut,
+} from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
 
 const BRAND_GREEN = "#31572c";
@@ -32,7 +44,8 @@ function displayName(p) {
   return (p?.email || "Administrador").trim();
 }
 
-function NavItem({ href, label, onNavigate, prefetch = true }) {
+/** ✅ Botón/Link unificado: mismo alto, mismo padding, icono a la izquierda */
+function NavButton({ href, label, icon: Icon, onNavigate, prefetch = true }) {
   const pathname = usePathname();
   const active = pathname?.startsWith(href);
 
@@ -41,8 +54,13 @@ function NavItem({ href, label, onNavigate, prefetch = true }) {
       href={href}
       prefetch={prefetch}
       onClick={() => onNavigate?.({ href })}
-      className="block rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200"
+      className={cx(
+        "w-full flex items-center gap-3 rounded-2xl border px-4",
+        "h-[48px] text-sm font-semibold transition-all duration-200",
+        "select-none"
+      )}
       style={{
+        borderColor: "rgba(0,0,0,0.10)",
         backgroundColor: active ? BRAND_GREEN : "transparent",
         color: active ? "white" : "black",
       }}
@@ -59,12 +77,14 @@ function NavItem({ href, label, onNavigate, prefetch = true }) {
         }
       }}
     >
-      {label}
+      {Icon ? <Icon size={18} /> : null}
+      <span className="truncate">{label}</span>
     </Link>
   );
 }
 
-function QuickNavItem({ href, title, subtitle, onNavigate, prefetch = false }) {
+/** ✅ Tarjeta/Acceso rápido unificado: mismo alto, mismo layout e icono */
+function QuickCard({ href, title, subtitle, icon: Icon, onNavigate, prefetch = false }) {
   const pathname = usePathname();
   const active = pathname?.startsWith(href);
 
@@ -73,7 +93,10 @@ function QuickNavItem({ href, title, subtitle, onNavigate, prefetch = false }) {
       href={href}
       prefetch={prefetch}
       onClick={() => onNavigate?.({ href })}
-      className="block rounded-2xl border border-gray-200 px-4 py-3 transition-all duration-200"
+      className={cx(
+        "w-full flex items-center gap-3 rounded-2xl border border-gray-200 px-4",
+        "h-[56px] transition-all duration-200"
+      )}
       style={{
         backgroundColor: active ? BRAND_GREEN : "white",
         color: active ? "white" : "black",
@@ -91,8 +114,22 @@ function QuickNavItem({ href, title, subtitle, onNavigate, prefetch = false }) {
         }
       }}
     >
+      <div className="shrink-0">
+        <div
+          className="grid h-10 w-10 place-items-center rounded-2xl border"
+          style={{
+            borderColor: active ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.10)",
+            backgroundColor: active ? "rgba(255,255,255,0.15)" : "rgba(49,87,44,0.08)",
+          }}
+        >
+          {Icon ? (
+            <Icon size={18} color={active ? "white" : BRAND_GREEN} />
+          ) : null}
+        </div>
+      </div>
+
       <div className="min-w-0">
-        <div className="text-sm font-semibold">{title}</div>
+        <div className="text-sm font-semibold truncate">{title}</div>
         <div
           className="truncate text-xs"
           style={{ color: active ? "rgba(255,255,255,0.85)" : "#6b7280" }}
@@ -132,57 +169,94 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
             </div>
           </div>
 
-          {/* ✅ Campanita restaurada */}
           <NotificationsBell />
         </div>
       </div>
 
-      {/* Nav principal */}
+      {/* Nav principal (unificado) */}
       <div className="space-y-2">
-        <NavItem href="/portal/admin/dashboard" label="Inicio" onNavigate={onNavigate} />
-        <NavItem href="/portal/admin/pedidos" label="Pedidos" onNavigate={onNavigate} />
+        <NavButton
+          href="/portal/admin/dashboard"
+          label="Inicio"
+          icon={LayoutDashboard}
+          onNavigate={onNavigate}
+        />
+        <NavButton
+          href="/portal/admin/pedidos"
+          label="Pedidos"
+          icon={ShoppingBag}
+          onNavigate={onNavigate}
+        />
+        {/* ✅ NUEVO: Solicitudes de suministros */}
+        <NavButton
+          href="/portal/admin/suministros/solicitudes"
+          label="Solicitudes"
+          icon={ClipboardList}
+          onNavigate={onNavigate}
+        />
       </div>
 
-      {/* Accesos rápidos */}
+      {/* Accesos rápidos (cards unificadas) */}
       <div className="mt-4 space-y-2">
-        <QuickNavItem
+        <QuickCard
           href="/portal/admin/clientes"
           title="Clientes"
           subtitle="Visualizar y agregar clientes"
+          icon={Users}
           onNavigate={onNavigate}
         />
-        <QuickNavItem
+        <QuickCard
           href="/portal/admin/suministros"
           title="Suministros"
           subtitle="Agregar productos"
+          icon={Package}
           onNavigate={onNavigate}
         />
-        <QuickNavItem
+        <QuickCard
           href="/portal/admin/inventario"
           title="Inventario"
           subtitle="Revisar stock general"
+          icon={Boxes}
           onNavigate={onNavigate}
         />
-        <QuickNavItem
+        <QuickCard
           href="/portal/admin/reportes"
           title="Reportes"
           subtitle="Descargar rendimiento"
+          icon={BarChart3}
           onNavigate={onNavigate}
         />
-         <button
-        className="mt-6 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:opacity-95 active:scale-[0.99]"
-        style={{ background: BRAND_GREEN }}
-        onClick={() => onNavigate?.({ href: "/portal/admin/pedidos/nuevo" })}
-      >
-        Crear pedido manual
-      </button>
+
+        {/* ✅ Botón unificado (mismo alto/ancho) */}
+        <button
+          className={cx(
+            "w-full flex items-center justify-center gap-2 rounded-2xl",
+            "h-[48px] px-4 text-sm font-semibold text-white",
+            "transition-all duration-200 hover:opacity-95 active:scale-[0.99]"
+          )}
+          style={{ background: BRAND_GREEN }}
+          onClick={() => onNavigate?.({ href: "/portal/admin/pedidos/nuevo" })}
+          type="button"
+        >
+          <PlusCircle size={18} />
+          Crear pedido manual
+        </button>
       </div>
+
+      {/* Logout unificado */}
       <button
         onClick={onLogoutClick}
-        className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-100"
+        className={cx(
+          "mt-4 w-full flex items-center justify-center gap-2 rounded-2xl",
+          "h-[48px] border border-red-200 bg-red-50",
+          "px-4 text-sm font-semibold text-red-600 hover:bg-red-100"
+        )}
+        type="button"
       >
+        <LogOut size={18} />
         Cerrar sesión
       </button>
+
       <div className="mt-3 text-[11px] text-gray-400">Xhunco · Admin Panel</div>
     </div>
   );
@@ -194,8 +268,9 @@ export default function AdminLayout({ children }) {
 
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const aliveRef = useRef(true);
 
   const handleNavigate = useCallback(
     (payload) => {
@@ -210,7 +285,7 @@ export default function AdminLayout({ children }) {
   }, [pathname]);
 
   useEffect(() => {
-    let alive = true;
+    aliveRef.current = true;
 
     async function loadProfile() {
       setLoadingProfile(true);
@@ -218,7 +293,7 @@ export default function AdminLayout({ children }) {
         const { data: auth } = await supabase.auth.getUser();
         const user = auth?.user;
         if (!user) {
-          if (alive) setProfile(null);
+          if (aliveRef.current) setProfile(null);
           return;
         }
 
@@ -228,7 +303,7 @@ export default function AdminLayout({ children }) {
           .eq("id", user.id)
           .limit(1);
 
-        if (!alive) return;
+        if (!aliveRef.current) return;
 
         if (error) {
           console.error(error);
@@ -237,13 +312,13 @@ export default function AdminLayout({ children }) {
           setProfile(data?.[0] || { email: user.email, role: "admin" });
         }
       } finally {
-        if (alive) setLoadingProfile(false);
+        if (aliveRef.current) setLoadingProfile(false);
       }
     }
 
     loadProfile();
     return () => {
-      alive = false;
+      aliveRef.current = false;
     };
   }, []);
 
@@ -264,6 +339,7 @@ export default function AdminLayout({ children }) {
             onClick={() => setDrawerOpen(true)}
             className="rounded-xl border border-gray-200 bg-white p-2 text-black hover:bg-gray-50 active:scale-[0.99] transition"
             aria-label="Abrir menú"
+            type="button"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -274,7 +350,6 @@ export default function AdminLayout({ children }) {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* ✅ Campanita también en mobile */}
             <NotificationsBell />
             <div
               className="grid h-9 w-9 place-items-center rounded-xl text-sm font-extrabold text-white"
@@ -302,6 +377,7 @@ export default function AdminLayout({ children }) {
                 onClick={() => setDrawerOpen(false)}
                 className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50 active:scale-[0.99] transition"
                 aria-label="Cerrar menú"
+                type="button"
               >
                 <X className="h-5 w-5" />
               </button>

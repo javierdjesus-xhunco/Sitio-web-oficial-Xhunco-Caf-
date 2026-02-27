@@ -58,6 +58,11 @@ export async function GET(request, { params }) {
         [
           "id",
           "status",
+
+          // ✅ NUEVO: pago independiente (para que el cliente lo vea)
+          "payment_status",
+          "paid_at",
+
           "total",
           "created_at",
           "client_user_id",
@@ -85,6 +90,7 @@ export async function GET(request, { params }) {
       ...order,
       payment_method: normalizePaymentMethod(order.payment_method),
       payment_snapshot: sanitizePaymentSnapshot(order.payment_snapshot),
+      // payment_status y paid_at ya vienen en "order" por el select (no se tocan)
     };
 
     const { data: items, error: itemsErr } = await supabaseAdmin

@@ -1,6 +1,23 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
+function clampInt(v, min, max, fallback) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+// evita romper el or/ilike con caracteres raros
+function escapeIlike(s) {
+  return String(s || "")
+    .replaceAll("\\", "\\\\")
+    .replaceAll("%", "\\%")
+    .replaceAll("_", "\\_")
+    .replaceAll(",", " ")
+    .replaceAll('"', " ")
+    .trim();
+}
+
 export async function GET(req) {
   const supabase = await supabaseServer();
 
@@ -26,31 +43,33 @@ export async function GET(req) {
     return NextResponse.json({ error: "Usuario inactivo" }, { status: 403 });
   }
 
-  // ✅ SOLO AGREGADO: soportar super_admin también
+  // ✅ soporta super_admin también
   if (!["admin", "superadmin", "super_admin"].includes(prof.role)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   // ✅ Params
   const { searchParams } = new URL(req.url);
-  const q = (searchParams.get("q") || "").trim();
+  const rawQ = (searchParams.get("q") || "").trim();
+  const q = escapeIlike(rawQ);
 
-  const page = Math.max(1, Number(searchParams.get("page") || 1));
-  const pageSize = Math.min(50, Math.max(10, Number(searchParams.get("pageSize") || 25)));
+  const page = clampInt(searchParams.get("page"), 1, 100000, 1);
+
+  // ✅ OPT: permitir hasta 500 (tu UI usa 500)
+  const pageSize = clampInt(searchParams.get("pageSize"), 10, 500, 25);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
   // ✅ Query (alineado a tu DB real)
-  // ✅ SOLO AGREGADO: "price_tier" en el select (para precios)
   let query = supabase
     .from("clients")
     .select(
       [
         "id",
-        "user_id", // ✅ ya lo tenías
+        "user_id",
         "business_name",
-        "price_tier", // ✅ AGREGADO
+        "price_tier",
         "owner_name",
         "owner_first_name",
         "owner_middle_name",
@@ -66,6 +85,8 @@ export async function GET(req) {
     .range(from, to);
 
   if (q) {
+    // Nota: usamos \\ para escape; ilike en Postgres soporta ESCAPE,
+    // pero PostgREST no expone ESCAPE; aun así, esto reduce errores.
     query = query.or(
       [
         `business_name.ilike.%${q}%`,
@@ -86,9 +107,7 @@ export async function GET(req) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // ✅ Normalización: si owner_name viene vacío, lo armamos con los campos por partes
-  // ✅ Agregamos un "user_id" de salida consistente (fallback: id)
-  // ✅ Agregamos label para UI
+  // ✅ Normalización: owner_name fallback + label para UI
   const normalized = (data || []).map((c) => {
     const builtOwner = [
       c.owner_first_name,
@@ -106,8 +125,8 @@ export async function GET(req) {
     return {
       ...c,
       owner_name: owner,
-      user_id: c.user_id || c.id, // ✅ ya lo tenías
-      label, // ✅ ya lo tenías
+      user_id: c.user_id || c.id,
+      label,
     };
   });
 

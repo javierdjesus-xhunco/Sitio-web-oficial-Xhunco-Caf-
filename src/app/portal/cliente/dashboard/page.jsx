@@ -12,6 +12,7 @@ import {
   PlusCircle,
   ClipboardList,
   RefreshCw,
+  BadgeDollarSign,
 } from "lucide-react";
 
 const NotificationsBell = dynamic(() => import("@/components/NotificationsBell"), {
@@ -24,12 +25,13 @@ const KPI_THEMES = {
   blue: { bg: "#EEF5FF", border: "#D9E7FF", title: "#6B8AC9", value: "#2563EB", note: "#5B7BBE" },
   yellow: { bg: "#FFF7E8", border: "#FFE6B8", title: "#C48A1C", value: "#D97706", note: "#B7791F" },
   purple: { bg: "#F4F0FF", border: "#E3D8FF", title: "#7C6FD1", value: "#7C3AED", note: "#6D62C6" },
+  green: { bg: "#ECFDF3", border: "#CFF7DD", title: "#1F7A3A", value: BRAND_GREEN, note: "#1F7A3A" },
   neutral: {
     bg: "#FFFFFF",
     border: "rgba(0,0,0,0.10)",
     title: "rgba(0,0,0,0.50)",
-    value: "#000000",
-    note: BRAND_GREEN,
+    value: "#0B0B0B",
+    note: "rgba(0,0,0,0.55)",
   },
 };
 
@@ -50,7 +52,8 @@ function formatMonthLabel(ym) {
   try {
     const [y, m] = ym.split("-").map(Number);
     const d = new Date(y, (m || 1) - 1, 1);
-    return d.toLocaleDateString("es-MX", { year: "numeric", month: "long" });
+    const txt = d.toLocaleDateString("es-MX", { year: "numeric", month: "long" });
+    return txt.charAt(0).toUpperCase() + txt.slice(1);
   } catch {
     return ym;
   }
@@ -59,10 +62,26 @@ function formatMonthLabel(ym) {
 const STATUS_LABEL = {
   pendiente: "Pendiente",
   aprobado: "Aprobado",
+  confirmado: "Confirmado",
+  confirmada: "Confirmada",
+  "en proceso": "En proceso",
   enviado: "Enviado",
   entregado: "Entregado",
+  finalizado: "Finalizado",
   cancelado: "Cancelado",
+  cancelada: "Cancelada",
+  rechazado: "Rechazado",
+  rechazada: "Rechazada",
 };
+
+function normalizeAgg(x) {
+  const count = Number(x?.count || 0);
+  const total = Number(x?.total || 0);
+  return {
+    count: Number.isFinite(count) ? count : 0,
+    total: Number.isFinite(total) ? total : 0,
+  };
+}
 
 export default function ClienteDashboard() {
   const [loading, setLoading] = useState(true);
@@ -71,7 +90,10 @@ export default function ClienteDashboard() {
   const [businessName, setBusinessName] = useState("");
   const [months, setMonths] = useState([]);
   const [lastOrder, setLastOrder] = useState(null);
-  const [pendientes, setPendientes] = useState({ count: 0, total: 0 });
+
+  const [pendientesPedido, setPendientesPedido] = useState({ count: 0, total: 0 });
+  const [pendientesPago, setPendientesPago] = useState({ count: 0, total: 0 });
+
   const [productsTop, setProductsTop] = useState([]);
   const [productsBottom, setProductsBottom] = useState([]);
 
@@ -93,12 +115,9 @@ export default function ClienteDashboard() {
     setError("");
 
     try {
-      const res = await fetch("/api/cliente/dashboard", {
-        cache: "no-store",
-        signal: controller.signal,
-      });
-
+      const res = await fetch("/api/cliente/dashboard", { cache: "no-store", signal: controller.signal });
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         setError(data?.error || "No se pudo cargar el dashboard");
         return;
@@ -111,7 +130,14 @@ export default function ClienteDashboard() {
       setBusinessName(data?.business_name || "");
       setMonths(m);
       setLastOrder(data?.last_order || null);
-      setPendientes(data?.pendientes || { count: 0, total: 0 });
+
+      // ✅ nuevos agregados
+      const pp = data?.pendientes_pedido || data?.pendientes || { count: 0, total: 0 };
+      const ppay = data?.pendientes_pago || { count: 0, total: 0 };
+
+      setPendientesPedido(normalizeAgg(pp));
+      setPendientesPago(normalizeAgg(ppay));
+
       setProductsTop(top);
       setProductsBottom(bottom);
 
@@ -140,7 +166,13 @@ export default function ClienteDashboard() {
     return row ? row.count : 0;
   }, [months, selectedYm]);
 
-  const globalMaxQty = useMemo(() => Number(productsTop?.[0]?.qty || 0) || 1, [productsTop]);
+  const maxTop = useMemo(() => Math.max(1, Number(productsTop?.[0]?.qty || 0) || 1), [productsTop]);
+  const maxBottom = useMemo(() => {
+    const mx = Math.max(...(productsBottom || []).map((x) => Number(x?.qty || 0)));
+    return Math.max(1, Number.isFinite(mx) ? mx : 1);
+  }, [productsBottom]);
+
+  const refreshing = loading;
 
   return (
     <div className="w-full max-w-none bg-white text-black">
@@ -149,11 +181,16 @@ export default function ClienteDashboard() {
 
         {/* Header */}
         <div className="mt-1 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          {/* ✅ móvil: campana al lado del nombre */}
+          {/* móvil: campana al lado del nombre */}
           <div className="min-w-0 flex items-center justify-between gap-3">
-            <h1 className="min-w-0 text-3xl sm:text-4xl lg:text-5xl font-semibold text-black/60 break-words">
-              {businessName ? businessName : "Panel del cliente"}
-            </h1>
+            <div className="min-w-0">
+              <h1 className="min-w-0 text-3xl sm:text-4xl lg:text-5xl font-semibold text-black/70 break-words">
+                {businessName ? businessName : "Panel del cliente"}
+              </h1>
+              <p className="mt-2 text-sm text-black/55">
+                Aquí podrás revisar tu historial y crear nuevos pedidos.
+              </p>
+            </div>
 
             <div className="shrink-0 lg:hidden">
               <NotificationsBell />
@@ -162,7 +199,7 @@ export default function ClienteDashboard() {
 
           {/* Acciones */}
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start lg:justify-end">
-            {/* ✅ desktop: campana con los botones */}
+            {/* desktop: campana con los botones */}
             <div className="hidden lg:flex items-center">
               <NotificationsBell />
             </div>
@@ -188,16 +225,19 @@ export default function ClienteDashboard() {
             <button
               onClick={load}
               type="button"
-              className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm transition bg-white shadow-sm whitespace-nowrap hover:bg-[rgba(49,87,44,0.10)]"
+              disabled={refreshing}
+              className={[
+                "inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm transition bg-white shadow-sm whitespace-nowrap",
+                refreshing ? "opacity-60 cursor-not-allowed" : "hover:bg-[rgba(49,87,44,0.10)]",
+              ].join(" ")}
               style={{ borderColor: BRAND_GREEN, color: "#000" }}
+              title={refreshing ? "Actualizando…" : "Actualizar"}
             >
-              <RefreshCw size={18} />
-              Actualizar
+              <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Actualizando…" : "Actualizar"}
             </button>
           </div>
         </div>
-
-        <p className="mt-2 text-sm text-black/60">Aquí podrás revisar tu historial y crear nuevos pedidos.</p>
 
         {error && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -206,7 +246,7 @@ export default function ClienteDashboard() {
         )}
 
         {/* KPIs */}
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <KPI
             title="PEDIDOS POR MES"
             value={loading ? "…" : String(selectedMonthCount)}
@@ -214,8 +254,8 @@ export default function ClienteDashboard() {
               loading
                 ? "Cargando…"
                 : monthsAvailable.length
-                ? `Mes: ${selectedYm}`
-                : "Aún no hay pedidos"
+                  ? `Mes: ${formatMonthLabel(selectedYm)}`
+                  : "Aún no hay pedidos"
             }
             theme="blue"
             icon={CalendarDays}
@@ -245,41 +285,63 @@ export default function ClienteDashboard() {
               loading
                 ? "Cargando…"
                 : lastOrder
-                ? `${STATUS_LABEL[lastOrder.status] || lastOrder.status} · ${formatMoney(lastOrder.total)}`
-                : "Sin registros"
+                  ? `${STATUS_LABEL[String(lastOrder.status || "").toLowerCase()] || lastOrder.status} · ${formatMoney(
+                      lastOrder.total
+                    )}`
+                  : "Sin registros"
             }
             theme="purple"
             icon={Clock}
           />
 
+          {/* ✅ clickeable */}
           <KPI
-            title="PENDIENTES"
-            value={loading ? "…" : String(pendientes.count)}
+            href="/portal/cliente/pedidos?status=pendiente"
+            title="PENDIENTES DE PEDIDO"
+            value={loading ? "…" : String(pendientesPedido.count)}
             note={
               loading
                 ? "Cargando…"
-                : pendientes.count
-                ? `${pendientes.count} pedidos pendientes · Total ${formatMoney(pendientes.total)}`
-                : "Sin pedidos pendientes"
+                : pendientesPedido.count
+                  ? `${pendientesPedido.count} pedidos · Total ${formatMoney(pendientesPedido.total)}`
+                  : "Sin pendientes"
             }
             theme="yellow"
             icon={AlertCircle}
+          />
+
+          {/* ✅ clickeable */}
+          <KPI
+            href="/portal/cliente/pedidos?payment_status=pending"
+            title="PENDIENTES DE PAGO"
+            value={loading ? "…" : String(pendientesPago.count)}
+            note={
+              loading
+                ? "Cargando…"
+                : pendientesPago.count
+                  ? `${pendientesPago.count} pedidos · Total ${formatMoney(pendientesPago.total)}`
+                  : "Sin pagos pendientes"
+            }
+            theme="green"
+            icon={BadgeDollarSign}
           />
         </div>
 
         {/* Productos top/bottom */}
         <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <KPI
-            title="TU PRODUCTO MÁS COMPRADO ES:"
+            title="TU PRODUCTO MÁS COMPRADO ES"
             value={loading ? "…" : productsTop?.[0]?.name || "—"}
             note={loading ? "Cargando…" : productsTop?.[0] ? `Cantidad: ${productsTop[0].qty}` : "Sin datos"}
             theme="neutral"
             icon={TrendingUp}
           />
           <KPI
-            title="TU PRODUCTO MENOS COMPRADO ES:"
+            title="TU PRODUCTO MENOS COMPRADO ES"
             value={loading ? "…" : productsBottom?.[0]?.name || "—"}
-            note={loading ? "Cargando…" : productsBottom?.[0] ? `Cantidad: ${productsBottom[0].qty}` : "Sin datos"}
+            note={
+              loading ? "Cargando…" : productsBottom?.[0] ? `Cantidad: ${productsBottom[0].qty}` : "Sin datos"
+            }
             theme="neutral"
             icon={TrendingDown}
           />
@@ -287,7 +349,14 @@ export default function ClienteDashboard() {
 
         {/* Barras */}
         <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4 sm:p-5">
-          <div className="text-xs tracking-wider text-black/50">TOP DE PRODUCTOS (Cantidad)</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs tracking-wider text-black/50">TOP DE PRODUCTOS (Cantidad)</div>
+            {!loading && (
+              <div className="text-xs text-black/45">
+                Tip: detecta rotación (más comprados) y productos a impulsar (menos comprados)
+              </div>
+            )}
+          </div>
 
           {loading ? (
             <div className="mt-3 text-sm text-black/60">Cargando…</div>
@@ -297,8 +366,8 @@ export default function ClienteDashboard() {
             </div>
           ) : (
             <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <BarList title="Más comprados" items={productsTop} maxScale={globalMaxQty} />
-              <BarList title="Menos comprados" items={productsBottom} maxScale={globalMaxQty} />
+              <BarList title="Más comprados" items={productsTop} maxScale={maxTop} />
+              <BarList title="Menos comprados" items={productsBottom} maxScale={maxBottom} />
             </div>
           )}
         </div>
@@ -307,11 +376,17 @@ export default function ClienteDashboard() {
   );
 }
 
-function KPI({ title, value, note, children, theme = "neutral", icon: Icon }) {
+function KPI({ title, value, note, children, theme = "neutral", icon: Icon, href }) {
   const t = KPI_THEMES[theme] || KPI_THEMES.neutral;
 
-  return (
-    <div className="rounded-2xl border p-4 sm:p-5 min-w-0" style={{ backgroundColor: t.bg, borderColor: t.border }}>
+  const Card = (
+    <div
+      className={[
+        "rounded-2xl border p-4 sm:p-5 min-w-0 shadow-[0_1px_0_rgba(0,0,0,0.03)]",
+        href ? "hover:opacity-95 active:opacity-90 cursor-pointer" : "",
+      ].join(" ")}
+      style={{ backgroundColor: t.bg, borderColor: t.border }}
+    >
       <div className="flex items-center gap-2 text-xs tracking-wider" style={{ color: t.title }}>
         {Icon ? <Icon size={16} /> : null}
         <span className="min-w-0 break-words">{title}</span>
@@ -328,6 +403,16 @@ function KPI({ title, value, note, children, theme = "neutral", icon: Icon }) {
       {children ? <div>{children}</div> : null}
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {Card}
+      </Link>
+    );
+  }
+
+  return Card;
 }
 
 function BarList({ title, items, maxScale }) {
