@@ -23,3 +23,26 @@ model Suministro {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+model SuministroXhunco {
+  id              String   @id @db.Uuid
+
+  imagen          String?  @db.Text
+  sku             String?  @db.Text
+  nombre          String   @db.Text
+  categoria       String?  @db.Text
+  marca           String?  @db.Text
+  presentacion    String?  @db.Text
+
+  precio_original BigInt?  @db.BigInt
+  precio_web      Float?   @db.DoublePrecision
+  precio_publico  Float?   @db.DoublePrecision
+  precio_medio    Float?   @db.DoublePrecision
+  precio_mayoreo  Float?   @db.DoublePrecision
+
+  unidad          String?  @db.Text
+  stock           BigInt?  @db.BigInt
+  activo          Boolean? @db.Boolean
+
+  @@map("suministros_xhunco")
+}

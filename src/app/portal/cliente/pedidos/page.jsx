@@ -46,7 +46,7 @@ function StatusBadge({ status }) {
 
   const map = {
     pendiente: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    "en proceso": "bg-blue-100 text-blue-800 border-blue-300",
+    "en_preparacion": "bg-yellow-100 text-yellow-800 border-yellow-300",
     aprobado: "bg-blue-100 text-blue-800 border-blue-300",
     confirmado: "bg-blue-100 text-blue-800 border-blue-300",
     confirmada: "bg-blue-100 text-blue-800 border-blue-300",
@@ -81,8 +81,8 @@ function PaymentBadge({ payment_status }) {
   const s = norm(payment_status) || "pending";
 
   const map = {
-    pending: "bg-gray-100 text-gray-800 border-yellow--300",
-    pendiente: "bg-gray-100 text-gray-800 border-yellow--300",
+    pending: "bg-red-100 text-red-800 border-red--300",
+    pendiente: "bg-red-100 text-red-800 border-red--300",
     paid: "bg-emerald-100 text-emerald-800 border-emerald-300",
     pagado: "bg-emerald-100 text-emerald-800 border-emerald-300",
   };
@@ -223,13 +223,11 @@ export default function ClientePedidosPage() {
   // ✅ NUEVO: opciones status pedido + pago
   const statusOptions = useMemo(
     () => [
-      { value: "all", label: "Status pedido (todos)" },
+      { value: "all", label: "Status de pedido " },
       { value: "pendiente", label: "Pendiente" },
       { value: "confirmado", label: "Confirmado" },
-      { value: "en proceso", label: "En proceso" },
-      { value: "enviado", label: "Enviado" },
+      { value: "en_preparacion", label: "En preparacion" },
       { value: "entregado", label: "Entregado" },
-      { value: "finalizado", label: "Finalizado" },
       { value: "cancelado", label: "Cancelado" },
     ],
     []
@@ -237,7 +235,7 @@ export default function ClientePedidosPage() {
 
   const paymentOptions = useMemo(
     () => [
-      { value: "all", label: "Pago (todos)" },
+      { value: "all", label: "Pagos" },
       { value: "pending", label: "Pendiente de pago" },
       { value: "paid", label: "Pagado" },
     ],

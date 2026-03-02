@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const PLACEHOLDER = "/suministros/placeholder.svg"; // ✅ asegúrate que exista en /public
+// Si no existe, cambia por uno que sí exista, por ejemplo: const PLACEHOLDER = "/logo-xhunco.png";
 
 type Suministro = {
-  id: number;
+  id: string;
   sku: string | null;
   nombre: string;
   categoria: string | null;
@@ -12,11 +15,12 @@ type Suministro = {
   unidad: string | null;
   stock: number;
   activo: boolean;
+  imagen: string | null;
 };
 
 type ProductoUI = {
-  key: string; // sku si existe, si no "id:<id>"
-  id: number;
+  key: string;
+  id: string;
   sku: string | null;
 
   nombre: string;
@@ -34,11 +38,168 @@ type ProductoUI = {
 };
 
 const ordenarOpciones = [
-  { value: "az", label: "Alfabéticamente A-Z" },
+  { value: "az", label: "A-Z" },
   { value: "precio", label: "Precio" },
 ] as const;
 
-function Filtros(props: {
+function cx(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
+
+/** debounce simple para que no filtre en cada tecla (mejora performance percibida) */
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+
+  return debounced;
+}
+
+/** Modal simple para ver imagen */
+function ImageModal(props: {
+  open: boolean;
+  onClose: () => void;
+  src: string;
+  title: string;
+  subtitle?: string;
+}) {
+  const { open, onClose, src, title, subtitle } = props;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-3 md:p-6"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Vista ampliada del producto"
+    >
+      <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-3 md:p-4">
+          <div className="min-w-0">
+            <div className="truncate text-xs text-gray-500">{subtitle ?? ""}</div>
+            <div className="truncate text-base md:text-lg font-semibold text-gray-900">
+              {title}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-full border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="bg-black">
+          <img
+            src={src}
+            alt={title}
+            className="max-h-[75vh] w-full object-contain"
+            loading="eager"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.src.includes(PLACEHOLDER)) return;
+              img.src = PLACEHOLDER;
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Categorías: una sola fila con scroll horizontal */
+function CategoriasBar(props: {
+  categorias: string[];
+  categoriaActiva: string;
+  onSelect: (c: string) => void;
+}) {
+  const { categorias, categoriaActiva, onSelect } = props;
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollBy = (dir: "left" | "right") => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -280 : 280, behavior: "smooth" });
+  };
+
+  return (
+    <div className="relative">
+      {/* Flechas solo md+ para no estorbar en mobile */}
+      <button
+        type="button"
+        onClick={() => scrollBy("left")}
+        className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm hover:bg-gray-50"
+        aria-label="Categorías izquierda"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        onClick={() => scrollBy("right")}
+        className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm hover:bg-gray-50"
+        aria-label="Categorías derecha"
+      >
+        ›
+      </button>
+
+      <div
+        ref={scrollerRef}
+        className="flex items-center gap-2 overflow-x-auto whitespace-nowrap scroll-smooth no-scrollbar md:px-10"
+      >
+        {categorias.map((c) => {
+          const active = categoriaActiva === c;
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onSelect(c)}
+              className={cx(
+                "shrink-0 rounded-full border px-3 py-1.5 text-sm transition",
+                active
+                  ? "border-black bg-black text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+              )}
+            >
+              {c}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FiltrosCompactos(props: {
   disponibilidad: string;
   setDisponibilidad: (v: string) => void;
   orden: string;
@@ -60,13 +221,13 @@ function Filtros(props: {
   } = props;
 
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-4">
-      <label className="flex flex-col text-sm text-gray-600">
-        Disponibilidad
+    <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-[auto_auto_1fr] md:items-center">
+      <label className="flex items-center gap-2 text-sm text-gray-600">
+        <span className="hidden sm:inline">Disponibilidad</span>
         <select
-          className="mt-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800"
+          className="h-9 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-800"
           value={disponibilidad}
-          onChange={(event) => setDisponibilidad(event.target.value)}
+          onChange={(e) => setDisponibilidad(e.target.value)}
         >
           <option value="todas">Todas</option>
           <option value="disponible">Disponible</option>
@@ -75,41 +236,38 @@ function Filtros(props: {
         </select>
       </label>
 
-      <label className="flex flex-col text-sm text-gray-600">
-        Ordenar
+      <label className="flex items-center gap-2 text-sm text-gray-600">
+        <span className="hidden sm:inline">Ordenar</span>
         <select
-          className="mt-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800"
+          className="h-9 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-800"
           value={orden}
-          onChange={(event) => setOrden(event.target.value)}
+          onChange={(e) => setOrden(e.target.value)}
         >
-          {ordenarOpciones.map((opcion) => (
-            <option key={opcion.value} value={opcion.value}>
-              {opcion.label}
+          {ordenarOpciones.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>
       </label>
 
-      <div className="relative flex-1 min-w-[220px]">
-        <label className="flex flex-col text-sm text-gray-600">
-          Buscar
-          <input
-            className="mt-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800"
-            placeholder="Busca por nombre del producto"
-            value={busqueda}
-            onChange={(event) => setBusqueda(event.target.value)}
-          />
-        </label>
+      <div className="relative">
+        <input
+          className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-800 placeholder:text-gray-400"
+          placeholder="Buscar producto…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
 
         {busqueda && sugerencias.length > 0 && (
-          <ul className="absolute z-20 mt-2 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
-            {sugerencias.map((sugerencia) => (
+          <ul className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+            {sugerencias.map((s) => (
               <li
-                key={sugerencia}
-                className="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                onClick={() => onElegirSugerencia(sugerencia)}
+                key={s}
+                className="cursor-pointer px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => onElegirSugerencia(s)}
               >
-                {sugerencia}
+                {s}
               </li>
             ))}
           </ul>
@@ -128,6 +286,7 @@ function CatalogoSeccion(props: {
   onIncrementar: (key: string, stock: number) => void;
   onDecrementar: (key: string) => void;
   onAgregarCarrito: (p: ProductoUI) => void;
+  onAbrirImagen: (p: ProductoUI) => void;
 }) {
   const {
     titulo,
@@ -138,19 +297,20 @@ function CatalogoSeccion(props: {
     onIncrementar,
     onDecrementar,
     onAgregarCarrito,
+    onAbrirImagen,
   } = props;
 
   return (
-    <section className="max-w-6xl mx-auto px-8 pb-16">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <section className="max-w-5xl mx-auto px-4 md:px-6 pb-10">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold">{titulo}</h2>
-          {descripcion ? <p className="mt-2 text-gray-600">{descripcion}</p> : null}
+          <h2 className="text-xl md:text-2xl font-semibold">{titulo}</h2>
+          {descripcion ? <p className="mt-1 text-sm text-gray-600">{descripcion}</p> : null}
         </div>
-        <span className="text-sm text-gray-500">{categoria}</span>
+        <span className="text-xs md:text-sm text-gray-500">{categoria}</span>
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {productos.length > 0 ? (
           productos.map((producto) => {
             const cantidad = cantidades[producto.key] ?? 0;
@@ -166,20 +326,41 @@ function CatalogoSeccion(props: {
             return (
               <article
                 key={producto.key}
-                className="rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition"
+                className="rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition bg-white"
               >
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{producto.categoria}</span>
+                  <span className="truncate">{producto.categoria}</span>
                   <span>{estado}</span>
                 </div>
 
-                <div className="mt-4 h-32 rounded-xl bg-gray-100" />
+                <button
+                  type="button"
+                  onClick={() => onAbrirImagen(producto)}
+                  className="mt-3 block h-36 w-full overflow-hidden rounded-xl bg-gray-100"
+                  aria-label={`Ver imagen de ${producto.nombre}`}
+                >
+                  <img
+                    src={producto.imagen || PLACEHOLDER}
+                    alt={producto.nombre}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (img.src.includes(PLACEHOLDER)) return;
+                      img.src = PLACEHOLDER;
+                    }}
+                  />
+                </button>
 
-                <h3 className="mt-6 text-lg font-semibold">{producto.nombre}</h3>
+                <h3 className="mt-4 text-base font-semibold">{producto.nombre}</h3>
 
-                <p className="mt-2 text-sm text-gray-600">{producto.descripcion}</p>
+                <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                  {producto.descripcion}
+                </p>
 
-                <div className="mt-3 text-xs text-gray-500 space-y-1">
+                <div className="mt-2 text-xs text-gray-500 space-y-1">
                   {producto.presentacion ? (
                     <div>Presentación: {producto.presentacion}</div>
                   ) : null}
@@ -187,18 +368,16 @@ function CatalogoSeccion(props: {
                   <div>Stock: {producto.stock}</div>
                 </div>
 
-                <div className="mt-6 space-y-4 text-sm">
+                <div className="mt-4 space-y-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="font-semibold text-gray-900">
                       ${Number(producto.precio).toFixed(2)} MXN
                     </span>
 
                     <div className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2">
-                      <span className="text-xs text-gray-500">Cantidad</span>
+                      <span className="text-xs text-gray-500">Cant.</span>
                       <div className="flex items-center gap-2">
-                        <span className="w-6 text-center text-sm font-semibold">
-                          {cantidad}
-                        </span>
+                        <span className="w-6 text-center text-sm font-semibold">{cantidad}</span>
 
                         <div className="flex flex-col overflow-hidden rounded-md border border-gray-200">
                           <button
@@ -229,7 +408,7 @@ function CatalogoSeccion(props: {
                     type="button"
                     onClick={() => onAgregarCarrito(producto)}
                     disabled={sinInventario || cantidad === 0}
-                    className="rounded-full border border-black px-4 py-2 text-sm font-medium text-black transition hover:bg-black hover:text-white disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent"
+                    className="w-full rounded-full border border-black px-4 py-2 text-sm font-medium text-black transition hover:bg-black hover:text-white disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent"
                   >
                     Agregar al carrito
                   </button>
@@ -251,7 +430,10 @@ export default function SuministrosPage() {
   const [categoriaActiva, setCategoriaActiva] = useState("General");
   const [disponibilidad, setDisponibilidad] = useState("todas");
   const [orden, setOrden] = useState("az");
-  const [busqueda, setBusqueda] = useState("");
+
+  // ✅ búsqueda con debounce (menos trabajo por tecla)
+  const [busquedaRaw, setBusquedaRaw] = useState("");
+  const busqueda = useDebouncedValue(busquedaRaw, 180);
 
   const [cantidades, setCantidades] = useState<Record<string, number>>({});
   const [carrito, setCarrito] = useState<Record<string, any>>({});
@@ -261,6 +443,19 @@ export default function SuministrosPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [productosDb, setProductosDb] = useState<ProductoUI[]>([]);
+
+  // ✅ modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalSrc, setModalSrc] = useState(PLACEHOLDER);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalSubtitle, setModalSubtitle] = useState<string | undefined>(undefined);
+
+  const abrirImagen = (p: ProductoUI) => {
+    setModalSrc(p.imagen || PLACEHOLDER);
+    setModalTitle(p.nombre);
+    setModalSubtitle(p.categoria);
+    setModalOpen(true);
+  };
 
   // 1) Cargar desde API
   useEffect(() => {
@@ -292,7 +487,7 @@ export default function SuministrosPage() {
               "Producto disponible para tu barra de café.",
 
             precio: Number(s.precio ?? 0),
-            imagen: "/suministros/placeholder.svg",
+            imagen: (s.imagen && s.imagen.trim()) || PLACEHOLDER,
 
             stock: Number(s.stock ?? 0),
             activo: Boolean(s.activo),
@@ -347,7 +542,7 @@ export default function SuministrosPage() {
     return Array.from(set);
   }, [productosDb]);
 
-  // 5) Filtrado + orden
+  // 5) Filtrado + orden (usa busqueda debounced)
   const productosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
 
@@ -370,13 +565,13 @@ export default function SuministrosPage() {
   }, [productosDb, busqueda, categoriaActiva, disponibilidad, orden]);
 
   const sugerencias = useMemo(() => {
-    if (!busqueda.trim()) return [];
-    const texto = busqueda.toLowerCase();
+    const raw = busquedaRaw.trim().toLowerCase(); // sugerencias con lo que el usuario escribe
+    if (!raw) return [];
     return productosDb
-      .filter((p) => p.nombre.toLowerCase().includes(texto))
+      .filter((p) => p.nombre.toLowerCase().includes(raw))
       .slice(0, 6)
       .map((p) => p.nombre);
-  }, [busqueda, productosDb]);
+  }, [busquedaRaw, productosDb]);
 
   const productosPorCategoria = useMemo(() => {
     const acc: Record<string, ProductoUI[]> = {};
@@ -398,7 +593,8 @@ export default function SuministrosPage() {
   const actualizarCantidad = (key: string, delta: number, maxStock?: number) => {
     setCantidades((prev) => {
       const actual = prev[key] ?? 0;
-      const limite = typeof maxStock === "number" ? Math.max(0, maxStock) : Number.POSITIVE_INFINITY;
+      const limite =
+        typeof maxStock === "number" ? Math.max(0, maxStock) : Number.POSITIVE_INFINITY;
       const siguiente = Math.min(limite, Math.max(0, actual + delta));
       return { ...prev, [key]: siguiente };
     });
@@ -436,73 +632,81 @@ export default function SuministrosPage() {
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
-      <section className="max-w-6xl mx-auto px-8 pt-32 pb-12">
-        <p className="text-sm uppercase tracking-[0.3em] text-gray-500">Suministros</p>
+      {/* ✅ Header MUCHO más compacto (menos blanco) */}
+      <section className="max-w-5xl mx-auto px-4 md:px-6 pt-10 md:pt-12 pb-3">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-gray-500">
+          Suministros
+        </p>
 
-        <h1 className="mt-4 text-4xl md:text-5xl font-semibold">
+        <h1 className="mt-2 text-2xl md:text-4xl font-semibold">
           Catálogo de productos para tu barra de café
         </h1>
 
-        <p className="mt-6 text-lg text-gray-600 max-w-3xl">
-          Explora los productos por categoría o utiliza los filtros para encontrar lo que necesitas.
-          La lista se carga dinámicamente desde la base de datos.
+        <p className="mt-2 text-sm md:text-base text-gray-600 max-w-3xl">
+          Explora por categoría o usa los filtros para encontrar lo que necesitas.
         </p>
 
         {cargando ? (
-          <p className="mt-6 text-sm text-gray-500">Cargando catálogo…</p>
+          <p className="mt-2 text-sm text-gray-500">Cargando catálogo…</p>
         ) : error ? (
-          <p className="mt-6 text-sm text-red-600">Error cargando catálogo: {error}</p>
+          <p className="mt-2 text-sm text-red-600">Error cargando catálogo: {error}</p>
         ) : null}
       </section>
 
-      <section className="sticky top-24 z-20 bg-white/95 backdrop-blur border-y border-gray-200">
-        <div className="max-w-6xl mx-auto px-8 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap gap-3">
-              {categorias.map((categoria) => (
-                <button
-                  key={categoria}
-                  type="button"
-                  onClick={() => setCategoriaActiva(categoria)}
-                  className={`rounded-full border px-4 py-2 text-sm transition ${
-                    categoriaActiva === categoria
-                      ? "border-black bg-black text-white"
-                      : "border-gray-200 text-gray-600 hover:border-gray-400"
-                  }`}
-                >
-                  {categoria}
-                </button>
-              ))}
+      {/* ✅ Sticky más angosto y menos alto */}
+      <section className="sticky top-3 md:top-5 z-30 border-y border-white bg-white/90 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-2.5">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <CategoriasBar
+                categorias={categorias}
+                categoriaActiva={categoriaActiva}
+                onSelect={setCategoriaActiva}
+              />
             </div>
 
             <a
               href="/suministros/carrito"
-              className="flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:border-gray-400"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400"
               aria-label="Ir al carrito"
             >
               <span className="text-base">🛒</span>
-              <span>Carrito</span>
+              <span className="hidden sm:inline">Carrito</span>
               <span className="rounded-full bg-black px-2 py-0.5 text-xs text-white">
                 {totalCarrito}
               </span>
             </a>
           </div>
 
-          <Filtros
+          <FiltrosCompactos
             disponibilidad={disponibilidad}
             setDisponibilidad={setDisponibilidad}
             orden={orden}
             setOrden={setOrden}
-            busqueda={busqueda}
-            setBusqueda={setBusqueda}
+            busqueda={busquedaRaw}
+            setBusqueda={setBusquedaRaw}
             sugerencias={sugerencias}
-            onElegirSugerencia={(v) => setBusqueda(v)}
+            onElegirSugerencia={(v) => setBusquedaRaw(v)}
           />
         </div>
       </section>
 
+      {/* Modal */}
+      <ImageModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        src={modalSrc}
+        title={modalTitle}
+        subtitle={modalSubtitle}
+      />
+
+      {/* Secciones */}
       {categorias.map((categoria) => (
-        <div key={categoria} id={categoria.toLowerCase().replace(/\s+/g, "-")}>
+        <div
+          key={categoria}
+          id={categoria.toLowerCase().replace(/\s+/g, "-")}
+          className="scroll-mt-36"
+        >
           <CatalogoSeccion
             titulo={categoria}
             descripcion={
@@ -516,6 +720,7 @@ export default function SuministrosPage() {
             onIncrementar={(key, stock) => actualizarCantidad(key, 1, stock)}
             onDecrementar={(key) => actualizarCantidad(key, -1)}
             onAgregarCarrito={agregarAlCarrito}
+            onAbrirImagen={abrirImagen}
           />
         </div>
       ))}

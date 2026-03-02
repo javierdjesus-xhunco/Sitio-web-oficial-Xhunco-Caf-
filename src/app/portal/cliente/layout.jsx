@@ -12,6 +12,8 @@ const BRAND_GREEN_DARK = "#25441f";
 // ✅ Ajusta aquí el ancho del menú desktop
 const SIDEBAR_W = 280; // antes 260
 const DRAWER_W = 360; // max drawer móvil
+const SYSTEM_VERSION = "1.0.0";
+const SYSTEM_ENV = "Portal Cliente";
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -171,7 +173,7 @@ export default function ClienteLayout({ children }) {
                   <img
                     src={logoSrc}
                     alt="Logo del negocio"
-                    className="h-32 w-32 object-contain"
+                    className="h-46 w-46 object-contain"
                     loading="eager"
                   />
                 ) : (
@@ -198,16 +200,28 @@ export default function ClienteLayout({ children }) {
                   Cerrar sesión
                 </button>
 
-                <div className="mt-6 flex justify-center">
-                  <img
-                    src="/logo-xhunco.png"
-                    alt="Xhunco"
-                    className="h-10 w-auto object-contain opacity-80"
-                    loading="lazy"
-                  />
-                </div>
+                <div className="mt-6 flex flex-col items-center gap-2 text-center">
+                <img
+               src="/logo-xhunco.png"
+               alt="Xhunco"
+               className="h-10 w-auto object-contain opacity-80"
+               loading="lazy"
+               />
 
-                <div className="h-6" />
+               <div className="text-[11px] leading-tight text-black/60">
+               © {new Date().getFullYear()} Xhunco Café
+               </div>
+
+               <div className="text-[10px] text-black/50">
+               {SYSTEM_ENV} · v{SYSTEM_VERSION}
+               </div>
+
+               <div className="text-[10px] text-black/40">
+               Plataforma desarrollada por Xhunco Technologies
+               </div>
+               </div>
+
+              <div className="h-6" />
               </div>
             </div>
           </div>
@@ -232,7 +246,7 @@ export default function ClienteLayout({ children }) {
                         <img
                           src={logoSrc}
                           alt="Logo del negocio"
-                          className="h-20 w-20 object-contain"
+                          className="h-42 w-42 object-contain"
                           loading="eager"
                         />
                       ) : (
@@ -271,16 +285,28 @@ export default function ClienteLayout({ children }) {
                     Cerrar sesión
                   </button>
 
-                  <div className="mt-6 flex justify-center">
-                    <img
-                      src="/logo-xhunco.png"
-                      alt="Xhunco"
-                      className="h-10 w-auto object-contain opacity-80"
-                      loading="lazy"
-                    />
-                  </div>
+                <div className="mt-6 flex flex-col items-center gap-2 text-center">
+               <img
+               src="/logo-xhunco.png"
+               alt="Xhunco"
+               className="h-10 w-auto object-contain opacity-80"
+               loading="lazy"
+               />
 
-                  <div className="h-8" />
+               <div className="text-[11px] leading-tight text-black/60">
+               © {new Date().getFullYear()} Xhunco Café
+               </div>
+
+               <div className="text-[10px] text-black/50">
+                {SYSTEM_ENV} · v{SYSTEM_VERSION}
+               </div>
+
+               <div className="text-[10px] text-black/40">
+               Plataforma desarrollada por Xhunco Technologies
+               </div>
+               </div>
+
+               <div className="h-6" />
                 </div>
               </div>
             </div>
