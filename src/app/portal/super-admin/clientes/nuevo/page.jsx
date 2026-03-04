@@ -1,10 +1,50 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+
+// ✅ Import desde src/lib/
+import MUNICIPIOS_POR_ESTADO from "@/lib/mx_municipios.json";
 
 const BRAND_GREEN = "#31572c";        // botones
 const INPUT_BG = "#e9f4ea";           // verde claro para inputs
 const INPUT_BORDER = "#9bc79f";       // borde verde suave
+
+// ✅ Lista de estados (MX)
+const MEX_STATES = [
+  "Aguascalientes",
+  "Baja California",
+  "Baja California Sur",
+  "Campeche",
+  "Chiapas",
+  "Chihuahua",
+  "Ciudad de México",
+  "Coahuila",
+  "Colima",
+  "Durango",
+  "Guanajuato",
+  "Guerrero",
+  "Hidalgo",
+  "Jalisco",
+  "Estado de México",
+  "Michoacán",
+  "Morelos",
+  "Nayarit",
+  "Nuevo León",
+  "Oaxaca",
+  "Puebla",
+  "Querétaro",
+  "Quintana Roo",
+  "San Luis Potosí",
+  "Sinaloa",
+  "Sonora",
+  "Tabasco",
+  "Tamaulipas",
+  "Tlaxcala",
+  "Veracruz",
+  "Yucatán",
+  "Zacatecas",
+];
 
 const initialForm = {
   // auth
@@ -42,7 +82,10 @@ export default function NuevoClientePage() {
   // ✅ logo
   const [logoFile, setLogoFile] = useState(null);
 
-  // Si cambias a admin/super_admin, limpiamos campos de cliente para que no queden en memoria
+  // ✅ Mostrar/ocultar password
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Si cambias a admin/super_admin, limpiamos campos de cliente
   useEffect(() => {
     if (!isCliente) {
       setForm((p) => ({
@@ -57,7 +100,7 @@ export default function NuevoClientePage() {
         postal_code: "",
         price_tier: "precio_publico",
       }));
-      setLogoFile(null); // ✅
+      setLogoFile(null);
     }
   }, [isCliente]);
 
@@ -67,9 +110,56 @@ export default function NuevoClientePage() {
     return base;
   }, [isCliente]);
 
+  // ✅ lista de municipios (dependiente del estado) - memoizada
+  const municipiosDisponibles = useMemo(() => {
+    if (!isCliente) return [];
+    const s = String(form.state || "");
+    return (MUNICIPIOS_POR_ESTADO && MUNICIPIOS_POR_ESTADO[s]) ? MUNICIPIOS_POR_ESTADO[s] : [];
+  }, [isCliente, form.state]);
+
+  // ✅ Cuando cambia el estado, si el municipio ya no existe, lo limpiamos (optimizado)
+  useEffect(() => {
+    if (!isCliente) return;
+
+    setForm((prev) => {
+      if (!prev.state) {
+        if (prev.municipality === "") return prev;
+        return { ...prev, municipality: "" };
+      }
+
+      const list = (MUNICIPIOS_POR_ESTADO && MUNICIPIOS_POR_ESTADO[prev.state]) ? MUNICIPIOS_POR_ESTADO[prev.state] : [];
+      if (!prev.municipality) return prev;
+      if (list.includes(prev.municipality)) return prev;
+
+      return { ...prev, municipality: "" };
+    });
+  }, [isCliente, form.state]);
+
+  // ✅ onChange optimizado con reglas por campo
   const onChange = (e) => {
     setResult({ type: "", message: "" });
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const { name, value } = e.target;
+
+    setForm((prev) => {
+      // ✅ CP: solo números y máximo 5 dígitos
+      if (name === "postal_code") {
+        const digits = String(value || "").replace(/\D/g, "").slice(0, 5);
+        if (prev.postal_code === digits) return prev;
+        return { ...prev, postal_code: digits };
+      }
+
+      // ✅ Teléfono: solo números y máximo 10 dígitos
+      if (name === "phone") {
+        const digits = String(value || "").replace(/\D/g, "").slice(0, 10);
+        if (prev.phone === digits) return prev;
+        return { ...prev, phone: digits };
+      }
+
+      // normal
+      if (prev[name] === value) return prev;
+      return { ...prev, [name]: value };
+    });
   };
 
   // ✅ handler logo
@@ -80,16 +170,37 @@ export default function NuevoClientePage() {
   };
 
   const validate = () => {
-    for (const key of requiredForSubmit) {
-      if (!String(form[key] ?? "").trim()) return `Falta: ${key}`;
-    }
-    return null;
-  };
+  // Campos base obligatorios
+  for (const key of requiredForSubmit) {
+    if (!String(form[key] ?? "").trim()) return `Falta: ${key}`;
+  }
+
+  if (isCliente) {
+    // Teléfono obligatorio y 10 dígitos
+    if (!form.phone) return "Teléfono es obligatorio";
+    if (form.phone.length !== 10)
+      return "Teléfono debe tener exactamente 10 dígitos";
+
+    // Código postal obligatorio y 5 dígitos
+    if (!form.postal_code) return "Código postal es obligatorio";
+    if (form.postal_code.length !== 5)
+      return "Código postal debe tener exactamente 5 dígitos";
+
+    // Estado obligatorio
+    if (!form.state) return "Estado es obligatorio";
+
+    // Municipio obligatorio
+    if (!form.municipality) return "Municipio es obligatorio";
+  }
+
+  return null;
+};
 
   const resetAll = () => {
     setForm(initialForm);
     setRole("cliente");
-    setLogoFile(null); // ✅
+    setLogoFile(null);
+    setShowPassword(false);
     setResult({ type: "", message: "" });
   };
 
@@ -105,7 +216,6 @@ export default function NuevoClientePage() {
 
     setLoading(true);
 
-    // ✅ FIX 1: enviar con FormData (para que viaje el archivo)
     const fd = new FormData();
 
     // auth
@@ -132,13 +242,12 @@ export default function NuevoClientePage() {
       fd.append("postal_code", form.postal_code.trim() || "");
       fd.append("price_tier", form.price_tier);
 
-      // ✅ archivo
       if (logoFile) fd.append("logo", logoFile);
     }
 
     const res = await fetch("/api/superadmin/users", {
       method: "POST",
-      body: fd, // ⚠️ IMPORTANTE: SIN headers Content-Type
+      body: fd,
     });
 
     const data = await res.json().catch(() => ({}));
@@ -151,14 +260,14 @@ export default function NuevoClientePage() {
 
     setResult({ type: "ok", message: `Creado ✅ user_id: ${data.user_id}` });
 
-    // ✅ Limpia TODO automáticamente
     setForm(initialForm);
     setRole("cliente");
     setLogoFile(null);
+    setShowPassword(false);
   };
 
   return (
-    <div className="max-w-[1100px] bg-white text-black">
+    <div className="w-full min-h-screen flex flex-col bg-white text-black">
       <div className="rounded-3xl border border-black/10 bg-white p-8 shadow-[0_0_30px_rgba(0,0,0,0.06)]">
         <div className="flex items-start justify-between gap-6">
           <div>
@@ -217,16 +326,33 @@ export default function NuevoClientePage() {
               </Field>
 
               <Field label="Contraseña (definida por superadmin) *">
-                <input
-                  name="password"
-                  value={form.password}
-                  onChange={onChange}
-                  className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                  style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  type="password"
-                />
+                <div className="relative">
+                  <input
+                    name="password"
+                    value={form.password}
+                    onChange={onChange}
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none pr-12"
+                    style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    type={showPassword ? "text" : "password"}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 transition"
+                    style={{ color: BRAND_GREEN, backgroundColor: "transparent" }}
+                  >
+                    <span
+                      className="block transition-transform duration-200 ease-out"
+                      style={{ transform: showPassword ? "scale(1.05)" : "scale(1)" }}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </span>
+                  </button>
+                </div>
               </Field>
             </div>
           </Section>
@@ -281,7 +407,14 @@ export default function NuevoClientePage() {
                   onChange={onChange}
                   className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
                   style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
+                  placeholder="Ej. 2215570293"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={10}
                 />
+                <div className="mt-1 text-[11px] text-black/50">
+                  {form.phone.length}/10
+                </div>
               </Field>
             </div>
           </Section>
@@ -300,7 +433,6 @@ export default function NuevoClientePage() {
                   />
                 </Field>
 
-                {/* ✅ NUEVO: Subir logo */}
                 <Field label="Logo del negocio (PNG/JPG/WebP)">
                   <input
                     type="file"
@@ -373,24 +505,48 @@ export default function NuevoClientePage() {
                   />
                 </Field>
 
+                {/* ✅ Municipio dependiente del estado */}
                 <Field label="Municipio">
-                  <input
+                  <select
                     name="municipality"
                     value={form.municipality}
                     onChange={onChange}
-                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    disabled={!form.state || municipiosDisponibles.length === 0}
+                    className="w-full rounded-xl border px-4 py-3 text-sm outline-none disabled:opacity-60"
                     style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
-                  />
+                  >
+                    {!form.state ? (
+                      <option value="">Primero selecciona un estado…</option>
+                    ) : municipiosDisponibles.length === 0 ? (
+                      <option value="">No hay municipios cargados para este estado</option>
+                    ) : (
+                      <>
+                        <option value="">Selecciona un municipio…</option>
+                        {municipiosDisponibles.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
                 </Field>
 
                 <Field label="Estado">
-                  <input
+                  <select
                     name="state"
                     value={form.state}
                     onChange={onChange}
                     className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
                     style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
-                  />
+                  >
+                    <option value="">Selecciona un estado…</option>
+                    {MEX_STATES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
 
                 <Field label="Código postal">
@@ -400,8 +556,14 @@ export default function NuevoClientePage() {
                     onChange={onChange}
                     className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
                     style={{ borderColor: INPUT_BORDER, backgroundColor: INPUT_BG, color: "#000" }}
-                    placeholder="Ej. 90000"
+                    placeholder="Ej. 90810"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={5}
                   />
+                  <div className="mt-1 text-[11px] text-black/50">
+                    {form.postal_code.length}/5
+                  </div>
                 </Field>
               </div>
             </Section>

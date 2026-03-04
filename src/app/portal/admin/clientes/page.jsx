@@ -26,7 +26,7 @@ export default function ClientesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [dq]);
+  }, [dq, pageSize]); // ✅ si luego cambias pageSize, se reinicia
 
   useEffect(() => {
     const ac = new AbortController();
@@ -42,13 +42,14 @@ export default function ClientesPage() {
 
         const r = await fetch(url, { signal: ac.signal, cache: "no-store" });
 
-        // ✅ si el servidor devuelve HTML por error/404, lo mostramos claro
         const text = await r.text();
         let j;
         try {
           j = JSON.parse(text);
         } catch {
-          throw new Error("El endpoint /api/admin/clientes no devolvió JSON. Revisa rutas y reinicia el server.");
+          throw new Error(
+            "El endpoint /api/admin/clientes no devolvió JSON. Revisa rutas y reinicia el server."
+          );
         }
 
         if (!r.ok) throw new Error(j?.error || "Error al cargar clientes");
@@ -63,14 +64,13 @@ export default function ClientesPage() {
     })();
 
     return () => ac.abort();
-  }, [dq, page]);
+  }, [dq, page, pageSize]); // ✅ agrega pageSize por consistencia
 
   return (
     <div className="rounded-3xl border border-neutral-200 bg-white p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="text-xl font-semibold">Clientes</div>
-          <div className="text-sm text-neutral-600">Búsqueda + paginación</div>
+          <div className="text-xl font-semibold">Socios Xhunco</div>
         </div>
 
         <div className="w-full md:w-[360px]">
@@ -78,7 +78,7 @@ export default function ClientesPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Negocio, dueño, teléfono o correo…"
+            placeholder="Negocio, Socio, teléfono o correo…"
             className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-green/20"
           />
         </div>
@@ -95,7 +95,7 @@ export default function ClientesPage() {
           <thead className="bg-neutral-50">
             <tr className="text-left">
               <th className="px-3 py-2">Negocio</th>
-              <th className="px-3 py-2">Dueño</th>
+              <th className="px-3 py-2">Socio</th>
               <th className="px-3 py-2">Teléfono</th>
               <th className="px-3 py-2">Correo</th>
               <th className="px-3 py-2">Alta</th>
@@ -110,7 +110,10 @@ export default function ClientesPage() {
               </tr>
             ) : rows.length ? (
               rows.map((r) => (
-                <tr key={r.id} className="border-t">
+                <tr
+                  key={r.client_id || r.id} // ✅ futuro-proof si agregamos client_id en API
+                  className="border-t"
+                >
                   <td className="px-3 py-2 font-semibold">{r.business_name || "—"}</td>
                   <td className="px-3 py-2">{r.owner_name || "—"}</td>
                   <td className="px-3 py-2">{r.phone || "—"}</td>

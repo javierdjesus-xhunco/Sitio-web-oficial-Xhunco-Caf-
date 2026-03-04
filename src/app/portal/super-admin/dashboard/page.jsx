@@ -1,8 +1,16 @@
 import Link from "next/link";
+import {
+  UserPlus,
+  BadgeDollarSign,
+  ShieldCheck,
+  ClipboardList,
+} from "lucide-react";
+
+const BRAND_GREEN = "#31572c";
 
 export default function SuperAdminDashboardPage() {
   return (
-    <div className="max-w-[1100px]">
+    <div className="w-full min-h-screen flex flex-col">
       {/* Header */}
       <div className="rounded-3xl border border-black/10 bg-white p-8">
         <div className="text-sm text-black/60">Bienvenido, Paulina</div>
@@ -17,11 +25,31 @@ export default function SuperAdminDashboardPage() {
           </div>
 
           {/* Quick actions */}
-          <div className="grid grid-cols-2 gap-3">
-            <ActionButton href="/portal/super-admin/clientes/nuevo" label="Crear cliente" />
-            <ActionButton href="/portal/super-admin/productos" label="Actualizar precios" />
-            <ActionButton href="/portal/super-admin/usuarios" label="Asignar roles" />
-            <ActionButton href="/portal/super-admin/pedidos" label="Revisar pedidos" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ActionButton
+              href="/portal/super-admin/clientes/nuevo"
+              label="Crear cliente"
+              icon={UserPlus}
+              desc="Alta de clientes y datos comerciales"
+            />
+            <ActionButton
+              href="/portal/super-admin/suministros"
+              label="Actualizar precios"
+              icon={BadgeDollarSign}
+              desc="Catálogo, costos y listas"
+            />
+            <ActionButton
+              href="/portal/super-admin/usuarios"
+              label="Asignar roles"
+              icon={ShieldCheck}
+              desc="Permisos y usuarios internos"
+            />
+            <ActionButton
+              href="/portal/super-admin/pedidos"
+              label="Revisar pedidos"
+              icon={ClipboardList}
+              desc="Seguimiento y estatus"
+            />
           </div>
         </div>
 
@@ -34,15 +62,16 @@ export default function SuperAdminDashboardPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-black/10 bg-white p-6">
+      {/* inferior */}
+      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 flex-1 auto-rows-fr">
+        <div className="rounded-3xl border border-black/10 bg-white p-6 h-full">
           <div className="text-sm font-medium text-black/80">Actividad reciente</div>
           <div className="mt-2 text-sm text-black/60">
             (Luego conectamos: pedidos recientes, altas de clientes, cambios de precios.)
           </div>
         </div>
 
-        <div className="rounded-3xl border border-black/10 bg-white p-6">
+        <div className="rounded-3xl border border-black/10 bg-white p-6 h-full">
           <div className="text-sm font-medium text-black/80">Alertas</div>
           <div className="mt-2 text-sm text-black/60">
             (Luego conectamos: productos sin stock, pedidos en atraso, pagos pendientes.)
@@ -53,18 +82,48 @@ export default function SuperAdminDashboardPage() {
   );
 }
 
-function ActionButton({ href, label }) {
+function ActionButton({ href, label, desc, icon: Icon }) {
   return (
     <Link
       href={href}
       className={[
-        "rounded-full px-5 py-2 text-sm text-center transition",
-        "border border-[#31572c]/25 bg-[#31572c] text-white",
-        "hover:bg-[#2a4b27] active:scale-[0.99]",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#31572c]/40",
+        "group rounded-2xl border border-black/10 bg-white",
+        "px-4 py-3 transition",
+        "hover:border-black/15 hover:shadow-sm",
+        "active:scale-[0.99]",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10",
       ].join(" ")}
     >
-      {label}
+      <div className="flex items-center gap-3">
+        {/* Icon badge */}
+        <div
+          className={[
+            "flex h-10 w-10 items-center justify-center rounded-xl",
+            "border border-black/10 bg-black/[0.02]",
+            "transition",
+            "group-hover:bg-black/[0.03]",
+          ].join(" ")}
+          aria-hidden="true"
+        >
+          <Icon size={18} strokeWidth={2} style={{ color: BRAND_GREEN }} />
+        </div>
+
+        {/* Text */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-black">{label}</div>
+            <div
+              className={[
+                "ml-auto hidden sm:block text-xs",
+                "text-black/40 group-hover:text-black/50 transition",
+              ].join(" ")}
+            >
+              Ver →
+            </div>
+          </div>
+          <div className="mt-0.5 text-xs text-black/55 line-clamp-1">{desc}</div>
+        </div>
+      </div>
     </Link>
   );
 }
@@ -74,7 +133,9 @@ function KPI({ title, value, note }) {
     <div className="rounded-2xl border border-black/10 bg-white p-5">
       <div className="text-xs tracking-wider text-black/50">{title}</div>
       <div className="mt-2 text-3xl font-semibold text-black">{value}</div>
-      <div className="mt-2 text-xs text-[#31572c]">{note}</div>
+      <div className="mt-2 text-xs" style={{ color: BRAND_GREEN }}>
+        {note}
+      </div>
     </div>
   );
 }

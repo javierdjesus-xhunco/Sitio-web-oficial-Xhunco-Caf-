@@ -7,23 +7,29 @@ function clampInt(v, min, max, fallback) {
   return Math.min(max, Math.max(min, n));
 }
 
-// evita romper el or/ilike con caracteres raros
-function escapeIlike(s) {
-  return String(s || "")
-    .replaceAll("\\", "\\\\")
-    .replaceAll("%", "\\%")
-    .replaceAll("_", "\\_")
+// Sanitiza la búsqueda para PostgREST OR/ILIKE (sin prometer ESCAPE real)
+function safeQ(raw) {
+  return String(raw || "")
+    .slice(0, 80) // ✅ evita queries enormes
+    .replaceAll("\\", " ")
+    .replaceAll("%", " ")
+    .replaceAll("_", " ")
     .replaceAll(",", " ")
     .replaceAll('"', " ")
+    .replace(/[^\p{L}\p{N}\s@.\-+]/gu, " ") // ✅ deja letras/números y algunos símbolos útiles
     .trim();
+}
+
+function normRole(v) {
+  return String(v || "").toLowerCase().trim();
 }
 
 export async function GET(req) {
   const supabase = await supabaseServer();
 
   // ✅ Auth
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) {
+  const { data: auth, error: authErr } = await supabase.auth.getUser();
+  if (authErr || !auth?.user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
@@ -43,19 +49,18 @@ export async function GET(req) {
     return NextResponse.json({ error: "Usuario inactivo" }, { status: 403 });
   }
 
-  // ✅ soporta super_admin también
-  if (!["admin", "superadmin", "super_admin"].includes(prof.role)) {
+  const role = normRole(prof.role);
+  if (!["admin", "superadmin", "super_admin"].includes(role)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   // ✅ Params
   const { searchParams } = new URL(req.url);
-  const rawQ = (searchParams.get("q") || "").trim();
-  const q = escapeIlike(rawQ);
+  const q = safeQ(searchParams.get("q") || "");
 
   const page = clampInt(searchParams.get("page"), 1, 100000, 1);
 
-  // ✅ OPT: permitir hasta 500 (tu UI usa 500)
+  // ✅ Mantengo tu límite alto por si tu UI lo usa
   const pageSize = clampInt(searchParams.get("pageSize"), 10, 500, 25);
 
   const from = (page - 1) * pageSize;
@@ -85,18 +90,18 @@ export async function GET(req) {
     .range(from, to);
 
   if (q) {
-    // Nota: usamos \\ para escape; ilike en Postgres soporta ESCAPE,
-    // pero PostgREST no expone ESCAPE; aun así, esto reduce errores.
+    const like = `%${q}%`;
+
     query = query.or(
       [
-        `business_name.ilike.%${q}%`,
-        `owner_name.ilike.%${q}%`,
-        `owner_first_name.ilike.%${q}%`,
-        `owner_middle_name.ilike.%${q}%`,
-        `owner_last_name_paterno.ilike.%${q}%`,
-        `owner_last_name_materno.ilike.%${q}%`,
-        `phone.ilike.%${q}%`,
-        `email.ilike.%${q}%`,
+        `business_name.ilike.${like}`,
+        `owner_name.ilike.${like}`,
+        `owner_first_name.ilike.${like}`,
+        `owner_middle_name.ilike.${like}`,
+        `owner_last_name_paterno.ilike.${like}`,
+        `owner_last_name_materno.ilike.${like}`,
+        `phone.ilike.${like}`,
+        `email.ilike.${like}`,
       ].join(",")
     );
   }
@@ -107,7 +112,8 @@ export async function GET(req) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // ✅ Normalización: owner_name fallback + label para UI
+  // ✅ Normalización: owner_name fallback + label
+  // ❗IMPORTANTE: NO sobreescribimos user_id con c.id (era un bug/riesgo a futuro)
   const normalized = (data || []).map((c) => {
     const builtOwner = [
       c.owner_first_name,
@@ -124,9 +130,10 @@ export async function GET(req) {
 
     return {
       ...c,
+      client_id: c.id, // ✅ explícito (útil para UI/joins)
       owner_name: owner,
-      user_id: c.user_id || c.id,
       label,
+      effective_user_id: c.user_id || null, // ✅ si existe relación con auth.users
     };
   });
 

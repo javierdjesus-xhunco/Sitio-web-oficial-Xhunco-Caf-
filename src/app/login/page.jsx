@@ -3,58 +3,58 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function PortalLogin() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // ✅ NUEVO ESTADO
 
   async function handleLogin(e) {
-  e.preventDefault();
-  const formData = new FormData(e.currentTarget);
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const password = String(formData.get("password") || "");
-  setErrorMessage("");
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const password = String(formData.get("password") || "");
+    setErrorMessage("");
 
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  const data = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => ({}));
 
-  if (!res.ok) {
-    setErrorMessage("Usuario o contraseña incorrectos.");
-    return;
-  }
+    if (!res.ok) {
+      setErrorMessage("Usuario o contraseña incorrectos.");
+      return;
+    }
 
     const roleRes = await fetch("/api/auth/role", { method: "GET" });
-const roleData = await roleRes.json().catch(() => ({}));
+    const roleData = await roleRes.json().catch(() => ({}));
 
-if (!roleRes.ok) {
-  setErrorMessage("No se pudo determinar el rol del usuario.");
-  return;
-}
+    if (!roleRes.ok) {
+      setErrorMessage("No se pudo determinar el rol del usuario.");
+      return;
+    }
 
-if (roleData.role === "super_admin") {
-  router.push("/portal/super-admin/dashboard");
-  return;
-}
+    if (roleData.role === "super_admin") {
+      router.push("/portal/super-admin/dashboard");
+      return;
+    }
 
-if (roleData.role === "admin") {
-  router.push("/portal/admin/dashboard");
-  return;
-}
+    if (roleData.role === "admin") {
+      router.push("/portal/admin/dashboard");
+      return;
+    }
 
-if (roleData.role === "cliente") {
-  router.push("/portal/cliente/dashboard");
-  return;
-}
+    if (roleData.role === "cliente") {
+      router.push("/portal/cliente/dashboard");
+      return;
+    }
 
-// fallback
-router.push("/portal");
+    router.push("/portal");
   }
 
   return (
@@ -108,13 +108,24 @@ router.push("/portal");
           {/* PASSWORD */}
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}  // ✅ CAMBIO DINÁMICO
               name="password"
               placeholder="Contraseña"
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black"
               required
             />
+
+            {/* BOTÓN OJO */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
 
           {/* BOTÓN */}
@@ -125,6 +136,7 @@ router.push("/portal");
             Iniciar sesión
           </button>
         </form>
+
         {errorMessage ? (
           <p className="mt-4 text-sm text-red-600 text-center">{errorMessage}</p>
         ) : null}

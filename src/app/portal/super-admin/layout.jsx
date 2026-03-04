@@ -15,8 +15,8 @@ export default function SuperAdminLayout({ children }) {
           </div>
 
           <nav className="mt-8 space-y-2 flex-1">
-            <PortalSideItem href="/portal/super-admin/dashboard" label="Resumen" exact />
-            <PortalSideItem href="/portal/super-admin/clientes/nuevo" label="Alta de clientes" />
+            <PortalSideItem href="/portal/super-admin/dashboard" label="Inicio" exact />
+            <PortalSideItem href="/portal/super-admin/clientes" label="Clientes" />
             <PortalSideItem href="/portal/super-admin/suministros" label="Suministros" />
             <PortalSideItem href="/portal/super-admin/pedidos" label="Pedidos" />
             <PortalSideItem href="/portal/super-admin/usuarios-y-roles" label="Usuarios y roles" />

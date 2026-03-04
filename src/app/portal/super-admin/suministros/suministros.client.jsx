@@ -246,7 +246,7 @@ export default function SuministrosClient() {
   }
 
   return (
-    <div className="max-w-[1200px]">
+    <div className="w-full min-h-screen flex flex-col">
       {flash ? (
         <div
           className={cx(

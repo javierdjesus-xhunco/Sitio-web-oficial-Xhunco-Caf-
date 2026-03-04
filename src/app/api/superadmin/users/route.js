@@ -10,6 +10,25 @@ function safeTrim(v) {
   return s.length ? s : null;
 }
 
+// ✅ solo dígitos
+function onlyDigits(v) {
+  if (v === null || v === undefined) return null;
+  const s = String(v).replace(/\D/g, "");
+  return s.length ? s : null;
+}
+
+// ✅ normaliza email
+function normEmail(v) {
+  return String(v || "").trim().toLowerCase();
+}
+
+// ✅ Validación básica de email
+function isValidEmail(email) {
+  if (!email) return false;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
 export async function POST(req) {
   try {
     // Identificar al usuario que hace la petición (sesión por cookies)
@@ -34,45 +53,74 @@ export async function POST(req) {
     // Payload del formulario (FormData)
     const form = await req.formData();
 
-    const role = String(form.get("role") || "");
-    const email = String(form.get("email") || "");
+    const role = String(form.get("role") || "").trim();
+    const email = normEmail(form.get("email"));
     const password = String(form.get("password") || "");
 
-    const first_name = String(form.get("first_name") || "");
+    const first_name = String(form.get("first_name") || "").trim();
     const middle_name = safeTrim(form.get("middle_name"));
-    const last_name_paterno = String(form.get("last_name_paterno") || "");
-    const last_name_materno = String(form.get("last_name_materno") || "");
-    const phone = safeTrim(form.get("phone"));
+    const last_name_paterno = String(form.get("last_name_paterno") || "").trim();
+    const last_name_materno = String(form.get("last_name_materno") || "").trim();
 
-    const business_name = String(form.get("business_name") || "");
+    // ✅ phone y postal_code normalizados a dígitos
+    const phone = onlyDigits(form.get("phone"));
+    const postal_code = onlyDigits(form.get("postal_code"));
+
+    const business_name = String(form.get("business_name") || "").trim();
     const street = safeTrim(form.get("street"));
     const ext_number = safeTrim(form.get("ext_number"));
     const int_number = safeTrim(form.get("int_number"));
     const neighborhood = safeTrim(form.get("neighborhood"));
     const municipality = safeTrim(form.get("municipality"));
     const state = safeTrim(form.get("state"));
-    const postal_code = safeTrim(form.get("postal_code"));
-    const price_tier = String(form.get("price_tier") || "");
+    const price_tier = String(form.get("price_tier") || "").trim();
 
     const logo = form.get("logo"); // File | null
 
+    // ---- Validaciones base ----
     if (!role || !email || !password) {
       return NextResponse.json({ error: "Faltan role/email/password" }, { status: 400 });
     }
     if (!["super_admin", "admin", "cliente"].includes(role)) {
       return NextResponse.json({ error: "Role inválido" }, { status: 400 });
     }
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: "Correo electrónico inválido" }, { status: 400 });
+    }
     if (!first_name || !last_name_paterno || !last_name_materno) {
       return NextResponse.json({ error: "Faltan nombres/apellidos" }, { status: 400 });
     }
-    if (role === "cliente" && !business_name) {
-      return NextResponse.json({ error: "Para cliente es obligatorio negocio" }, { status: 400 });
-    }
 
-    const allowedTiers = ["precio_web", "precio_publico", "precio_medio", "precio_mayoreo"];
+    // ---- Validaciones específicas para cliente ----
     if (role === "cliente") {
-      const tier = (price_tier || "").trim();
-      if (!allowedTiers.includes(tier)) {
+      if (!business_name) {
+        return NextResponse.json({ error: "Para cliente es obligatorio negocio" }, { status: 400 });
+      }
+
+      // ✅ obligatorios por tu decisión
+      if (!phone) {
+        return NextResponse.json({ error: "Teléfono es obligatorio" }, { status: 400 });
+      }
+      if (phone.length !== 10) {
+        return NextResponse.json({ error: "Teléfono debe tener exactamente 10 dígitos" }, { status: 400 });
+      }
+
+      if (!postal_code) {
+        return NextResponse.json({ error: "Código postal es obligatorio" }, { status: 400 });
+      }
+      if (postal_code.length !== 5) {
+        return NextResponse.json({ error: "Código postal debe tener exactamente 5 dígitos" }, { status: 400 });
+      }
+
+      if (!state) {
+        return NextResponse.json({ error: "Estado es obligatorio" }, { status: 400 });
+      }
+      if (!municipality) {
+        return NextResponse.json({ error: "Municipio es obligatorio" }, { status: 400 });
+      }
+
+      const allowedTiers = ["precio_web", "precio_publico", "precio_medio", "precio_mayoreo"];
+      if (!allowedTiers.includes(price_tier)) {
         return NextResponse.json({ error: "Tipo de precio inválido" }, { status: 400 });
       }
     }
@@ -100,7 +148,7 @@ export async function POST(req) {
       middle_name: middle_name ?? null,
       last_name_paterno,
       last_name_materno,
-      phone: phone ?? null,
+      phone: phone ?? null, // ✅ normalizado
       active: true,
     });
 
@@ -124,11 +172,11 @@ export async function POST(req) {
           ext_number: ext_number ?? null,
           int_number: int_number ?? null,
           neighborhood: neighborhood ?? null,
-          municipality: municipality ?? null,
-          state: state ?? null,
-          postal_code: postal_code ?? null,
-          price_tier: price_tier, // <- obligatorio para cliente
-          phone: phone ?? null,
+          municipality: municipality ?? null, // ✅ obligatorio arriba
+          state: state ?? null,               // ✅ obligatorio arriba
+          postal_code: postal_code ?? null,   // ✅ normalizado y obligatorio arriba
+          price_tier: price_tier,             // ✅ validado arriba
+          phone: phone ?? null,               // ✅ normalizado y obligatorio arriba
           email,
         })
         .select("id")
@@ -141,7 +189,7 @@ export async function POST(req) {
 
       const clientId = clientRow.id;
 
-      // ✅ Subir logo si viene (FIX: validación correcta)
+      // ✅ Subir logo si viene
       if (logo && typeof logo?.arrayBuffer === "function") {
         const mime = logo.type || "image/png";
         const allowedMime = ["image/png", "image/jpeg", "image/webp"];
