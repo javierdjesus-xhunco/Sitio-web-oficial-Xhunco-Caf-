@@ -280,7 +280,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           {/* ✅ Saludo dinámico */}
-          <div className="text-sm text-neutral-600">Bienvenido, {firstName}</div>
+          <div className="text-sm text-neutral-600">Bienvenid@, {firstName}</div>
           <div className="mt-1 text-xs text-neutral-500">{greeting}</div>
 
           <h1 className="mt-4 text-5xl font-semibold tracking-tight text-black">

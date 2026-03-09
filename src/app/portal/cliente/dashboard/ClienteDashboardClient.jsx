@@ -215,7 +215,7 @@ export default function ClienteDashboardClient({ initialData }) {
   return (
     <div className="w-full max-w-none bg-white text-black">
       <div className="rounded-3xl border border-black/10 bg-white p-4 sm:p-6 lg:p-8 shadow-sm">
-        <div className="text-sm text-black/60">Bienvenido, {firstName}</div>
+        <div className="text-sm text-black/60">Bienvenid@, {firstName}</div>
         <div className="mt-1 text-xs text-black/45">{greeting}</div>
 
         <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
