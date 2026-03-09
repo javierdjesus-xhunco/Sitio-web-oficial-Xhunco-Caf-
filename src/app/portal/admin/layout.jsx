@@ -16,6 +16,8 @@ import {
   ClipboardList,
   PlusCircle,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
 
@@ -44,8 +46,8 @@ function displayName(p) {
   return (p?.email || "Administrador").trim();
 }
 
-/** ✅ Botón/Link unificado: mismo alto, mismo padding, icono a la izquierda */
-function NavButton({ href, label, icon: Icon, onNavigate, prefetch = true }) {
+/** ✅ NavButton colapsable */
+function NavButton({ href, label, icon: Icon, onNavigate, prefetch = true, collapsed = false }) {
   const pathname = usePathname();
   const active = pathname?.startsWith(href);
 
@@ -54,10 +56,10 @@ function NavButton({ href, label, icon: Icon, onNavigate, prefetch = true }) {
       href={href}
       prefetch={prefetch}
       onClick={() => onNavigate?.({ href })}
+      title={collapsed ? label : undefined}
       className={cx(
-        "w-full flex items-center gap-3 rounded-2xl border px-4",
-        "h-[48px] text-sm font-semibold transition-all duration-200",
-        "select-none"
+        "w-full flex items-center rounded-2xl border transition-all duration-200 select-none",
+        collapsed ? "justify-center h-[48px] px-2" : "gap-3 h-[48px] px-4",
       )}
       style={{
         borderColor: "rgba(0,0,0,0.10)",
@@ -78,15 +80,64 @@ function NavButton({ href, label, icon: Icon, onNavigate, prefetch = true }) {
       }}
     >
       {Icon ? <Icon size={18} /> : null}
-      <span className="truncate">{label}</span>
+      {!collapsed && <span className="truncate text-sm font-semibold">{label}</span>}
     </Link>
   );
 }
 
-/** ✅ Tarjeta/Acceso rápido unificado: mismo alto, mismo layout e icono */
-function QuickCard({ href, title, subtitle, icon: Icon, onNavigate, prefetch = false }) {
+/** ✅ QuickCard colapsable (en colapsado se vuelve icon-only) */
+function QuickCard({
+  href,
+  title,
+  subtitle,
+  icon: Icon,
+  onNavigate,
+  prefetch = false,
+  collapsed = false,
+}) {
   const pathname = usePathname();
   const active = pathname?.startsWith(href);
+
+  if (collapsed) {
+    return (
+      <Link
+        href={href}
+        prefetch={prefetch}
+        onClick={() => onNavigate?.({ href })}
+        title={title}
+        className={cx(
+          "w-full flex items-center justify-center rounded-2xl border border-gray-200",
+          "h-[56px] transition-all duration-200"
+        )}
+        style={{
+          backgroundColor: active ? BRAND_GREEN : "white",
+          color: active ? "white" : "black",
+        }}
+        onMouseEnter={(e) => {
+          if (!active) {
+            e.currentTarget.style.backgroundColor = BRAND_GREEN_HOVER;
+            e.currentTarget.style.color = "white";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!active) {
+            e.currentTarget.style.backgroundColor = "white";
+            e.currentTarget.style.color = "black";
+          }
+        }}
+      >
+        <div
+          className="grid h-10 w-10 place-items-center rounded-2xl border"
+          style={{
+            borderColor: active ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.10)",
+            backgroundColor: active ? "rgba(255,255,255,0.15)" : "rgba(49,87,44,0.08)",
+          }}
+        >
+          {Icon ? <Icon size={18} color={active ? "white" : BRAND_GREEN} /> : null}
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <Link
@@ -122,9 +173,7 @@ function QuickCard({ href, title, subtitle, icon: Icon, onNavigate, prefetch = f
             backgroundColor: active ? "rgba(255,255,255,0.15)" : "rgba(49,87,44,0.08)",
           }}
         >
-          {Icon ? (
-            <Icon size={18} color={active ? "white" : BRAND_GREEN} />
-          ) : null}
+          {Icon ? <Icon size={18} color={active ? "white" : BRAND_GREEN} /> : null}
         </div>
       </div>
 
@@ -141,16 +190,16 @@ function QuickCard({ href, title, subtitle, icon: Icon, onNavigate, prefetch = f
   );
 }
 
-function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) {
+function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, collapsed = false }) {
   const name = displayName(profile);
   const initials = initialsFromProfile(profile);
 
   return (
-    <div className="flex h-full flex-col p-4">
+    <div className={cx("flex h-full flex-col", collapsed ? "p-3" : "p-4")}>
       {/* Profile + Bell */}
-      <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-3">
+      <div className={cx("mb-4 rounded-2xl border border-gray-200 bg-white", collapsed ? "p-2" : "p-3")}>
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className={cx("flex items-center min-w-0", collapsed ? "gap-0 justify-center w-full" : "gap-3")}>
             <div
               className="grid h-11 w-11 place-items-center rounded-2xl text-sm font-extrabold text-white"
               style={{ background: BRAND_GREEN }}
@@ -159,44 +208,48 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
               {initials}
             </div>
 
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-black">
-                {loadingProfile ? "Cargando…" : name}
+            {!collapsed && (
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-black">
+                  {loadingProfile ? "Cargando…" : name}
+                </div>
+                <div className="truncate text-xs text-gray-500">
+                  {profile?.role ? `Rol: ${profile.role}` : "Panel Admin"}
+                </div>
               </div>
-              <div className="truncate text-xs text-gray-500">
-                {profile?.role ? `Rol: ${profile.role}` : "Panel Admin"}
-              </div>
-            </div>
+            )}
           </div>
 
-          <NotificationsBell />
+          {!collapsed && <NotificationsBell />}
         </div>
       </div>
 
-      {/* Nav principal (unificado) */}
+      {/* Nav principal */}
       <div className="space-y-2">
         <NavButton
           href="/portal/admin/dashboard"
           label="Inicio"
           icon={LayoutDashboard}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
         <NavButton
           href="/portal/admin/pedidos"
           label="Pedidos"
           icon={ShoppingBag}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
-        {/* ✅ NUEVO: Solicitudes de suministros */}
         <NavButton
           href="/portal/admin/suministros/solicitudes"
           label="Solicitudes"
           icon={ClipboardList}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
       </div>
 
-      {/* Accesos rápidos (cards unificadas) */}
+      {/* Accesos rápidos */}
       <div className="mt-4 space-y-2">
         <QuickCard
           href="/portal/admin/clientes"
@@ -204,6 +257,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
           subtitle="Visualizar y agregar clientes"
           icon={Users}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
         <QuickCard
           href="/portal/admin/suministros"
@@ -211,6 +265,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
           subtitle="Agregar productos"
           icon={Package}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
         <QuickCard
           href="/portal/admin/inventario"
@@ -218,6 +273,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
           subtitle="Revisar stock general"
           icon={Boxes}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
         <QuickCard
           href="/portal/admin/reportes"
@@ -225,39 +281,72 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate }) 
           subtitle="Descargar rendimiento"
           icon={BarChart3}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
 
-        {/* ✅ Botón unificado (mismo alto/ancho) */}
-        <button
-          className={cx(
-            "w-full flex items-center justify-center gap-2 rounded-2xl",
-            "h-[48px] px-4 text-sm font-semibold text-white",
-            "transition-all duration-200 hover:opacity-95 active:scale-[0.99]"
-          )}
-          style={{ background: BRAND_GREEN }}
-          onClick={() => onNavigate?.({ href: "/portal/admin/pedidos/nuevo" })}
-          type="button"
-        >
-          <PlusCircle size={18} />
-          Crear pedido manual
-        </button>
+        {/* Crear pedido manual */}
+        {collapsed ? (
+          <button
+            className={cx(
+              "w-full flex items-center justify-center rounded-2xl",
+              "h-[48px] transition-all duration-200 hover:opacity-95 active:scale-[0.99]"
+            )}
+            style={{ background: BRAND_GREEN, color: "white" }}
+            onClick={() => onNavigate?.({ href: "/portal/admin/pedidos/nuevo" })}
+            type="button"
+            title="Crear pedido manual"
+            aria-label="Crear pedido manual"
+          >
+            <PlusCircle size={18} />
+          </button>
+        ) : (
+          <button
+            className={cx(
+              "w-full flex items-center justify-center gap-2 rounded-2xl",
+              "h-[48px] px-4 text-sm font-semibold text-white",
+              "transition-all duration-200 hover:opacity-95 active:scale-[0.99]"
+            )}
+            style={{ background: BRAND_GREEN }}
+            onClick={() => onNavigate?.({ href: "/portal/admin/pedidos/nuevo" })}
+            type="button"
+          >
+            <PlusCircle size={18} />
+            Crear pedido manual
+          </button>
+        )}
       </div>
 
-      {/* Logout unificado */}
-      <button
-        onClick={onLogoutClick}
-        className={cx(
-          "mt-4 w-full flex items-center justify-center gap-2 rounded-2xl",
-          "h-[48px] border border-red-200 bg-red-50",
-          "px-4 text-sm font-semibold text-red-600 hover:bg-red-100"
-        )}
-        type="button"
-      >
-        <LogOut size={18} />
-        Cerrar sesión
-      </button>
+      {/* Logout */}
+      {collapsed ? (
+        <button
+          onClick={onLogoutClick}
+          className={cx(
+            "mt-4 w-full flex items-center justify-center rounded-2xl",
+            "h-[48px] border border-red-200 bg-red-50",
+            "text-red-600 hover:bg-red-100 transition"
+          )}
+          type="button"
+          title="Cerrar sesión"
+          aria-label="Cerrar sesión"
+        >
+          <LogOut size={25} />
+        </button>
+      ) : (
+        <button
+          onClick={onLogoutClick}
+          className={cx(
+            "mt-4 w-full flex items-center justify-center gap-2 rounded-2xl",
+            "h-[48px] border border-red-200 bg-red-50",
+            "px-4 text-sm font-semibold text-red-600 hover:bg-red-100"
+          )}
+          type="button"
+        >
+          <LogOut size={18} />
+          Cerrar sesión
+        </button>
+      )}
 
-      <div className="mt-3 text-[11px] text-gray-400">Xhunco · Admin Panel</div>
+      {!collapsed && <div className="mt-3 text-[11px] text-gray-400">Xhunco · Admin Panel</div>}
     </div>
   );
 }
@@ -269,6 +358,11 @@ export default function AdminLayout({ children }) {
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // ✅ Desktop: colapsable + hover expand
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [desktopHovering, setDesktopHovering] = useState(false);
+  const desktopExpanded = !desktopCollapsed || desktopHovering;
 
   const aliveRef = useRef(true);
 
@@ -389,6 +483,7 @@ export default function AdminLayout({ children }) {
                 loadingProfile={loadingProfile}
                 onLogoutClick={handleLogout}
                 onNavigate={handleNavigate}
+                collapsed={false}
               />
             </div>
           </div>
@@ -397,14 +492,39 @@ export default function AdminLayout({ children }) {
 
       {/* Desktop shell */}
       <div className="hidden md:flex min-h-screen">
-        <aside className="w-[280px] shrink-0 border-r border-gray-200 bg-white">
+        <aside
+          className={cx(
+            "shrink-0 border-r border-gray-200 bg-white transition-all duration-300 ease-out"
+          )}
+          style={{ width: desktopExpanded ? 280 : 80 }}
+          onMouseEnter={() => setDesktopHovering(true)}
+          onMouseLeave={() => setDesktopHovering(false)}
+        >
           <div className="sticky top-0 h-screen">
             <div className="h-full overflow-y-auto">
+              {/* Botón colapsar (sin flechas) */}
+              <div className={cx("p-3", desktopExpanded ? "px-4" : "px-3")}>
+                <button
+                  type="button"
+                  onClick={() => setDesktopCollapsed((v) => !v)}
+                  className={cx(
+                    "w-full h-10 rounded-xl border border-gray-200 bg-white",
+                    "hover:bg-gray-50 active:scale-[0.99] transition",
+                    "flex items-center justify-center"
+                  )}
+                  aria-label={desktopCollapsed ? "Expandir menú" : "Colapsar menú"}
+                  title={desktopCollapsed ? "Expandir menú" : "Colapsar menú"}
+                >
+                  {desktopCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                </button>
+              </div>
+
               <SidebarContent
                 profile={profile}
                 loadingProfile={loadingProfile}
                 onLogoutClick={handleLogout}
                 onNavigate={handleNavigate}
+                collapsed={!desktopExpanded}
               />
             </div>
           </div>

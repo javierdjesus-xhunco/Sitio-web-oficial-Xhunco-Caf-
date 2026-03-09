@@ -136,6 +136,34 @@ function renderActiveShape(props) {
 }
 
 export default function AdminDashboard() {
+  // ✅ Nombre + saludo dinámico (igual que super-admin)
+  const [firstName, setFirstName] = useState("Usuario");
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/me", { cache: "no-store" });
+        const json = await res.json();
+        if (!alive) return;
+        setFirstName(String(json?.first_name || "Usuario"));
+      } catch {
+        if (!alive) return;
+        setFirstName("Usuario");
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return "Buenos días";
+    if (h >= 12 && h < 19) return "Buenas tardes";
+    return "Buenas noches";
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -223,7 +251,6 @@ export default function AdminDashboard() {
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      // NO abort aquí siempre, para no cancelar al desmontar normal: pero sí es válido
     };
   }, [monthFilter, clientFilter]);
 
@@ -252,8 +279,11 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="text-sm text-neutral-600">Panel</div>
-          <h1 className="mt-1 text-5xl font-semibold tracking-tight text-black">
+          {/* ✅ Saludo dinámico */}
+          <div className="text-sm text-neutral-600">Bienvenido, {firstName}</div>
+          <div className="mt-1 text-xs text-neutral-500">{greeting}</div>
+
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight text-black">
             Rendimiento de Xhunco®
           </h1>
 
@@ -268,7 +298,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ✅ Si ya moviste accesos al layout, aquí puedes quitar estos 2 botones si quieres */}
         <div className="flex items-center gap-3">
           <a
             href="/portal/admin/pedidos"
@@ -491,7 +520,7 @@ export default function AdminDashboard() {
                       <div className="min-w-0 flex items-center gap-3">
                         <span
                           className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: idx % 2 === 0 ? BRAND_GREEN : BRAND_GREEN}}
+                          style={{ backgroundColor: idx % 2 === 0 ? BRAND_GREEN : BRAND_GREEN }}
                         />
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-black">{r.name}</div>
@@ -559,4 +588,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-  

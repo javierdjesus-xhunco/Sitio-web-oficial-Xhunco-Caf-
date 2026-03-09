@@ -16,10 +16,9 @@ function safeNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-// ✅ Ajusta esto si tus valores reales cambian
 // Tu UI usa: pending / paid
 const PAYMENT_PENDING_VALUES = new Set([
-  "pending", // ✅ importante
+  "pending",
   "pendiente",
   "pendiente_pago",
   "pendiente de pago",
@@ -36,30 +35,46 @@ export async function GET() {
 
   const userId = authData.user.id;
 
-  // 1) Cliente (business_name)
-  const { data: clientRows, error: clientErr } = await supabase
-    .from("clients")
-    .select("business_name")
-    .eq("user_id", userId)
-    .limit(1);
+  // Perfil + cliente + pedidos en paralelo
+  const [
+    { data: profileRow, error: profileErr },
+    { data: clientRows, error: clientErr },
+    { data: orders, error: ordErr },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("first_name")
+      .eq("id", userId)
+      .maybeSingle(),
+
+    supabase
+      .from("clients")
+      .select("business_name")
+      .eq("user_id", userId)
+      .limit(1),
+
+    supabase
+      .from("orders")
+      .select("id, status, total, created_at, payment_status")
+      .eq("client_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+  ]);
+
+  if (profileErr) {
+    return NextResponse.json({ error: profileErr.message }, { status: 400 });
+  }
 
   if (clientErr) {
     return NextResponse.json({ error: clientErr.message }, { status: 400 });
   }
 
-  const business_name = clientRows?.[0]?.business_name || "";
-
-  // 2) Pedidos
-  const { data: orders, error: ordErr } = await supabase
-    .from("orders")
-    .select("id, status, total, created_at, payment_status")
-    .eq("client_user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
   if (ordErr) {
     return NextResponse.json({ error: ordErr.message }, { status: 400 });
   }
+
+  const first_name = String(profileRow?.first_name || "Usuario").trim() || "Usuario";
+  const business_name = clientRows?.[0]?.business_name || "";
 
   const rows = orders || [];
 
@@ -67,12 +82,12 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: true,
+        first_name,
         business_name,
         months: [],
         last_order: null,
         pendientes_pedido: { count: 0, total: 0 },
         pendientes_pago: { count: 0, total: 0 },
-        // compat con tu frontend anterior
         pendientes: { count: 0, total: 0 },
         products: { top: [], bottom: [] },
       },
@@ -80,7 +95,7 @@ export async function GET() {
     );
   }
 
-  // 3) Agregados
+  // Agregados
   const monthsCount = new Map();
 
   let pendPedidoCount = 0;
@@ -97,13 +112,13 @@ export async function GET() {
     const pay = norm(o.payment_status);
     const total = safeNumber(o.total);
 
-    // Pendientes de pedido: status = pendiente
+    // Pendientes de pedido
     if (st === "pendiente") {
       pendPedidoCount += 1;
       pendPedidoTotal += total;
     }
 
-    // Pendientes de pago: payment_status = pending (o equivalente)
+    // Pendientes de pago
     if (PAYMENT_PENDING_VALUES.has(pay)) {
       pendPagoCount += 1;
       pendPagoTotal += total;
@@ -112,7 +127,7 @@ export async function GET() {
 
   const months = Array.from(monthsCount.entries())
     .map(([ym, count]) => ({ ym, count }))
-    .sort((a, b) => (a.ym > b.ym ? -1 : 1)); // desc
+    .sort((a, b) => (a.ym > b.ym ? -1 : 1));
 
   const last_order = rows[0]
     ? {
@@ -122,37 +137,23 @@ export async function GET() {
       }
     : null;
 
-  // 4) Productos (SUM qty)
-  const orderIds = rows.map((o) => o.id);
+  // Productos agregados desde la vista SQL
+  const { data: productRows, error: productErr } = await supabase
+    .from("client_product_totals")
+    .select("product_name, total_qty")
+    .eq("client_user_id", userId)
+    .order("total_qty", { ascending: false });
 
-  const { data: lines, error: lineErr } = await supabase
-    .from("order_items")
-    .select(
-      `
-      qty,
-      suministro:suministros_xhunco (
-        nombre
-      ),
-      order_id
-    `
-    )
-    .in("order_id", orderIds);
-
-  if (lineErr) {
-    return NextResponse.json({ error: lineErr.message }, { status: 400 });
+  if (productErr) {
+    return NextResponse.json({ error: productErr.message }, { status: 400 });
   }
 
-  const qtyByProduct = new Map();
-  for (const l of lines || []) {
-    const name = String(l?.suministro?.nombre || "Producto").trim();
-    const qty = safeNumber(l?.qty);
-    if (!name || qty <= 0) continue;
-    qtyByProduct.set(name, (qtyByProduct.get(name) || 0) + qty);
-  }
-
-  const productsSorted = Array.from(qtyByProduct.entries())
-    .map(([name, qty]) => ({ name, qty }))
-    .sort((a, b) => b.qty - a.qty);
+  const productsSorted = (productRows || [])
+    .map((x) => ({
+      name: String(x?.product_name || "Producto").trim(),
+      qty: safeNumber(x?.total_qty),
+    }))
+    .filter((x) => x.name && x.qty > 0);
 
   const top = productsSorted.slice(0, 5);
   const bottom = productsSorted.slice(-5).reverse();
@@ -163,12 +164,12 @@ export async function GET() {
   return NextResponse.json(
     {
       ok: true,
+      first_name,
       business_name,
       months,
       last_order,
       pendientes_pedido,
       pendientes_pago,
-      // compat
       pendientes: pendientes_pedido,
       products: { top, bottom },
     },

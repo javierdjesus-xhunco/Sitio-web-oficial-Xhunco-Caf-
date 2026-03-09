@@ -111,13 +111,25 @@ export default function NuevoClientePage() {
   }, [isCliente]);
 
   // ✅ lista de municipios (dependiente del estado) - memoizada
+  // FIX: elimina duplicados y normaliza strings (evita keys duplicadas en React)
   const municipiosDisponibles = useMemo(() => {
     if (!isCliente) return [];
     const s = String(form.state || "");
-    return (MUNICIPIOS_POR_ESTADO && MUNICIPIOS_POR_ESTADO[s]) ? MUNICIPIOS_POR_ESTADO[s] : [];
+    const arr =
+      MUNICIPIOS_POR_ESTADO && MUNICIPIOS_POR_ESTADO[s] ? MUNICIPIOS_POR_ESTADO[s] : [];
+
+    const unique = Array.from(
+      new Set(arr.map((x) => String(x || "").trim()))
+    ).filter(Boolean);
+
+    // (opcional) orden alfabético estable
+    unique.sort((a, b) => a.localeCompare(b, "es-MX"));
+
+    return unique;
   }, [isCliente, form.state]);
 
   // ✅ Cuando cambia el estado, si el municipio ya no existe, lo limpiamos (optimizado)
+  // FIX: valida contra la lista "deduplicada" para que coincida con lo que se muestra
   useEffect(() => {
     if (!isCliente) return;
 
@@ -127,9 +139,17 @@ export default function NuevoClientePage() {
         return { ...prev, municipality: "" };
       }
 
-      const list = (MUNICIPIOS_POR_ESTADO && MUNICIPIOS_POR_ESTADO[prev.state]) ? MUNICIPIOS_POR_ESTADO[prev.state] : [];
+      const raw =
+        MUNICIPIOS_POR_ESTADO && MUNICIPIOS_POR_ESTADO[prev.state]
+          ? MUNICIPIOS_POR_ESTADO[prev.state]
+          : [];
+
+      const unique = Array.from(
+        new Set(raw.map((x) => String(x || "").trim()))
+      ).filter(Boolean);
+
       if (!prev.municipality) return prev;
-      if (list.includes(prev.municipality)) return prev;
+      if (unique.includes(prev.municipality)) return prev;
 
       return { ...prev, municipality: "" };
     });
@@ -170,31 +190,31 @@ export default function NuevoClientePage() {
   };
 
   const validate = () => {
-  // Campos base obligatorios
-  for (const key of requiredForSubmit) {
-    if (!String(form[key] ?? "").trim()) return `Falta: ${key}`;
-  }
+    // Campos base obligatorios
+    for (const key of requiredForSubmit) {
+      if (!String(form[key] ?? "").trim()) return `Falta: ${key}`;
+    }
 
-  if (isCliente) {
-    // Teléfono obligatorio y 10 dígitos
-    if (!form.phone) return "Teléfono es obligatorio";
-    if (form.phone.length !== 10)
-      return "Teléfono debe tener exactamente 10 dígitos";
+    if (isCliente) {
+      // Teléfono obligatorio y 10 dígitos
+      if (!form.phone) return "Teléfono es obligatorio";
+      if (form.phone.length !== 10)
+        return "Teléfono debe tener exactamente 10 dígitos";
 
-    // Código postal obligatorio y 5 dígitos
-    if (!form.postal_code) return "Código postal es obligatorio";
-    if (form.postal_code.length !== 5)
-      return "Código postal debe tener exactamente 5 dígitos";
+      // Código postal obligatorio y 5 dígitos
+      if (!form.postal_code) return "Código postal es obligatorio";
+      if (form.postal_code.length !== 5)
+        return "Código postal debe tener exactamente 5 dígitos";
 
-    // Estado obligatorio
-    if (!form.state) return "Estado es obligatorio";
+      // Estado obligatorio
+      if (!form.state) return "Estado es obligatorio";
 
-    // Municipio obligatorio
-    if (!form.municipality) return "Municipio es obligatorio";
-  }
+      // Municipio obligatorio
+      if (!form.municipality) return "Municipio es obligatorio";
+    }
 
-  return null;
-};
+    return null;
+  };
 
   const resetAll = () => {
     setForm(initialForm);

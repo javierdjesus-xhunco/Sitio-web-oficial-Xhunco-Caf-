@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 function formatMoney(n) {
@@ -78,6 +78,7 @@ export default function NuevoPedidoPage() {
   const [imgOpen, setImgOpen] = useState(false);
   const [imgSrc, setImgSrc] = useState("");
   const [imgAlt, setImgAlt] = useState("");
+  const imgCardRef = useRef(null);
 
   // ✅ Modal resumen móvil
   const [cartModalOpen, setCartModalOpen] = useState(false);
@@ -171,6 +172,25 @@ export default function NuevoPedidoPage() {
       }),
     );
   }, [cart, draftNo, hydrated]);
+
+  // ✅ Mejora modal imagen: bloquear scroll del fondo + cerrar con ESC
+  useEffect(() => {
+    if (!imgOpen || typeof window === "undefined") return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") closeImage();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [imgOpen]);
 
   // categorías dinámicas
   const categories = useMemo(() => {
@@ -422,18 +442,8 @@ export default function NuevoPedidoPage() {
       <div className="flex items-start justify-between gap-6">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 leading-tight">
-            Nuevo pedido{" "}
-            {draftNo ? <span className="text-gray-500">#{draftNo}</span> : null}
+            Nuevo Pedido
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Precios aplicados:{" "}
-            <span className="text-gray-900 font-medium">{priceTier || "—"}</span>
-            {barroNegroDiscount ? (
-              <span className="ml-2 text-xs text-emerald-700">
-                · Descuento Barro Negro activo (-$9 en café 1kg)
-              </span>
-            ) : null}
-          </p>
         </div>
 
         <a
@@ -461,7 +471,6 @@ export default function NuevoPedidoPage() {
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lista */}
         <div className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white p-4 sm:p-6">
-          {/* ... (SIN CAMBIOS en tu lista, se mantiene tal cual) ... */}
           <div className="flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="text-sm font-semibold text-gray-900">Suministros</div>
@@ -968,45 +977,44 @@ export default function NuevoPedidoPage() {
               <div className="p-4">
                 <div className="text-xs text-gray-600 mb-2">Selecciona cantidad</div>
 
-                {/* Selector cantidad tipo - 0 + */}
-              <div className="mt-2 grid grid-cols-3 gap-2">
-             <button
-              type="button"
-              onClick={() => setReqQty((q) => Math.max(1, Number(q || 1) - 1))}
-              className="rounded-xl border bg-white py-2 text-sm transition"
-              style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
-              disabled={reqSending}
-               >
-              −
-              </button>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReqQty((q) => Math.max(1, Number(q || 1) - 1))}
+                    className="rounded-xl border bg-white py-2 text-sm transition"
+                    style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
+                    disabled={reqSending}
+                  >
+                    −
+                  </button>
 
-              <div
-             className="rounded-xl border bg-white py-2 text-sm text-gray-900 text-center"
-             style={{ borderColor: "rgba(0,0,0,0.12)" }}
-              >
-              {reqQty}
-             </div>
+                  <div
+                    className="rounded-xl border bg-white py-2 text-sm text-gray-900 text-center"
+                    style={{ borderColor: "rgba(0,0,0,0.12)" }}
+                  >
+                    {reqQty}
+                  </div>
 
-             <button
-              type="button"
-              onClick={() => setReqQty((q) => Math.min(999, Number(q || 1) + 1))}
-              className="rounded-xl py-2 text-sm text-white transition disabled:opacity-60"
-              style={{ backgroundColor: BRAND_GREEN }}
-              disabled={reqSending}
-              onMouseEnter={(e) => {
-              if (!reqSending) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
-              }}
-              onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = BRAND_GREEN;
-              }}
-              >
-              +
-              </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => setReqQty((q) => Math.min(999, Number(q || 1) + 1))}
+                    className="rounded-xl py-2 text-sm text-white transition disabled:opacity-60"
+                    style={{ backgroundColor: BRAND_GREEN }}
+                    disabled={reqSending}
+                    onMouseEnter={(e) => {
+                      if (!reqSending) e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = BRAND_GREEN;
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
 
-              <div className="mt-2 text-[11px] text-gray-500">
-               Cantidad mínima: 1 · Máxima: 999
-              </div>
+                <div className="mt-2 text-[11px] text-gray-500">
+                  Cantidad mínima: 1 · Máxima: 999
+                </div>
 
                 {reqError ? (
                   <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1039,27 +1047,44 @@ export default function NuevoPedidoPage() {
         </div>
       ) : null}
 
-      {/* Modal imagen */}
+      {/* ✅ Modal imagen mejorado */}
       {imgOpen ? (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/70" onClick={closeImage} />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="w-full max-w-[720px] rounded-3xl border border-gray-200 bg-white p-4 shadow-2xl">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm text-gray-900 truncate">{imgAlt}</div>
+        <div
+          className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-[2px]"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeImage();
+          }}
+        >
+          <div className="flex min-h-full items-center justify-center p-2 sm:p-4">
+            <div
+              ref={imgCardRef}
+              className="w-full max-w-[980px] max-h-[92vh] overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl flex flex-col"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-3 py-3 sm:px-4">
+                <div className="min-w-0 text-sm font-medium text-gray-900 truncate">
+                  {imgAlt}
+                </div>
+
                 <button
                   type="button"
                   onClick={closeImage}
-                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm transition"
+                  className="shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm transition"
                   style={{ color: BRAND_GREEN }}
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+              <div className="flex-1 min-h-0 overflow-auto bg-gray-50 p-2 sm:p-4 overscroll-contain">
                 {imgSrc ? (
-                  <img src={imgSrc} alt={imgAlt} className="w-full h-auto object-contain" />
+                  <img
+                    src={imgSrc}
+                    alt={imgAlt}
+                    className="mx-auto block max-w-full w-auto h-auto max-h-[calc(92vh-96px)] object-contain rounded-2xl"
+                    loading="eager"
+                    draggable={false}
+                  />
                 ) : (
                   <div className="p-8 text-center text-sm text-gray-600">Sin imagen</div>
                 )}
