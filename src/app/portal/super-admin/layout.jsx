@@ -47,7 +47,7 @@ export default function SuperAdminLayout({ children }) {
     };
   }, [open]);
 
-  // Título dinámico para header móvil (sin botón volver/SA como pediste)
+  // Título dinámico para header móvil
   const pageTitle = useMemo(() => {
     const p = pathname;
     if (p.startsWith("/portal/super-admin/dashboard")) return "Panel de control";
@@ -65,13 +65,13 @@ export default function SuperAdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-white text-black">
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen items-start">
         {/* =======================
             Sidebar DESKTOP/TABLET
            ======================= */}
         <aside
           className={[
-            "hidden lg:flex min-h-screen border-r border-black/10 bg-white flex-col",
+            "hidden lg:flex sticky top-0 h-screen self-start border-r border-black/10 bg-white flex-col overflow-y-auto",
             "transition-all duration-300 ease-out",
             expanded ? "w-[250px] px-5 py-6" : "w-[80px] px-3 py-6",
           ].join(" ")}
@@ -95,7 +95,7 @@ export default function SuperAdminLayout({ children }) {
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
 
-          <nav className={["mt-6 space-y-2 flex-1", expanded ? "" : "items-center"].join(" ")}>
+          <nav className="mt-6 space-y-2">
             <PortalSideItem
               href="/portal/super-admin/dashboard"
               label="Inicio"
@@ -146,19 +146,19 @@ export default function SuperAdminLayout({ children }) {
               brandColor={BRAND_GREEN}
               collapsed={!expanded}
             />
-          </nav>
 
-          {/* Logout (en colapsado se queda centrado) */}
-          <div className="pt-4 border-t border-black/10">
-           <LogoutButton collapsed={!expanded} />
-          </div>
+            {/* Logout justo después de Reportes */}
+            <div className="pt-2">
+              <LogoutButton collapsed={!expanded} />
+            </div>
+          </nav>
         </aside>
 
         {/* =======================
             Área principal
            ======================= */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Topbar móvil (limpio) */}
+          {/* Topbar móvil */}
           <header className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-black/10">
             <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
               <button
@@ -200,7 +200,7 @@ export default function SuperAdminLayout({ children }) {
         </div>
 
         {/* =======================
-            Drawer MÓVIL (animado + blur)
+            Drawer MÓVIL
            ======================= */}
         <div
           className={[
@@ -244,7 +244,7 @@ export default function SuperAdminLayout({ children }) {
               </button>
             </div>
 
-            <nav className="mt-8 space-y-2 flex-1 overflow-auto pr-1">
+            <nav className="mt-8 space-y-2 overflow-auto pr-1">
               <PortalSideItem
                 href="/portal/super-admin/dashboard"
                 label="Inicio"
@@ -295,11 +295,12 @@ export default function SuperAdminLayout({ children }) {
                 brandColor={BRAND_GREEN}
                 collapsed={false}
               />
-            </nav>
 
-            <div className="pt-4 border-t border-black/10">
-              <LogoutButton />
-            </div>
+              {/* Logout justo después de Reportes en móvil */}
+              <div className="pt-2">
+                <LogoutButton />
+              </div>
+            </nav>
           </aside>
         </div>
       </div>

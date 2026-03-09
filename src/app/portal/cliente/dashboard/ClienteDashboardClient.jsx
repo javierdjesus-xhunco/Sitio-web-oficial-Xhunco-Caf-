@@ -379,7 +379,6 @@ export default function ClienteDashboardClient({ initialData }) {
             <div className="text-xs tracking-wider text-black/50">TOP DE PRODUCTOS (Cantidad)</div>
             {!loading && (
               <div className="text-xs text-black/45">
-                Tip: detecta rotación (más comprados) y productos a impulsar (menos comprados)
               </div>
             )}
           </div>
@@ -388,7 +387,6 @@ export default function ClienteDashboardClient({ initialData }) {
             <div className="mt-3 text-sm text-black/60">Cargando…</div>
           ) : !productsTop.length ? (
             <div className="mt-3 text-sm text-black/60">
-              No hay datos de productos (revisa que existan rows en <code>order_items</code>).
             </div>
           ) : (
             <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">

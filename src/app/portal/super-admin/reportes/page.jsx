@@ -16,6 +16,10 @@ import {
   TrendingDown,
   Clock3,
   Filter,
+  Wallet,
+  BadgeDollarSign,
+  TriangleAlert,
+  Boxes,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -30,7 +34,6 @@ import {
 } from "recharts";
 
 const BRAND_GREEN = "#31572c";
-const BRAND_GREEN_DARK = "#25441f";
 const BRAND_SOFT = "#eef6ee";
 
 function cx(...classes) {
@@ -105,6 +108,36 @@ function paymentLabel(v) {
   return v || "—";
 }
 
+function estadoColor(estado) {
+  if (estado === "rentable") return "bg-emerald-50 text-emerald-700";
+  if (estado === "margen_bajo") return "bg-amber-50 text-amber-700";
+  if (estado === "riesgo") return "bg-orange-50 text-orange-700";
+  return "bg-red-50 text-red-700";
+}
+
+function estadoLabel(estado) {
+  if (estado === "rentable") return "Rentable";
+  if (estado === "margen_bajo") return "Margen bajo";
+  if (estado === "riesgo") return "Riesgo";
+  return "Pérdida";
+}
+
+function profitabilityLabel(margin) {
+  const m = Number(margin || 0);
+  if (m < 0) return "Pérdida";
+  if (m < 10) return "Riesgo";
+  if (m < 20) return "Margen bajo";
+  return "Rentable";
+}
+
+function profitabilityBadgeClass(margin) {
+  const m = Number(margin || 0);
+  if (m < 0) return "bg-red-50 text-red-700";
+  if (m < 10) return "bg-orange-50 text-orange-700";
+  if (m < 20) return "bg-amber-50 text-amber-700";
+  return "bg-emerald-50 text-emerald-700";
+}
+
 function KPI({ title, value, subtitle, icon: Icon, delta }) {
   const isUp = Number(delta || 0) >= 0;
 
@@ -160,7 +193,8 @@ export default function SuperAdminReportesPage() {
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [data, setData] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [profitability, setProfitability] = useState(null);
 
   const [statusFilter, setStatusFilter] = useState("todos");
   const [clientQuery, setClientQuery] = useState("");
@@ -170,17 +204,28 @@ export default function SuperAdminReportesPage() {
     setErr("");
 
     try {
-      const res = await fetch(`/api/superadmin/reports/overview?days=${encodeURIComponent(String(nextDays))}`, {
-        cache: "no-store",
-      });
+      const [overviewRes, profitRes] = await Promise.all([
+        fetch(`/api/superadmin/reports/overview?days=${encodeURIComponent(String(nextDays))}`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/superadmin/reports/profitability?days=${encodeURIComponent(String(nextDays))}`, {
+          cache: "no-store",
+        }),
+      ]);
 
-      const json = await res.json().catch(() => ({}));
+      const overviewJson = await overviewRes.json().catch(() => ({}));
+      const profitJson = await profitRes.json().catch(() => ({}));
 
-      if (!res.ok) {
-        throw new Error(json?.error || "No se pudo cargar el reporte");
+      if (!overviewRes.ok) {
+        throw new Error(overviewJson?.error || "No se pudo cargar el reporte general");
       }
 
-      setData(json);
+      if (!profitRes.ok) {
+        throw new Error(profitJson?.error || "No se pudo cargar el reporte de rentabilidad");
+      }
+
+      setOverview(overviewJson);
+      setProfitability(profitJson);
     } catch (e) {
       setErr(e?.message || "Error inesperado");
     } finally {
@@ -197,8 +242,8 @@ export default function SuperAdminReportesPage() {
     window.open(`/api/superadmin/reports/export?days=${encodeURIComponent(String(days))}`, "_blank");
   }
 
-  const kpis = data?.kpis || {};
-  const previous = data?.previous_kpis || {};
+  const kpis = overview?.kpis || {};
+  const previous = overview?.previous_kpis || {};
 
   const totalOrders = Number(kpis.total_orders || 0);
   const paidOrders = Number(kpis.paid_orders || 0);
@@ -206,12 +251,16 @@ export default function SuperAdminReportesPage() {
   const paidItems = Number(kpis.paid_items || 0);
   const avgPaidTicket = Number(kpis.avg_paid_ticket || 0);
 
-  const dayRows = data?.sales_by_day || [];
-  const statusRows = data?.status_breakdown || [];
-  const monthRows = data?.sales_by_month || [];
-  const topClients = data?.top_clients || [];
-  const topProducts = data?.top_products || [];
-  const rawPreview = data?.raw_preview || [];
+  const dayRows = overview?.sales_by_day || [];
+  const statusRows = overview?.status_breakdown || [];
+  const monthRows = overview?.sales_by_month || [];
+  const topClients = overview?.top_clients || [];
+  const topProducts = overview?.top_products || [];
+  const rawPreview = overview?.raw_preview || [];
+
+  const profitKpis = profitability?.kpis || {};
+  const topProfitProducts = profitability?.top_productos || [];
+  const unprofitableProducts = profitability?.productos_no_rentables || [];
 
   const filteredRawPreview = useMemo(() => {
     return rawPreview.filter((row) => {
@@ -244,13 +293,13 @@ export default function SuperAdminReportesPage() {
     }));
   }, [statusRows]);
 
-  const chartMonths = useMemo(() => {
-    return monthRows.map((row) => ({
-      month: row.month_label,
-      ventas: Number(row.total_sales || 0),
-      pedidos: Number(row.orders || 0),
+  const chartProfitability = useMemo(() => {
+    return topProfitProducts.slice(0, 8).map((row) => ({
+      producto: row.producto || "Producto",
+      utilidad: Number(row.utilidad || 0),
+      margen: Number(row.margen || 0),
     }));
-  }, [monthRows]);
+  }, [topProfitProducts]);
 
   const pendientes =
     statusRows.find((x) => String(x.status || "").toLowerCase() === "pendiente")?.count || 0;
@@ -267,7 +316,6 @@ export default function SuperAdminReportesPage() {
 
   return (
     <section className="space-y-6 p-4 md:p-6">
-      {/* Hero */}
       <div className="overflow-hidden rounded-[32px] border border-black/10 bg-white shadow-sm">
         <div className="bg-gradient-to-r from-[#f6fbf6] via-white to-[#f6fbf6] p-5 md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -277,15 +325,15 @@ export default function SuperAdminReportesPage() {
                 style={{ borderColor: "#d8e6d9", backgroundColor: BRAND_SOFT, color: BRAND_GREEN }}
               >
                 <BarChart3 size={14} />
-                Analytics / SaaS Reports
+                Análisis
               </div>
 
               <h1 className="mt-3 text-3xl md:text-4xl font-semibold tracking-tight text-black">
-                Centro de reportes
+                Reportes Xhunco®
               </h1>
 
               <p className="mt-2 max-w-3xl text-sm md:text-base text-black/55">
-                Panorama ejecutivo de ventas, cobranzas, clientes, productos y desempeño operativo.
+                Visualiza ventas, cobranzas, clientes, productos, desempeño operativo y rentabilidad.
               </p>
             </div>
 
@@ -335,7 +383,6 @@ export default function SuperAdminReportesPage() {
         </div>
       ) : null}
 
-      {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-5">
         <KPI
           title="Ingresos cobrados"
@@ -378,7 +425,96 @@ export default function SuperAdminReportesPage() {
         />
       </div>
 
-      {/* Mini status cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">
+                Utilidad total
+              </div>
+              <div className="mt-2 text-3xl font-semibold tracking-tight text-black">
+                {loading ? "—" : money(profitKpis.utilidad || 0)}
+              </div>
+              <div className="mt-2 text-sm text-black/50">
+                Venta menos costo snapshot
+              </div>
+            </div>
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: BRAND_SOFT, color: BRAND_GREEN }}
+            >
+              <BadgeDollarSign size={20} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">
+                Costo total
+              </div>
+              <div className="mt-2 text-3xl font-semibold tracking-tight text-black">
+                {loading ? "—" : money(profitKpis.costo || 0)}
+              </div>
+              <div className="mt-2 text-sm text-black/50">
+                Basado en original_cost_snapshot
+              </div>
+            </div>
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: BRAND_SOFT, color: BRAND_GREEN }}
+            >
+              <Wallet size={20} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">
+                Margen promedio
+              </div>
+              <div className="mt-2 text-3xl font-semibold tracking-tight text-black">
+                {loading ? "—" : `${Number(profitKpis.margen || 0).toFixed(1)}%`}
+              </div>
+              <div className="mt-2 text-sm text-black/50">
+                Rentabilidad global del periodo
+              </div>
+            </div>
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: BRAND_SOFT, color: BRAND_GREEN }}
+            >
+              <TrendingUp size={20} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-black/45">
+                Productos en alerta
+              </div>
+              <div className="mt-2 text-3xl font-semibold tracking-tight text-black">
+                {loading ? "—" : integer(unprofitableProducts.length || 0)}
+              </div>
+              <div className="mt-2 text-sm text-black/50">
+                Riesgo, margen bajo o pérdida
+              </div>
+            </div>
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: BRAND_SOFT, color: BRAND_GREEN }}
+            >
+              <TriangleAlert size={20} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {statusCards.map((item) => (
           <div key={item.key} className="rounded-[24px] border border-black/10 bg-white p-4 shadow-sm">
@@ -402,7 +538,6 @@ export default function SuperAdminReportesPage() {
         ))}
       </div>
 
-      {/* Charts row */}
       <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[1.6fr_1fr]">
         <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -479,7 +614,88 @@ export default function SuperAdminReportesPage() {
         </div>
       </div>
 
-      {/* Second row */}
+      <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[1.4fr_1fr]">
+        <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-black">Productos más rentables</h2>
+              <p className="text-sm text-black/50">
+                Utilidad basada en precio de venta vs costo snapshot.
+              </p>
+            </div>
+            <Boxes size={18} className="text-black/35" />
+          </div>
+
+          {loading ? (
+            <div className="text-sm text-black/50">Cargando…</div>
+          ) : chartProfitability.length === 0 ? (
+            <EmptyState text="Aún no hay ventas pagadas para calcular rentabilidad." />
+          ) : (
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartProfitability}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9ecef" />
+                  <XAxis dataKey="producto" tick={{ fontSize: 11, fill: "#666" }} />
+                  <YAxis tick={{ fontSize: 12, fill: "#666" }} />
+                  <Tooltip formatter={(value) => [money(value), "Utilidad"]} />
+                  <Bar dataKey="utilidad" fill={BRAND_GREEN} radius={[10, 10, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-black">Alertas de rentabilidad</h2>
+              <p className="text-sm text-black/50">
+                Productos con margen débil o pérdida.
+              </p>
+            </div>
+            <TriangleAlert size={18} className="text-black/35" />
+          </div>
+
+          {loading ? (
+            <div className="text-sm text-black/50">Cargando…</div>
+          ) : unprofitableProducts.length === 0 ? (
+            <EmptyState text="No hay productos en alerta en el periodo." />
+          ) : (
+            <div className="space-y-3">
+              {unprofitableProducts.slice(0, 10).map((row, idx) => (
+                <div
+                  key={`${row.producto}-${idx}`}
+                  className="rounded-2xl border border-black/10 bg-black/[0.02] px-4 py-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-black">
+                        {row.producto || "Producto"}
+                      </div>
+                      <div className="mt-1 text-xs text-black/45">
+                        {integer(row.qty || 0)} unidades
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-semibold text-black">{money(row.utilidad || 0)}</div>
+                      <span
+                        className={cx(
+                          "mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+                          estadoColor(row.estado)
+                        )}
+                      >
+                        {estadoLabel(row.estado)} · {Number(row.margen || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[1.2fr_1fr_1fr]">
         <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
           <div className="mb-4">
@@ -491,22 +707,22 @@ export default function SuperAdminReportesPage() {
 
           {loading ? (
             <div className="text-sm text-black/50">Cargando…</div>
-          ) : chartMonths.length === 0 ? (
+          ) : monthRows.length === 0 ? (
             <EmptyState />
           ) : (
             <div className="space-y-3">
-              {chartMonths.map((row, i) => (
+              {monthRows.map((row, i) => (
                 <div
                   key={`${row.month}-${i}`}
                   className="flex items-center justify-between rounded-2xl border border-black/10 bg-black/[0.02] px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <div className="truncate font-semibold text-black">{row.month}</div>
+                    <div className="truncate font-semibold text-black">{row.month_label}</div>
                     <div className="mt-1 text-xs text-black/45">
-                      {integer(row.pedidos)} pedidos pagados
+                      {integer(row.orders)} pedidos pagados
                     </div>
                   </div>
-                  <div className="font-semibold text-black">{money(row.ventas)}</div>
+                  <div className="font-semibold text-black">{money(row.total_sales)}</div>
                 </div>
               ))}
             </div>
@@ -592,7 +808,59 @@ export default function SuperAdminReportesPage() {
         </div>
       </div>
 
-      {/* Filters + raw table */}
+      <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-black">Rentabilidad por producto</h2>
+          <p className="text-sm text-black/50">
+            Comparativa entre precio de venta otorgado y costo original snapshot.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="text-sm text-black/50">Cargando…</div>
+        ) : topProfitProducts.length === 0 ? (
+          <EmptyState text="Aún no hay productos vendidos para analizar margen." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[1100px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-black/10 text-left text-black/45">
+                  <th className="pb-3 pr-4 font-medium">Producto</th>
+                  <th className="pb-3 pr-4 font-medium">Unidades</th>
+                  <th className="pb-3 pr-4 font-medium">Ventas</th>
+                  <th className="pb-3 pr-4 font-medium">Costo</th>
+                  <th className="pb-3 pr-4 font-medium">Utilidad</th>
+                  <th className="pb-3 pr-4 font-medium">Margen</th>
+                  <th className="pb-3 pr-4 font-medium">Estatus</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topProfitProducts.map((row, idx) => (
+                  <tr key={`${row.producto}-${idx}`} className="border-b border-black/[0.06]">
+                    <td className="py-3 pr-4 font-semibold text-black">{row.producto || "Producto"}</td>
+                    <td className="py-3 pr-4 text-black/70">{integer(row.qty || 0)}</td>
+                    <td className="py-3 pr-4 text-black">{money(row.ventas || 0)}</td>
+                    <td className="py-3 pr-4 text-black">{money(row.costo || 0)}</td>
+                    <td className="py-3 pr-4 font-semibold text-black">{money(row.utilidad || 0)}</td>
+                    <td className="py-3 pr-4 text-black">{Number(row.margen || 0).toFixed(1)}%</td>
+                    <td className="py-3 pr-4">
+                      <span
+                        className={cx(
+                          "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+                          estadoColor(row.estado)
+                        )}
+                      >
+                        {estadoLabel(row.estado)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div>
