@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import PortalSideItem from "@/components/PortalSideItem";
 import LogoutButton from "@/components/LogoutButton";
+import NotificationsBell from "@/components/NotificationsBell";
 
 import {
   Menu,
@@ -14,7 +15,7 @@ import {
   Package,
   ClipboardList,
   ShieldCheck,
-  Settings,
+  ShoppingCart,
   BarChart3,
   ChevronLeft,
   ChevronRight,
@@ -25,19 +26,14 @@ const BRAND_GREEN = "#31572c";
 export default function SuperAdminLayout({ children }) {
   const pathname = usePathname() || "";
 
-  // Drawer móvil
   const [open, setOpen] = useState(false);
-
-  // Sidebar desktop colapsable
   const [collapsed, setCollapsed] = useState(false);
   const [hovering, setHovering] = useState(false);
 
-  // Cierra drawer móvil al navegar
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Evita scroll cuando drawer móvil está abierto
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -47,28 +43,68 @@ export default function SuperAdminLayout({ children }) {
     };
   }, [open]);
 
-  // Título dinámico para header móvil
+  const navItems = useMemo(
+  () => [
+    {
+      href: "/portal/super-admin/dashboard",
+      label: "Inicio",
+      exact: true,
+      icon: Home,
+    },
+    {
+      href: "/portal/super-admin/clientes",
+      label: "Clientes",
+      icon: Users,
+    },
+    {
+      href: "/portal/super-admin/suministros",
+      label: "Suministros",
+      icon: Package,
+      exact: true,
+    },
+    {
+      href: "/portal/super-admin/pedidos",
+      label: "Pedidos",
+      icon: ClipboardList,
+    },
+    {
+      href: "/portal/super-admin/usuarios-y-roles",
+      label: "Usuarios y roles",
+      icon: ShieldCheck,
+    },
+    {
+      href: "/portal/super-admin/suministros/solicitudes",
+      label: "Solicitudes",
+      icon: ShoppingCart,
+    },
+    {
+      href: "/portal/super-admin/reportes",
+      label: "Reportes",
+      icon: BarChart3,
+    },
+  ],
+  []
+);
+
   const pageTitle = useMemo(() => {
     const p = pathname;
     if (p.startsWith("/portal/super-admin/dashboard")) return "Panel de control";
     if (p.startsWith("/portal/super-admin/clientes")) return "Clientes";
+    if (p.startsWith("/portal/super-admin/suministros/solicitudes")) {
+      return "Solicitudes de productos";
+    }
     if (p.startsWith("/portal/super-admin/suministros")) return "Suministros";
     if (p.startsWith("/portal/super-admin/pedidos")) return "Pedidos";
     if (p.startsWith("/portal/super-admin/usuarios-y-roles")) return "Usuarios y roles";
-    if (p.startsWith("/portal/super-admin/configuracion")) return "Configuración";
     if (p.startsWith("/portal/super-admin/reportes")) return "Reportes";
     return "Super administrador";
   }, [pathname]);
 
-  // Expandido real = o no colapsado, o colapsado pero con hover encima
   const expanded = !collapsed || hovering;
 
   return (
     <div className="min-h-screen bg-white text-black">
       <div className="flex min-h-screen items-start">
-        {/* =======================
-            Sidebar DESKTOP/TABLET
-           ======================= */}
         <aside
           className={[
             "hidden lg:flex sticky top-0 h-screen self-start border-r border-black/10 bg-white flex-col overflow-y-auto",
@@ -80,7 +116,6 @@ export default function SuperAdminLayout({ children }) {
         >
           <BrandHeader condensed={!expanded} />
 
-          {/* Botón colapsar/expandir (solo desktop) */}
           <button
             type="button"
             onClick={() => setCollapsed((v) => !v)}
@@ -96,69 +131,25 @@ export default function SuperAdminLayout({ children }) {
           </button>
 
           <nav className="mt-6 space-y-2">
-            <PortalSideItem
-              href="/portal/super-admin/dashboard"
-              label="Inicio"
-              exact
-              icon={Home}
-              brandColor={BRAND_GREEN}
-              collapsed={!expanded}
-            />
-            <PortalSideItem
-              href="/portal/super-admin/clientes"
-              label="Clientes"
-              icon={Users}
-              brandColor={BRAND_GREEN}
-              collapsed={!expanded}
-            />
-            <PortalSideItem
-              href="/portal/super-admin/suministros"
-              label="Suministros"
-              icon={Package}
-              brandColor={BRAND_GREEN}
-              collapsed={!expanded}
-            />
-            <PortalSideItem
-              href="/portal/super-admin/pedidos"
-              label="Pedidos"
-              icon={ClipboardList}
-              brandColor={BRAND_GREEN}
-              collapsed={!expanded}
-            />
-            <PortalSideItem
-              href="/portal/super-admin/usuarios-y-roles"
-              label="Usuarios y roles"
-              icon={ShieldCheck}
-              brandColor={BRAND_GREEN}
-              collapsed={!expanded}
-            />
-            <PortalSideItem
-              href="/portal/super-admin/configuracion"
-              label="Configuración"
-              icon={Settings}
-              brandColor={BRAND_GREEN}
-              collapsed={!expanded}
-            />
-            <PortalSideItem
-              href="/portal/super-admin/reportes"
-              label="Reportes"
-              icon={BarChart3}
-              brandColor={BRAND_GREEN}
-              collapsed={!expanded}
-            />
+            {navItems.map((item) => (
+              <PortalSideItem
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                exact={item.exact}
+                icon={item.icon}
+                brandColor={BRAND_GREEN}
+                collapsed={!expanded}
+              />
+            ))}
 
-            {/* Logout justo después de Reportes */}
             <div className="pt-2">
               <LogoutButton collapsed={!expanded} />
             </div>
           </nav>
         </aside>
 
-        {/* =======================
-            Área principal
-           ======================= */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Topbar móvil */}
           <header className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-black/10">
             <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
               <button
@@ -191,6 +182,8 @@ export default function SuperAdminLayout({ children }) {
                   {pageTitle}
                 </div>
               </div>
+
+              <NotificationsBell />
             </div>
           </header>
 
@@ -199,9 +192,6 @@ export default function SuperAdminLayout({ children }) {
           </main>
         </div>
 
-        {/* =======================
-            Drawer MÓVIL
-           ======================= */}
         <div
           className={[
             "lg:hidden fixed inset-0 z-40",
@@ -245,58 +235,18 @@ export default function SuperAdminLayout({ children }) {
             </div>
 
             <nav className="mt-8 space-y-2 overflow-auto pr-1">
-              <PortalSideItem
-                href="/portal/super-admin/dashboard"
-                label="Inicio"
-                exact
-                icon={Home}
-                brandColor={BRAND_GREEN}
-                collapsed={false}
-              />
-              <PortalSideItem
-                href="/portal/super-admin/clientes"
-                label="Clientes"
-                icon={Users}
-                brandColor={BRAND_GREEN}
-                collapsed={false}
-              />
-              <PortalSideItem
-                href="/portal/super-admin/suministros"
-                label="Suministros"
-                icon={Package}
-                brandColor={BRAND_GREEN}
-                collapsed={false}
-              />
-              <PortalSideItem
-                href="/portal/super-admin/pedidos"
-                label="Pedidos"
-                icon={ClipboardList}
-                brandColor={BRAND_GREEN}
-                collapsed={false}
-              />
-              <PortalSideItem
-                href="/portal/super-admin/usuarios-y-roles"
-                label="Usuarios y roles"
-                icon={ShieldCheck}
-                brandColor={BRAND_GREEN}
-                collapsed={false}
-              />
-              <PortalSideItem
-                href="/portal/super-admin/configuracion"
-                label="Configuración"
-                icon={Settings}
-                brandColor={BRAND_GREEN}
-                collapsed={false}
-              />
-              <PortalSideItem
-                href="/portal/super-admin/reportes"
-                label="Reportes"
-                icon={BarChart3}
-                brandColor={BRAND_GREEN}
-                collapsed={false}
-              />
+              {navItems.map((item) => (
+                <PortalSideItem
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  exact={item.exact}
+                  icon={item.icon}
+                  brandColor={BRAND_GREEN}
+                  collapsed={false}
+                />
+              ))}
 
-              {/* Logout justo después de Reportes en móvil */}
               <div className="pt-2">
                 <LogoutButton />
               </div>
@@ -321,13 +271,17 @@ function BrandHeader({ condensed = false }) {
           </span>
         </div>
       ) : (
-        <div>
+        <div className="w-full">
           <div className="text-xs tracking-[0.35em] text-black/50">PORTAL</div>
+
           <div className="mt-3 text-3xl font-semibold leading-tight text-black">
-            Super
-            <br />
-            administrador
+            <div className="flex items-center gap-3">
+              <span>Super</span>
+              <NotificationsBell />
+            </div>
+            <div>administrador</div>
           </div>
+
           <div
             className="mt-3 text-xs font-semibold tracking-[0.22em]"
             style={{ color: BRAND_GREEN }}

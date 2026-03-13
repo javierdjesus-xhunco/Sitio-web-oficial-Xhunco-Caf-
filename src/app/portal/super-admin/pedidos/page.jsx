@@ -1,5 +1,5 @@
-import AdminPedidosPage from "@/app/portal/admin/pedidos/page";
+import PedidosPageView from "@/components/pedidos/PedidosPageView";
 
 export default function SuperAdminPedidosPage() {
-  return <AdminPedidosPage />;
+  return <PedidosPageView role="super_admin" />;
 }

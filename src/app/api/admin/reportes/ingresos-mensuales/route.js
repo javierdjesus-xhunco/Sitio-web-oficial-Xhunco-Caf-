@@ -69,7 +69,7 @@ export async function GET(req) {
 
   const limit = Math.min(Math.max(parseInt(sp.get("limit") || "50", 10), 1), 200);
   const offset = Math.max(parseInt(sp.get("offset") || "0", 10), 0);
-  const business = sp.get("business") || null; // uuid o null
+  const business = sp.get("business") || null;
 
   let rpcName = null;
   let rpcArgs = null;
@@ -116,7 +116,6 @@ export async function GET(req) {
     );
   }
 
-  // CSV
   if (format === "csv") {
     let csv = "";
     let filename = `reporte-${report}-${startISO.slice(0, 10)}_a_${endISO.slice(0, 10)}.csv`;
@@ -125,35 +124,33 @@ export async function GET(req) {
       csv = toCSV(data || [], [
         { key: "day", label: "día" },
         { key: "orders_count", label: "ventas" },
-        { key: "revenue", label: "ingresos_entregados" },
+        { key: "revenue", label: "ingresos_pagados" },
       ]);
     } else if (report === "month") {
       csv = toCSV(data || [], [
         { key: "month", label: "mes" },
         { key: "orders_count", label: "ventas" },
-        { key: "revenue", label: "ingresos_entregados" },
+        { key: "revenue", label: "ingresos_pagados" },
       ]);
     } else if (report === "business") {
       csv = toCSV(data || [], [
         { key: "client_user_id", label: "client_user_id" },
         { key: "business_name", label: "negocio" },
         { key: "orders_count", label: "pedidos" },
-        { key: "revenue", label: "ingresos_entregados" },
+        { key: "revenue", label: "ingresos_pagados" },
       ]);
     } else if (report === "kpis") {
-      // 1 fila
-      const row = (data && data[0]) ? data[0] : {};
+      const row = data && data[0] ? data[0] : {};
       csv = toCSV([row], [
         { key: "orders_total", label: "pedidos_totales" },
         { key: "orders_delivered", label: "pedidos_entregados" },
         { key: "orders_cancelled", label: "pedidos_cancelados" },
-        { key: "revenue_delivered", label: "ingresos_entregados" },
-        { key: "avg_ticket_delivered", label: "ticket_promedio_entregado" },
+        { key: "revenue_paid", label: "ingresos_pagados" },
+        { key: "avg_ticket_paid", label: "ticket_promedio_pagado" },
         { key: "fulfillment_pct", label: "cumplimiento_pct" },
       ]);
       filename = `reporte-kpis-${startISO.slice(0, 10)}_a_${endISO.slice(0, 10)}.csv`;
     } else {
-      // orders_detail: aplanamos items para CSV (1 fila por item)
       const flat = [];
       for (const row of data || []) {
         const items = Array.isArray(row.items) ? row.items : [];
@@ -213,7 +210,6 @@ export async function GET(req) {
     });
   }
 
-  // JSON
   return NextResponse.json(
     {
       range: { start: startISO, end: endISO },

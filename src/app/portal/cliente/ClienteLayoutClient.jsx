@@ -88,21 +88,18 @@ export default function ClienteLayoutClient({ children, initialClient }) {
 
   return (
     <div className="min-h-screen bg-white text-black">
-
       {/* Topbar móvil */}
       <header className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-black/10">
         <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
-
-          {/* BOTÓN HAMBURGUESA MEJORADO */}
           <button
-           ref={openBtnRef}
-           type="button"
-           onClick={() => setOpen(true)}
-           className="flex items-center justify-center h-9 w-9 rounded-lg hover:bg-black/[0.04] active:scale-[0.97] transition"
-           aria-label="Abrir menú"
-            >
-           <Menu size={20} strokeWidth={2.2} />
-           </button>
+            ref={openBtnRef}
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex items-center justify-center h-9 w-9 rounded-lg hover:bg-black/[0.05] active:scale-[0.97] transition"
+            aria-label="Abrir menú"
+          >
+            <Menu size={20} strokeWidth={2.2} />
+          </button>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 min-w-0">
@@ -116,16 +113,13 @@ export default function ClienteLayoutClient({ children, initialClient }) {
                 PORTAL
               </span>
             </div>
-            <div className="text-sm font-semibold text-black truncate">
-              {businessName}
-            </div>
+            <div className="text-sm font-semibold text-black truncate">{businessName}</div>
           </div>
         </div>
       </header>
 
       <div className="flex min-h-screen items-start">
-
-        {/* Sidebar desktop */}
+        {/* Sidebar desktop colapsable */}
         <aside
           className={[
             "hidden lg:flex sticky top-0 self-start h-screen overflow-y-auto border-r border-black/10 bg-white flex-col",
@@ -136,7 +130,6 @@ export default function ClienteLayoutClient({ children, initialClient }) {
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
         >
-
           <ClienteBrandHeader
             expanded={expanded}
             logoSrc={logoSrc}
@@ -152,27 +145,48 @@ export default function ClienteLayoutClient({ children, initialClient }) {
               "flex items-center justify-center",
             ].join(" ")}
             aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+            title={collapsed ? "Expandir menú" : "Colapsar menú"}
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
 
-          <nav className="mt-6 space-y-2 flex-1">
-            {links.map((l) => (
-              <ClienteSideItem
-                key={l.href}
-                href={l.href}
-                label={l.label}
-                icon={l.icon}
-                active={pathname === l.href}
-                collapsed={!expanded}
-              />
-            ))}
-          </nav>
+          <div className="mt-6">
+            <nav className="space-y-2">
+              {links.map((l) => (
+                <ClienteSideItem
+                  key={l.href}
+                  href={l.href}
+                  label={l.label}
+                  icon={l.icon}
+                  active={pathname === l.href}
+                  collapsed={!expanded}
+                />
+              ))}
 
-          <div className="pt-4 border-t border-black/10">
-            <LogoutButton collapsed={!expanded} onLogout={logout} />
+              <div className="pt-2">
+                <LogoutButton collapsed={!expanded} onLogout={logout} />
+              </div>
+            </nav>
           </div>
 
+          {expanded && (
+            <div className="mt-auto pt-6 flex flex-col items-center gap-2 text-center">
+              <img
+                src="/logo-xhunco.png"
+                alt="Xhunco"
+                className="h-10 w-auto object-contain opacity-80"
+                loading="lazy"
+              />
+
+              <div className="text-[11px] leading-tight text-black/60">
+                © {new Date().getFullYear()} Xhunco Café
+              </div>
+
+              <div className="text-[10px] text-black/50">
+                {SYSTEM_ENV} · v{SYSTEM_VERSION}
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* Área principal */}
@@ -196,6 +210,7 @@ export default function ClienteLayoutClient({ children, initialClient }) {
               "bg-black/40 backdrop-blur-[2px]",
               open ? "opacity-100" : "opacity-0",
             ].join(" ")}
+            aria-label="Cerrar menú"
             onClick={closeMenu}
           />
 
@@ -207,11 +222,8 @@ export default function ClienteLayoutClient({ children, initialClient }) {
             ].join(" ")}
             style={{ maxWidth: DRAWER_W }}
           >
-
-            <div className="p-5 flex flex-col min-h-[100dvh]">
-
+            <div className="p-5 min-h-[100dvh] flex flex-col">
               <div className="flex items-start justify-between gap-4">
-
                 <ClienteBrandHeader
                   expanded={true}
                   logoSrc={logoSrc}
@@ -222,32 +234,55 @@ export default function ClienteLayoutClient({ children, initialClient }) {
                 <button
                   type="button"
                   onClick={closeMenu}
-                  className="flex items-center justify-center h-11 w-11 rounded-xl hover:bg-black/[0.05] transition"
+                  className={[
+                    "inline-flex items-center justify-center h-11 w-11 rounded-2xl",
+                    "border border-black/10 bg-white",
+                    "hover:bg-black/[0.02] active:scale-[0.98] transition",
+                  ].join(" ")}
+                  aria-label="Cerrar menú"
                 >
                   <X size={20} />
                 </button>
-
               </div>
 
-              <nav className="mt-8 space-y-2 flex-1">
-                {links.map((l) => (
-                  <ClienteSideItem
-                    key={l.href}
-                    href={l.href}
-                    label={l.label}
-                    icon={l.icon}
-                    active={pathname === l.href}
-                    collapsed={false}
-                  />
-                ))}
-              </nav>
+              <div className="mt-8">
+                <nav className="space-y-2 flex-1">
+                  {links.map((l) => (
+                    <ClienteSideItem
+                      key={l.href}
+                      href={l.href}
+                      label={l.label}
+                      icon={l.icon}
+                      active={pathname === l.href}
+                      collapsed={false}
+                    />
+                  ))}
 
-              <div className="pt-4 border-t border-black/10">
-                <LogoutButton collapsed={false} onLogout={logout} />
+                  <div className="pt-2">
+                    <LogoutButton collapsed={false} onLogout={logout} />
+                  </div>
+                </nav>
               </div>
 
+              <div className="mt-6 flex flex-col items-center gap-2 text-center">
+                <img
+                  src="/logo-xhunco.png"
+                  alt="Xhunco"
+                  className="h-10 w-auto object-contain opacity-80"
+                  loading="lazy"
+                />
+
+                <div className="text-[11px] leading-tight text-black/60">
+                  © {new Date().getFullYear()} Xhunco Café
+                </div>
+
+                <div className="text-[10px] text-black/50">
+                  {SYSTEM_ENV} · v{SYSTEM_VERSION}
+                </div>
+              </div>
+
+              <div className="h-6" />
             </div>
-
           </aside>
         </div>
       </div>
@@ -255,13 +290,14 @@ export default function ClienteLayoutClient({ children, initialClient }) {
   );
 }
 
-/* COMPONENTES AUXILIARES */
-
 function ClienteBrandHeader({ expanded, logoSrc, businessName, mobile = false }) {
   if (!expanded && !mobile) {
     return (
       <div className="flex items-center justify-center w-full">
-        <div className="h-10 w-10 rounded-2xl border border-black/10 bg-black/[0.02] flex items-center justify-center">
+        <div
+          className="h-10 w-10 rounded-2xl border border-black/10 bg-black/[0.02] flex items-center justify-center"
+          title={businessName}
+        >
           <span className="text-xs font-semibold" style={{ color: BRAND_GREEN }}>
             {String(businessName || "C").charAt(0).toUpperCase()}
           </span>
@@ -271,25 +307,30 @@ function ClienteBrandHeader({ expanded, logoSrc, businessName, mobile = false })
   }
 
   return (
-    <div className="w-full mt-6 flex flex-col items-center gap-4">
-      {logoSrc ? (
-        <img
-          src={logoSrc}
-          alt="Logo"
-          className="h-32 w-32 object-contain"
-          loading="eager"
-        />
-      ) : (
-        <div
-          className="h-32 w-32 flex items-center justify-center rounded-2xl border border-black/10 bg-black/[0.02] text-2xl font-semibold"
-          style={{ color: BRAND_GREEN }}
-        >
-          {String(businessName || "C").charAt(0).toUpperCase()}
-        </div>
-      )}
+    <div className="w-full">
+      <div className="mt-6 flex flex-col items-center gap-4">
+        {logoSrc ? (
+          <img
+            src={logoSrc}
+            alt="Logo del negocio"
+            className={mobile ? "h-28 w-28 object-contain" : "h-32 w-32 object-contain"}
+            loading="eager"
+          />
+        ) : (
+          <div
+            className={cx(
+              "flex items-center justify-center font-semibold rounded-2xl border border-black/10 bg-black/[0.02]",
+              mobile ? "h-20 w-20 text-xl" : "h-32 w-32 text-2xl"
+            )}
+            style={{ color: BRAND_GREEN }}
+          >
+            {String(businessName || "C").charAt(0).toUpperCase()}
+          </div>
+        )}
 
-      <div className="text-sm font-semibold text-black">
-        {businessName || "Cliente"}
+        <div className="text-center">
+          <div className="text-sm font-semibold text-black">{businessName || "Cliente"}</div>
+        </div>
       </div>
     </div>
   );
@@ -299,11 +340,12 @@ function ClienteSideItem({ href, label, icon: Icon, active, collapsed }) {
   return (
     <a
       href={href}
+      title={collapsed ? label : undefined}
       className={cx(
-        "group rounded-2xl border transition-all duration-200",
+        "group rounded-2xl border transition-all duration-200 ease-out",
         collapsed
-          ? "flex items-center justify-center p-2"
-          : "flex items-center gap-3 px-4 py-3",
+          ? "w-full flex items-center justify-center p-2"
+          : "w-full flex items-center gap-3 px-4 py-3",
         active
           ? "text-white shadow-[0_4px_14px_rgba(49,87,44,0.25)]"
           : "text-black hover:bg-[rgba(49,87,44,0.10)]"
@@ -315,16 +357,17 @@ function ClienteSideItem({ href, label, icon: Icon, active, collapsed }) {
     >
       <span
         className={cx(
-          "flex h-10 w-10 items-center justify-center rounded-xl border",
+          "flex h-10 w-10 items-center justify-center rounded-xl border transition",
           active
             ? "border-white/20 bg-white/10"
-            : "border-black/10 bg-black/[0.02]"
+            : "border-black/10 bg-black/[0.02] group-hover:bg-black/[0.03]"
         )}
+        aria-hidden="true"
       >
-        <Icon size={18} color={active ? "#fff" : BRAND_GREEN_DARK} />
+        <Icon size={18} color={active ? "#ffffff" : BRAND_GREEN_DARK} />
       </span>
 
-      {!collapsed && <span className="text-sm font-medium">{label}</span>}
+      {!collapsed && <span className="text-sm font-medium truncate">{label}</span>}
     </a>
   );
 }
@@ -333,10 +376,20 @@ function LogoutButton({ collapsed = false, onLogout }) {
   if (collapsed) {
     return (
       <button
+        type="button"
         onClick={onLogout}
-        className="w-full flex items-center justify-center rounded-2xl border border-black/10 p-2 hover:bg-black/[0.02]"
+        title="Cerrar sesión"
+        aria-label="Cerrar sesión"
+        className={[
+          "w-full flex items-center justify-center",
+          "rounded-2xl border border-black/10 bg-white",
+          "p-2 hover:bg-black/[0.02] hover:shadow-sm transition",
+          "active:scale-[0.99]",
+        ].join(" ")}
       >
-        <LogOut className="h-5 w-5 text-[#31572c]" />
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-black/[0.02]">
+          <LogOut className="h-5 w-5 text-[#31572c]" />
+        </span>
       </button>
     );
   }
@@ -344,8 +397,9 @@ function LogoutButton({ collapsed = false, onLogout }) {
   return (
     <button
       onClick={onLogout}
-      className="w-full flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm hover:bg-[rgba(49,87,44,0.10)]"
+      className="w-full flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm transition hover:bg-[rgba(49,87,44,0.10)]"
       style={{ borderColor: BRAND_GREEN }}
+      type="button"
     >
       <LogOut size={18} />
       Cerrar sesión

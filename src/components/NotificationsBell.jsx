@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell, RefreshCw, CheckCheck } from "lucide-react";
 import { createPortal } from "react-dom";
+import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -39,30 +40,36 @@ export default function NotificationsBell({ className = "" }) {
   const [unread, setUnread] = useState(0);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 360 });
 
   const rootRef = useRef(null);
   const btnRef = useRef(null);
   const panelRef = useRef(null);
-
-  const [mounted, setMounted] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 360 });
+  const loadingRef = useRef(false);
+  const audioRef = useRef(null);
 
   const hasUnread = unread > 0;
 
-  // ✅ evita setState si ya está igual (menos re-render)
   const setUnreadSafe = useCallback((next) => {
     const n = Number(next || 0);
     setUnread((prev) => (prev === n ? prev : n));
   }, []);
 
   const loadBadge = useCallback(async () => {
-    const r = await fetch("/api/notifications?mode=badge", { cache: "no-store" });
-    const j = await r.json().catch(() => ({}));
-    if (r.ok) setUnreadSafe(j.unread);
+    try {
+      const r = await fetch("/api/notifications?mode=badge", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setUnreadSafe(j.unread);
+    } catch {}
   }, [setUnreadSafe]);
 
   const loadList = useCallback(async () => {
+    if (loadingRef.current) return;
+
+    loadingRef.current = true;
     setLoading(true);
+
     try {
       const r = await fetch("/api/notifications?limit=25", { cache: "no-store" });
       const j = await r.json().catch(() => ({}));
@@ -70,13 +77,22 @@ export default function NotificationsBell({ className = "" }) {
         setRows(Array.isArray(j.data) ? j.data : []);
         setUnreadSafe(j.unread);
       }
+    } catch {
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }, [setUnreadSafe]);
 
+  const playSound = useCallback(() => {
+    try {
+      if (!audioRef.current) return;
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    } catch {}
+  }, []);
+
   const markRead = useCallback(async (id) => {
-    // UI optimista
     setRows((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     setUnread((u) => Math.max(0, u - 1));
 
@@ -102,7 +118,6 @@ export default function NotificationsBell({ className = "" }) {
 
   useEffect(() => setMounted(true), []);
 
-  // ✅ al montar: solo badge
   useEffect(() => {
     loadBadge().catch(() => {});
   }, [loadBadge]);
@@ -122,13 +137,11 @@ export default function NotificationsBell({ className = "" }) {
     top = Math.max(12, Math.min(top, window.innerHeight - 12));
 
     setPos((p) => {
-      // ✅ evita setState si no cambia
       if (p.top === top && p.left === left && p.width === desired) return p;
       return { top, left, width: desired };
     });
   }, []);
 
-  // ✅ posición solo cuando está abierto
   useEffect(() => {
     if (!open) return;
 
@@ -146,7 +159,6 @@ export default function NotificationsBell({ className = "" }) {
     };
   }, [open, computePosition]);
 
-  // ✅ cerrar al click afuera
   useEffect(() => {
     function onDoc(e) {
       const root = rootRef.current;
@@ -159,7 +171,6 @@ export default function NotificationsBell({ className = "" }) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // ✅ cerrar con ESC
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") setOpen(false);
@@ -168,43 +179,98 @@ export default function NotificationsBell({ className = "" }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // ✅ cuando se abre: carga lista (y badge ya queda sincronizado)
   useEffect(() => {
     if (!open) return;
     loadList().catch(() => {});
   }, [open, loadList]);
 
-  // ✅ polling suave SOLO cuando está abierto (lista completa)
+  // Realtime
   useEffect(() => {
-    if (!open) return;
-    const t = setInterval(() => loadList().catch(() => {}), 25000);
-    return () => clearInterval(t);
-  }, [open, loadList]);
+    const supabase = getSupabaseBrowser();
 
-  // ✅ NUEVO: polling barato del BADGE cuando está CERRADO
-  // - solo cada 12s (ajusta)
-  // - solo si la pestaña está visible (ahorra)
+    let active = true;
+    let myUserId = null;
+
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      myUserId = data?.user?.id;
+      if (!myUserId || !active) return;
+
+      const channel = supabase
+        .channel(`notifications:${myUserId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `recipient_user_id=eq.${myUserId}`,
+          },
+          (payload) => {
+            const n = payload.new;
+            if (!n) return;
+
+            setRows((prev) => {
+              const exists = prev.some((x) => x.id === n.id);
+              if (exists) return prev;
+              return [n, ...prev].slice(0, 25);
+            });
+
+            if (!n.is_read) {
+              setUnread((u) => u + 1);
+              playSound();
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "notifications",
+            filter: `recipient_user_id=eq.${myUserId}`,
+          },
+          (payload) => {
+            const n = payload.new;
+            if (!n) return;
+
+            setRows((prev) => prev.map((x) => (x.id === n.id ? { ...x, ...n } : x)));
+            loadBadge().catch(() => {});
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    let cleanup;
+    init().then((fn) => {
+      cleanup = fn;
+    });
+
+    return () => {
+      active = false;
+      if (cleanup) cleanup();
+    };
+  }, [loadBadge, playSound]);
+
+  // Polling suave de respaldo
   useEffect(() => {
     if (open) return;
-
-    let t = null;
 
     const tick = async () => {
       if (document.visibilityState !== "visible") return;
       await loadBadge().catch(() => {});
     };
 
-    // primer tick inmediato
     tick();
+    const t = setInterval(tick, 30000);
 
-    t = setInterval(tick, 12000);
-
-    return () => {
-      if (t) clearInterval(t);
-    };
+    return () => clearInterval(t);
   }, [open, loadBadge]);
 
-  // ✅ NUEVO: refrescar badge al volver a la pestaña / focus
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === "visible") loadBadge().catch(() => {});
@@ -231,14 +297,15 @@ export default function NotificationsBell({ className = "" }) {
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-gray-900">Notificaciones</div>
-          <div className="text-[11px] text-gray-500">{hasUnread ? `${unread} sin leer` : "Todo al día"}</div>
+          <div className="text-[11px] text-gray-500">
+            {hasUnread ? `${unread} sin leer` : "Todo al día"}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={loadList}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            title="Recargar"
             type="button"
           >
             <RefreshCw className={cx("h-4 w-4", loading && "animate-spin")} />
@@ -250,7 +317,6 @@ export default function NotificationsBell({ className = "" }) {
             disabled={!rows.some((n) => !n.is_read)}
             className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
             style={{ background: "#31572c" }}
-            title="Marcar todas como leídas"
             type="button"
           >
             <CheckCheck className="h-4 w-4" />
@@ -288,7 +354,6 @@ export default function NotificationsBell({ className = "" }) {
                     </div>
 
                     {n.body && <div className="mt-1 text-xs text-gray-600 line-clamp-2">{n.body}</div>}
-
                     <div className="mt-2 text-[11px] text-gray-500">{timeAgo(n.created_at)}</div>
                   </div>
 
@@ -337,7 +402,11 @@ export default function NotificationsBell({ className = "" }) {
         <div className="text-[11px] text-gray-500">
           Mostrando {Math.min(visibleRows.length, 25)} de {rows.length}
         </div>
-        <button onClick={() => setOpen(false)} className="text-xs font-semibold text-gray-700 hover:underline" type="button">
+        <button
+          onClick={() => setOpen(false)}
+          className="text-xs font-semibold text-gray-700 hover:underline"
+          type="button"
+        >
           Cerrar
         </button>
       </div>
@@ -346,6 +415,8 @@ export default function NotificationsBell({ className = "" }) {
 
   return (
     <div ref={rootRef} className={cx("relative", className)}>
+      <audio ref={audioRef} preload="auto" src="/sounds/notification.mp3" />
+
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}

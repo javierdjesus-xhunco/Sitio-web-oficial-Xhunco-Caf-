@@ -18,7 +18,7 @@ export async function GET() {
       .from("orders")
       .select("id, status, total, created_at")
       .eq("client_user_id", userId)
-      .order("created_at", { ascending: true }); // viejo->nuevo (para Pedido #1, #2...)
+      .order("created_at", { ascending: true });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -59,13 +59,13 @@ export async function POST(req) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // 2) Guardar entrega/pago (requiere columnas en orders)
+    // 2) Guardar entrega/pago
     const patch = {
-      delivery_method: body?.delivery_method || null, // pickup | delivery
-      payment_method: body?.payment_method || null, // cash | tpv | online
-      delivery_address_snapshot: body?.address || null, // jsonb
-      payment_snapshot: body?.payment_details || null, // jsonb
-      draft_no: body?.draft_no || null, // int (opcional)
+      delivery_method: body?.delivery_method || null,
+      payment_method: body?.payment_method || null,
+      delivery_address_snapshot: body?.address || null,
+      payment_snapshot: body?.payment_details || null,
+      draft_no: body?.draft_no || null,
     };
 
     const { error: updErr } = await supabaseAdmin
@@ -85,7 +85,7 @@ export async function POST(req) {
       );
     }
 
-    // 3) 🔔 Notificar a ADMIN + SUPERADMIN (usuarios registrados en profiles)
+    // 3) 🔔 Notificar a ADMIN + SUPER ADMIN
     //    No rompemos el flujo si esto falla.
     try {
       const { data: prof, error: profErr } = await supabaseAdmin
@@ -99,61 +99,71 @@ export async function POST(req) {
       }
 
       const clienteNombre = prof
-        ? [prof.first_name, prof.last_name_paterno, prof.last_name_materno]
-            .map((x) => (x || "").trim())
-            .filter(Boolean)
-            .join(" ") || prof.email || "Cliente"
+        ? (
+            [prof.first_name, prof.last_name_paterno, prof.last_name_materno]
+              .map((x) => (x || "").trim())
+              .filter(Boolean)
+              .join(" ") || prof.email || "Cliente"
+          )
         : "Cliente";
 
       const { data: admins, error: adminsErr } = await supabaseAdmin
         .from("profiles")
         .select("id, email, role, active")
-        .in("role", ["admin", "superadmin"])
+        .in("role", ["admin", "super_admin"])
         .eq("active", true);
 
       if (adminsErr) {
         console.error("No se pudieron leer admins/superadmins:", adminsErr);
       } else {
-        const notifRows = (admins || []).map((u) => ({
-          recipient_user_id: u.id,
-          recipient_role: u.role, // "admin" | "superadmin"
-          type: "order_created",
-          title: "Nuevo pedido pendiente",
-          body: `${clienteNombre} creó un pedido (${String(orderId).slice(0, 8)}…).`,
-          // Ajusta si tienes pantalla de detalle:
-          url: "/portal/admin/pedidos",
-          is_read: false,
-        }));
+        const notifRows = (admins || [])
+          .filter((u) => u?.id)
+          .map((u) => ({
+            recipient_user_id: u.id,
+            recipient_role: u.role,
+            type: "order_created",
+            title: "Nuevo pedido pendiente",
+            body: `${clienteNombre} creó un pedido (${String(orderId).slice(0, 8)}…).`,
+            url:
+              u.role === "super_admin"
+                ? "/portal/super-admin/pedidos"
+                : "/portal/admin/pedidos",
+            is_read: false,
+          }));
 
-        if (notifRows.length) {
-          const { error: nErr } = await supabaseAdmin.from("notifications").insert(notifRows);
-          if (nErr) console.error("Error insert notifications:", nErr);
-        }
+        if (notifRows.length > 0) {
+          const { error: nErr } = await supabaseAdmin
+            .from("notifications")
+            .insert(notifRows);
 
-        // 4) (Opcional) Enviar correo
-        // Si ya tienes /api/notify/email funcionando, descomenta esto.
-        /*
-        const emails = (admins || []).map((u) => u.email).filter(Boolean);
-        const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
-        if (emails.length && origin) {
-          fetch(`${origin}/api/notify/email`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              to: emails,
-              subject: "Xhunco: Nuevo pedido pendiente",
-              html: `
-                <div style="font-family: Arial, sans-serif; line-height: 1.4;">
-                  <h2>Nuevo pedido pendiente ☕</h2>
-                  <p><b>${clienteNombre}</b> creó un pedido.</p>
-                  <p><b>ID:</b> ${orderId}</p>
-                </div>
-              `,
-            }),
-          }).catch((e) => console.error("email send error:", e));
+          if (nErr) {
+            console.error("Error insert notifications:", nErr);
+          }
         }
-        */
       }
+
+      // 4) (Opcional) Enviar correo
+      /*
+      const emails = (admins || []).map((u) => u.email).filter(Boolean);
+      const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
+      if (emails.length && origin) {
+        fetch(`${origin}/api/notify/email`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            to: emails,
+            subject: "Xhunco: Nuevo pedido pendiente",
+            html: `
+              <div style="font-family: Arial, sans-serif; line-height: 1.4;">
+                <h2>Nuevo pedido pendiente ☕</h2>
+                <p><b>${clienteNombre}</b> creó un pedido.</p>
+                <p><b>ID:</b> ${orderId}</p>
+              </div>
+            `,
+          }),
+        }).catch((e) => console.error("email send error:", e));
+      }
+      */
     } catch (e) {
       console.error("Error al notificar admins/superadmins:", e);
     }

@@ -38,18 +38,14 @@ export default function AdminReportesPage() {
   );
   const [end, setEnd] = useState(() => isoDateInput(now));
 
-  // negocio filter (uuid) -> afecta detalle y KPIs (si quieres)
   const [business, setBusiness] = useState("");
 
-  // data
   const [monthRows, setMonthRows] = useState([]);
   const [dayRows, setDayRows] = useState([]);
   const [bizRows, setBizRows] = useState([]);
 
-  // KPIs (1 fila)
   const [kpis, setKpis] = useState(null);
 
-  // detail pagination
   const [detailRows, setDetailRows] = useState([]);
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
@@ -59,7 +55,6 @@ export default function AdminReportesPage() {
   const [err, setErr] = useState("");
 
   const baseQS = useMemo(() => {
-    // end: incluir el día completo -> sumamos 1 día al end para que sea rango [start, end+1)
     const endPlus = new Date(`${end}T00:00:00.000Z`);
     endPlus.setUTCDate(endPlus.getUTCDate() + 1);
 
@@ -74,9 +69,6 @@ export default function AdminReportesPage() {
     setLoading(true);
     try {
       const qs = baseQS.toString();
-
-      // Nota: KPIs se pueden filtrar por business también, pero tu selector dice "(detalle)".
-      // Aun así, sirve mucho ver KPIs por negocio cuando seleccionas uno.
       const businessQS = business ? `&business=${encodeURIComponent(business)}` : "";
 
       const [m, d, b, k] = await Promise.all([
@@ -89,7 +81,7 @@ export default function AdminReportesPage() {
       setMonthRows(m.data || []);
       setDayRows(d.data || []);
       setBizRows(b.data || []);
-      setKpis((k.data && k.data[0]) ? k.data[0] : null);
+      setKpis(k.data && k.data[0] ? k.data[0] : null);
     } catch (e) {
       setErr(e?.message || "Error cargando reportes");
     } finally {
@@ -129,7 +121,6 @@ export default function AdminReportesPage() {
   }, [loadTop]);
 
   useEffect(() => {
-    // al cambiar negocio o limit, reinicia paginación, y refresca KPIs también
     loadDetail(0);
     loadTop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,7 +152,6 @@ export default function AdminReportesPage() {
       qs.set("report", report);
       qs.set("format", "csv");
 
-      // KPIs también puede filtrar por business
       if (report === "kpis" && business) {
         qs.set("business", business);
       }
@@ -189,7 +179,7 @@ export default function AdminReportesPage() {
             <div>
               <h1 className="text-2xl font-semibold">Reportes</h1>
               <p className="text-sm text-neutral-600">
-                Ventas, ingresos reales (solo entregados) y detalle de pedidos.
+                Ventas, ingresos reales (solo pagados) y detalle de pedidos.
               </p>
             </div>
 
@@ -249,7 +239,6 @@ export default function AdminReportesPage() {
             </div>
           ) : null}
 
-          {/* KPIs Pro */}
           <div className="mt-6">
             <div className="mb-2 flex items-center justify-between">
               <div>
@@ -266,9 +255,9 @@ export default function AdminReportesPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <Card title="Ingreso real" subtitle="Solo entregados">
+              <Card title="Ingreso real" subtitle="Solo pagados">
                 <div className="text-2xl font-semibold">
-                  {money(kpis?.revenue_delivered)}
+                  {money(kpis?.revenue_paid)}
                 </div>
               </Card>
 
@@ -279,14 +268,14 @@ export default function AdminReportesPage() {
                 <div className="text-2xl font-semibold">
                   {kpis?.orders_delivered ?? 0}
                 </div>
-                <div className="text-xs text-neutral-500 mt-1">
+                <div className="mt-1 text-xs text-neutral-500">
                   Cancelados: {kpis?.orders_cancelled ?? 0}
                 </div>
               </Card>
 
               <Card
                 title="% Cumplimiento"
-                subtitle="Entregados / (Totales - Cancelados)"
+                subtitle="Entregados / Total pedidos"
               >
                 <div className="text-2xl font-semibold">
                   {Number(kpis?.fulfillment_pct ?? 0).toFixed(2)}%
@@ -295,16 +284,15 @@ export default function AdminReportesPage() {
 
               <Card
                 title="Ticket promedio real"
-                subtitle="Ingreso real / entregados"
+                subtitle="Ingreso real / pedidos pagados"
               >
                 <div className="text-2xl font-semibold">
-                  {money(kpis?.avg_ticket_delivered)}
+                  {money(kpis?.avg_ticket_paid)}
                 </div>
               </Card>
             </div>
           </div>
 
-          {/* Resumen rápido (lo dejamos, pero ya es ingreso real porque revenue ya viene filtrado en SQL) */}
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Card title="Ingreso real (agregado por mes)" subtitle={`${totals.month.orders} ventas (todas)`}>
               <div className="text-2xl font-semibold">{money(totals.month.revenue)}</div>
@@ -317,10 +305,9 @@ export default function AdminReportesPage() {
             </Card>
           </div>
 
-          {/* Mes */}
           <Section
             title="Ventas e ingresos por mes"
-            subtitle="Ingresos = solo entregados"
+            subtitle="Ingresos = solo pagados"
             actions={
               <button
                 onClick={() => download(csvUrl("month"))}
@@ -334,17 +321,16 @@ export default function AdminReportesPage() {
               columns={[
                 { key: "month", label: "Mes" },
                 { key: "orders_count", label: "Ventas (todas)" },
-                { key: "revenue", label: "Ingresos (entregados)", format: money },
+                { key: "revenue", label: "Ingresos (pagados)", format: money },
               ]}
               rows={monthRows}
               empty={loading ? "Cargando..." : "Sin datos"}
             />
           </Section>
 
-          {/* Día */}
           <Section
             title="Ventas e ingresos por día"
-            subtitle="Ingresos = solo entregados"
+            subtitle="Ingresos = solo pagados"
             actions={
               <button
                 onClick={() => download(csvUrl("day"))}
@@ -358,17 +344,16 @@ export default function AdminReportesPage() {
               columns={[
                 { key: "day", label: "Día" },
                 { key: "orders_count", label: "Ventas (todas)" },
-                { key: "revenue", label: "Ingresos (entregados)", format: money },
+                { key: "revenue", label: "Ingresos (pagados)", format: money },
               ]}
               rows={dayRows}
               empty={loading ? "Cargando..." : "Sin datos"}
             />
           </Section>
 
-          {/* Negocio */}
           <Section
             title="Ingresos y pedidos por negocio"
-            subtitle="Ingresos = solo entregados"
+            subtitle="Ingresos = solo pagados"
             actions={
               <button
                 onClick={() => download(csvUrl("business"))}
@@ -382,14 +367,13 @@ export default function AdminReportesPage() {
               columns={[
                 { key: "business_name", label: "Negocio" },
                 { key: "orders_count", label: "Pedidos (todos)" },
-                { key: "revenue", label: "Ingresos (entregados)", format: money },
+                { key: "revenue", label: "Ingresos (pagados)", format: money },
               ]}
               rows={bizRows}
               empty={loading ? "Cargando..." : "Sin datos"}
             />
           </Section>
 
-          {/* Detalle */}
           <Section
             title="Detalle de pedidos (con artículos)"
             subtitle="Paginado para no cargar pesado. CSV exporta 1 fila por artículo."
