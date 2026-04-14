@@ -10,96 +10,94 @@ import {
 const ofertas = [
   {
     icono: Coffee,
-    titulo: "Café de Especialidad",
+    titulo: "Suministro para tu operación",
     descripcion:
-      "Granos seleccionados, tostados de forma artesanal y perfiles adaptados a las necesidades de tu negocio.",
+      "Una solución de café pensada para negocios que requieren continuidad, seguimiento y atención especializada.",
     puntos: [
-      "Origen trazable",
-      "Tostado fresco",
-      "Perfiles personalizados",
+      "Atención B2B especializada",
+      "Planeación de suministro",
+      "Seguimiento comercial",
     ],
   },
   {
     icono: Truck,
-    titulo: "Suministro Constante",
+    titulo: "Abastecimiento continuo",
     descripcion:
-      "Logística confiable para que nunca te quedes sin café, con entregas programadas y atención personalizada.",
+      "Entregas programadas y coordinación operativa para ayudarte a mantener tu servicio activo con mayor orden.",
     puntos: [
-      "Abastecimiento continuo",
-      "Planeación mensual",
-      "Soporte dedicado",
+      "Entregas programadas",
+      "Mayor continuidad operativa",
+      "Abasto más predecible",
     ],
   },
   {
     icono: Settings,
-    titulo: "Equipamiento & Asesoría",
+    titulo: "Soporte y acompañamiento",
     descripcion:
-      "Te ayudamos a elegir, usar y optimizar el equipo ideal para ofrecer una taza perfecta.",
+      "Asesoría para ayudarte a implementar una operación más funcional y sostenerla conforme tu negocio evoluciona.",
     puntos: [
-      "Asesoría técnica",
-      "Capacitación básica",
-      "Optimización operativa",
+      "Asesoría operativa",
+      "Seguimiento continuo",
+      "Acompañamiento comercial",
     ],
   },
   {
     icono: BadgeCheck,
-    titulo: "Marca Blanca & Alianzas",
+    titulo: "Solución escalable",
     descripcion:
-      "Desarrolla tu propia marca de café con el respaldo de Xhunco®.",
+      "Un modelo que puede adaptarse a distintos volúmenes, formatos de negocio y etapas de crecimiento.",
     puntos: [
-      "Empaque personalizado",
-      "Escalabilidad",
-      "Soporte comercial",
+      "Escalable",
+      "Flexible",
+      "Relación de largo plazo",
     ],
   },
 ];
 
 export default function OfrecemosB2B() {
   return (
-    <section className="py-28 bg-white">
-      <div className="max-w-7xl mx-auto px-8">
+    <section className="bg-[#F7F5F1] py-24 md:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="max-w-3xl">
+          <span className="inline-flex rounded-full border border-[#E6DED4] bg-white px-4 py-2 text-sm font-medium text-[#6B3E26]">
+            Lo que ofrecemos
+          </span>
 
-        {/* TÍTULO */}
-        <div className="max-w-2xl mb-16">
-          <h2 className="text-4xl font-semibold mb-4">
-            ¿Qué ofrecemos a tu negocio?
+          <h2 className="mt-6 text-4xl font-semibold tracking-[-0.03em] text-[#0F172A] md:text-5xl">
+            Un modelo de servicio pensado para negocios
           </h2>
-          <p className="text-gray-600 text-lg">
-            Soluciones integrales para negocios que buscan calidad,
-            consistencia y una relación a largo plazo.
+
+          <p className="mt-5 max-w-2xl text-base leading-8 text-[#475569] md:text-lg">
+            Integramos abastecimiento, soporte y acompañamiento en una solución
+            más clara, escalable y orientada a la operación.
           </p>
         </div>
 
-        {/* GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {ofertas.map((item, index) => {
+        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2">
+          {ofertas.map((item) => {
             const Icon = item.icono;
 
             return (
               <div
-                key={index}
-                className="group bg-gray-50 border border-gray-200 rounded-3xl p-8 transition hover:shadow-lg"
+                key={item.titulo}
+                className="rounded-[28px] border border-[#E8E0D6] bg-white p-7 shadow-[0_16px_40px_rgba(42,26,18,0.04)] transition hover:shadow-[0_20px_50px_rgba(42,26,18,0.07)]"
               >
-                {/* ICONO */}
-                <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-gray-900 text-white mb-6">
-                  <Icon size={28} />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2A1A12] text-white">
+                  <Icon className="h-5 w-5" />
                 </div>
 
-                {/* TITULO */}
-                <h3 className="text-2xl font-semibold mb-3">
+                <h3 className="mt-6 text-2xl font-semibold text-[#0F172A]">
                   {item.titulo}
                 </h3>
 
-                {/* DESCRIPCIÓN */}
-                <p className="text-gray-600 mb-6">
+                <p className="mt-3 text-sm leading-7 text-[#475569] md:text-[15px]">
                   {item.descripcion}
                 </p>
 
-                {/* LISTA */}
-                <ul className="space-y-2 text-sm text-gray-700">
-                  {item.puntos.map((punto, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-gray-900"></span>
+                <ul className="mt-6 space-y-3 text-sm text-[#334155]">
+                  {item.puntos.map((punto) => (
+                    <li key={punto} className="flex items-center gap-3">
+                      <span className="h-2 w-2 rounded-full bg-[#2A1A12]" />
                       {punto}
                     </li>
                   ))}
@@ -108,7 +106,6 @@ export default function OfrecemosB2B() {
             );
           })}
         </div>
-
       </div>
     </section>
   );

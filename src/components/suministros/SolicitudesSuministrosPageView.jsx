@@ -37,7 +37,8 @@ function badgeClass(status) {
 }
 
 export default function SolicitudesSuministrosPageView({ role = "admin" }) {
-  const isSuperAdmin = role === "super_admin";
+  const isSuperAdmin = role === "super_admin" || role === "superadmin";
+  const baseApi = "/api/admin/suministros/solicitudes";
 
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
@@ -96,7 +97,7 @@ export default function SolicitudesSuministrosPageView({ role = "admin" }) {
       sp.set("offset", String(off));
       if (cu) sp.set("client_user_id", cu);
 
-      const r = await fetch(`/api/admin/suministros/solicitudes?${sp.toString()}`, {
+      const r = await fetch(`${baseApi}?${sp.toString()}`, {
         cache: "no-store",
       });
       const j = await r.json().catch(() => ({}));
@@ -126,23 +127,26 @@ export default function SolicitudesSuministrosPageView({ role = "admin" }) {
         await load({ status: "pendiente", offset: 0 }).catch(() => {});
       }
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseApi]);
 
   useEffect(() => {
     setOffset(0);
     load({ status, limit, offset: 0, clientUserId }).catch(() => {});
-  }, [status, limit, clientUserId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, limit, clientUserId, baseApi]);
 
   useEffect(() => {
     load({ status, limit, offset, clientUserId }).catch(() => {});
-  }, [offset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offset, baseApi]);
 
   async function updateStatus(id, nextStatus) {
     setBusyId(id);
     setError("");
 
     try {
-      const r = await fetch("/api/admin/suministros/solicitudes", {
+      const r = await fetch(baseApi, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: nextStatus }),

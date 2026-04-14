@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function clampInt(v, min, max, fallback) {
   const n = Number(v);
@@ -15,22 +16,20 @@ export async function GET(req) {
     if (authErr) {
       return NextResponse.json({ error: authErr.message }, { status: 401 });
     }
-    if (!auth?.user) {
+    if (!auth?.user?.id) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
+    const userId = auth.user.id;
     const url = new URL(req.url);
     const mode = String(url.searchParams.get("mode") || "").trim().toLowerCase();
     const limit = clampInt(url.searchParams.get("limit"), 1, 50, 20);
 
-    // =========================
-    // Badge only (más ligero)
-    // =========================
     if (mode === "badge") {
-      const { count, error: countErr } = await supabase
+      const { count, error: countErr } = await supabaseAdmin
         .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("recipient_user_id", auth.user.id)
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_user_id", userId)
         .eq("is_read", false);
 
       if (countErr) {
@@ -43,21 +42,18 @@ export async function GET(req) {
       });
     }
 
-    // =========================
-    // Lista completa
-    // =========================
     const [{ data: rows, error: listErr }, { count, error: countErr }] = await Promise.all([
-      supabase
+      supabaseAdmin
         .from("notifications")
         .select("id, type, title, body, url, is_read, created_at")
-        .eq("recipient_user_id", auth.user.id)
+        .eq("recipient_user_id", userId)
         .order("created_at", { ascending: false })
         .limit(limit),
 
-      supabase
+      supabaseAdmin
         .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("recipient_user_id", auth.user.id)
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_user_id", userId)
         .eq("is_read", false),
     ]);
 

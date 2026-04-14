@@ -10,22 +10,14 @@ import CtaB2B from "./components/CtaB2B";
 
 export default function B2BPage() {
   return (
-    <main className="bg-[#F8F7E5] text-gray-900">
-
+    <main className="text-gray-900">
       <HeroB2B />
-
       <ParaQuienB2B />
-
-     <OfrecemosB2B />
-
-      <ProcesoB2B />
-
+      <OfrecemosB2B />
       <BeneficiosB2B />
-
+      <ProcesoB2B />
       <FormularioB2B />
-
       <CtaB2B />
-
     </main>
   );
 }

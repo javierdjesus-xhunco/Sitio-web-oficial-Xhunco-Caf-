@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function PATCH() {
   try {
@@ -9,14 +10,16 @@ export async function PATCH() {
     if (authErr) {
       return NextResponse.json({ error: authErr.message }, { status: 401 });
     }
-    if (!auth?.user) {
+    if (!auth?.user?.id) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const { error: updErr } = await supabase
+    const userId = auth.user.id;
+
+    const { error: updErr } = await supabaseAdmin
       .from("notifications")
       .update({ is_read: true })
-      .eq("recipient_user_id", auth.user.id)
+      .eq("recipient_user_id", userId)
       .eq("is_read", false);
 
     if (updErr) {

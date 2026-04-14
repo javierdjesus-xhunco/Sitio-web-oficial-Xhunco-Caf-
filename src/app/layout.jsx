@@ -1,5 +1,6 @@
 import "./globals.css";
 import Header from "./components/Header";
+import PromoModal from "@/components/PromoModal";
 
 export const metadata = {
   title: "Xhunco® Café",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body className="pt-20 bg-white text-gray-900">
         <Header />
+        <PromoModal />
         {children}
       </body>
     </html>

@@ -18,6 +18,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  BriefcaseBusiness,
 } from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
 
@@ -284,6 +285,14 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+        <NavButton
+          href="/portal/admin/b2b-leads"
+          label="Clientes B2B"
+          icon={BriefcaseBusiness}
+          onNavigate={onNavigate}
+          collapsed={collapsed}
+          exact={false}
+         />
       </div>
 
       {/* Accesos rápidos */}
@@ -324,6 +333,25 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+        <QuickCard
+          href="/portal/admin/promociones"
+          title="Nueva Promocion"
+          subtitle="Crea, elimina o actualiza las promociones"
+          icon={BarChart3}
+          onNavigate={onNavigate}
+          collapsed={collapsed}
+          exact={false}
+        />
+            <QuickCard
+          href="/portal/admin/checkout"
+          title="Pedidos B2C"
+          subtitle="Visualiza y actualiza pedidos B2C"
+          icon={BarChart3}
+          onNavigate={onNavigate}
+          collapsed={collapsed}
+          exact={false}
+        />
+
 
         {/* Crear pedido manual */}
         {collapsed ? (

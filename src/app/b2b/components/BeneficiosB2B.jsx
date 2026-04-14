@@ -2,83 +2,81 @@
 
 import {
   Truck,
-  Coffee,
   ShieldCheck,
   TrendingUp,
+  Headphones,
 } from "lucide-react";
 
 const beneficios = [
   {
-    icono: Coffee,
-    titulo: "Café de especialidad garantizado",
-    descripcion:
-      "Granos cuidadosamente seleccionados, tostados bajo estándares de calidad y consistencia.",
-  },
-  {
     icono: Truck,
-    titulo: "Abastecimiento confiable",
+    titulo: "Mayor continuidad operativa",
     descripcion:
-      "Entregas puntuales y disponibilidad constante para que tu operación nunca se detenga.",
+      "Planeación y seguimiento para ayudarte a sostener tu servicio de café sin fricciones innecesarias.",
   },
   {
     icono: ShieldCheck,
-    titulo: "Transparencia y trazabilidad",
+    titulo: "Relación comercial confiable",
     descripcion:
-      "Origen claro, procesos responsables y total confianza en cada lote que recibes.",
+      "Un partner que da seguimiento, acompaña tu operación y construye una relación de largo plazo.",
+  },
+  {
+    icono: Headphones,
+    titulo: "Atención más cercana",
+    descripcion:
+      "Soporte y acompañamiento continuo para resolver necesidades operativas con mayor claridad.",
   },
   {
     icono: TrendingUp,
-    titulo: "Crecemos contigo",
+    titulo: "Modelo escalable",
     descripcion:
-      "Escalamos volúmenes, ajustamos precios y evolucionamos conforme crece tu negocio.",
+      "Una solución que puede crecer con tu negocio y adaptarse a nuevos volúmenes o formatos.",
   },
 ];
 
 export default function BeneficiosB2B() {
   return (
-    <section className="py-28 bg-white">
-      <div className="max-w-7xl mx-auto px-8">
+    <section className="bg-white py-24 md:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="max-w-3xl">
+          <span className="inline-flex rounded-full border border-[#E6DED4] bg-[#FAF8F5] px-4 py-2 text-sm font-medium text-[#6B3E26]">
+            Beneficios
+          </span>
 
-        {/* HEADER */}
-        <div className="max-w-2xl mb-20">
-          <h2 className="text-4xl font-semibold mb-4">
-            Beneficios para tu negocio
+          <h2 className="mt-6 text-4xl font-semibold tracking-[-0.03em] text-[#0F172A] md:text-5xl">
+            Más que suministro: una solución para operar mejor
           </h2>
-          <p className="text-gray-600 text-lg">
-            Más que un proveedor, somos un aliado estratégico
-            para la operación y crecimiento de tu empresa.
+
+          <p className="mt-5 max-w-2xl text-base leading-8 text-[#475569] md:text-lg">
+            Buscamos ayudarte a construir una operación más estable, con mejor
+            seguimiento y una relación comercial que acompañe tu crecimiento.
           </p>
         </div>
 
-        {/* GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-
-          {beneficios.map((beneficio, index) => {
+        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {beneficios.map((beneficio) => {
             const Icon = beneficio.icono;
 
             return (
               <div
-                key={index}
-                className="bg-[#F8F7F5] border border-gray-200 rounded-3xl p-8"
+                key={beneficio.titulo}
+                className="rounded-[28px] border border-[#E8E0D6] bg-[#FCFBF9] p-7"
               >
-                {/* ICONO */}
-                <div className="h-14 w-14 rounded-2xl bg-gray-900 text-white flex items-center justify-center mb-6">
-                  <Icon size={26} />
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2A1A12] text-white">
+                  <Icon className="h-5 w-5" />
                 </div>
 
-                {/* TEXTO */}
-                <h3 className="text-xl font-semibold mb-3">
+                <h3 className="mt-6 text-xl font-semibold text-[#0F172A]">
                   {beneficio.titulo}
                 </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
+
+                <p className="mt-3 text-sm leading-7 text-[#475569] md:text-[15px]">
                   {beneficio.descripcion}
                 </p>
               </div>
             );
           })}
-
         </div>
-
       </div>
     </section>
   );

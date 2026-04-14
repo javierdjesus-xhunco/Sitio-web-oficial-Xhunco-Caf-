@@ -1,6 +1,24 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendEmail } from "@/lib/mailer";
+import {
+  adminNewOrderEmail,
+  clientOrderReceivedEmail,
+} from "@/lib/emailTemplates";
+
+function buildOrigin(req) {
+  return req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+}
+
+function safeName(profile) {
+  if (!profile) return "Cliente";
+  const fullName = [profile.first_name, profile.last_name_paterno, profile.last_name_materno]
+    .map((x) => (x || "").trim())
+    .filter(Boolean)
+    .join(" ");
+  return fullName || profile.email || "Cliente";
+}
 
 // ✅ LISTA: Mis pedidos
 export async function GET() {
@@ -33,7 +51,7 @@ export async function GET() {
   }
 }
 
-// ✅ CREAR: Nuevo pedido (con snapshots de entrega/pago)
+// ✅ CREAR: Nuevo pedido
 export async function POST(req) {
   try {
     const supabase = await supabaseServer();
@@ -44,6 +62,7 @@ export async function POST(req) {
     }
 
     const userId = authData.user.id;
+    const origin = buildOrigin(req);
 
     const body = await req.json().catch(() => ({}));
     const items = body?.items;
@@ -52,7 +71,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "items requerido" }, { status: 400 });
     }
 
-    // 1) Crear pedido con tu RPC (solo items)
+    // 1) Crear pedido con tu RPC
     const { data: orderId, error } = await supabase.rpc("create_order", { items });
 
     if (error) {
@@ -85,8 +104,10 @@ export async function POST(req) {
       );
     }
 
-    // 3) 🔔 Notificar a ADMIN + SUPER ADMIN
-    //    No rompemos el flujo si esto falla.
+    // 3) Perfil cliente
+    let clienteNombre = "Cliente";
+    let clienteEmail = "";
+
     try {
       const { data: prof, error: profErr } = await supabaseAdmin
         .from("profiles")
@@ -96,21 +117,20 @@ export async function POST(req) {
 
       if (profErr) {
         console.error("No se pudo leer perfil del cliente:", profErr);
+      } else {
+        clienteNombre = safeName(prof);
+        clienteEmail = prof?.email || "";
       }
+    } catch (e) {
+      console.error("Error leyendo perfil cliente:", e);
+    }
 
-      const clienteNombre = prof
-        ? (
-            [prof.first_name, prof.last_name_paterno, prof.last_name_materno]
-              .map((x) => (x || "").trim())
-              .filter(Boolean)
-              .join(" ") || prof.email || "Cliente"
-          )
-        : "Cliente";
-
+    // 4) 🔔 Notificación + 📧 correo a admins/superadmins
+    try {
       const { data: admins, error: adminsErr } = await supabaseAdmin
         .from("profiles")
         .select("id, email, role, active")
-        .in("role", ["admin", "super_admin"])
+        .in("role", ["admin", "super_admin", "superadmin"])
         .eq("active", true);
 
       if (adminsErr) {
@@ -125,47 +145,67 @@ export async function POST(req) {
             title: "Nuevo pedido pendiente",
             body: `${clienteNombre} creó un pedido (${String(orderId).slice(0, 8)}…).`,
             url:
-              u.role === "super_admin"
+              u.role === "super_admin" || u.role === "superadmin"
                 ? "/portal/super-admin/pedidos"
                 : "/portal/admin/pedidos",
             is_read: false,
           }));
 
         if (notifRows.length > 0) {
-          const { error: nErr } = await supabaseAdmin
-            .from("notifications")
-            .insert(notifRows);
+          const { error: nErr } = await supabaseAdmin.from("notifications").insert(notifRows);
+          if (nErr) console.error("Error insert notifications:", nErr);
+        }
 
-          if (nErr) {
-            console.error("Error insert notifications:", nErr);
+        const adminRecipients = (admins || []).filter((u) => u?.email);
+
+        for (const admin of adminRecipients) {
+          const panelUrl =
+            admin.role === "super_admin" || admin.role === "superadmin"
+              ? `${origin}/portal/super-admin/pedidos`
+              : `${origin}/portal/admin/pedidos`;
+
+          try {
+            const email = adminNewOrderEmail({
+              clienteNombre,
+              orderId,
+              panelUrl,
+              isSuperAdmin: admin.role === "super_admin" || admin.role === "superadmin",
+            });
+
+            await sendEmail({
+              to: [admin.email],
+              subject: email.subject,
+              html: email.html,
+              text: email.text,
+            });
+          } catch (mailErr) {
+            console.error(`Error enviando correo a ${admin.email}:`, mailErr);
           }
         }
       }
-
-      // 4) (Opcional) Enviar correo
-      /*
-      const emails = (admins || []).map((u) => u.email).filter(Boolean);
-      const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "";
-      if (emails.length && origin) {
-        fetch(`${origin}/api/notify/email`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            to: emails,
-            subject: "Xhunco: Nuevo pedido pendiente",
-            html: `
-              <div style="font-family: Arial, sans-serif; line-height: 1.4;">
-                <h2>Nuevo pedido pendiente ☕</h2>
-                <p><b>${clienteNombre}</b> creó un pedido.</p>
-                <p><b>ID:</b> ${orderId}</p>
-              </div>
-            `,
-          }),
-        }).catch((e) => console.error("email send error:", e));
-      }
-      */
     } catch (e) {
       console.error("Error al notificar admins/superadmins:", e);
+    }
+
+    // 5) 📧 Correo al cliente: pedido recibido
+    if (clienteEmail) {
+      try {
+        const orderUrl = `${origin}/portal/cliente/pedidos/${orderId}`;
+        const email = clientOrderReceivedEmail({
+          clienteNombre,
+          orderId,
+          orderUrl,
+        });
+
+        await sendEmail({
+          to: [clienteEmail],
+          subject: email.subject,
+          html: email.html,
+          text: email.text,
+        });
+      } catch (mailErr) {
+        console.error("Error enviando correo al cliente:", mailErr);
+      }
     }
 
     return NextResponse.json({ ok: true, order_id: orderId });

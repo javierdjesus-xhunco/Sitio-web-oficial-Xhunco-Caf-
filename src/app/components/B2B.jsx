@@ -1,113 +1,128 @@
-import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, BadgeCheck, Coffee, Truck, Headphones } from "lucide-react";
+
+const features = [
+  {
+    icon: Coffee,
+    title: "Atención para tu operación",
+    description:
+      "Un modelo pensado para negocios que necesitan orden, seguimiento y respuesta continua.",
+  },
+  {
+    icon: Truck,
+    title: "Abastecimiento continuo",
+    description:
+      "Entregas programadas y continuidad operativa para mantener tu servicio siempre activo.",
+  },
+  {
+    icon: Headphones,
+    title: "Acompañamiento continuo",
+    description:
+      "Soporte, asesoría y seguimiento para ayudarte a sostener y mejorar tu operación.",
+  },
+];
+
+const highlights = [
+  "Atención B2B especializada",
+  "Abastecimiento continuo",
+  "Acompañamiento continuo",
+];
 
 export default function B2B() {
   return (
-    <section className="bg-[#F7F3EE] py-28">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <section className="bg-[#F7F5F1] py-20 md:py-24">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+          {/* Columna principal */}
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#DDD4C8] bg-white px-4 py-2 text-sm font-medium text-[#6B3E26] shadow-sm">
+              <BadgeCheck className="h-4 w-4" />
+              Soluciones B2B
+            </span>
 
-        {/* COLUMNA TEXTO */}
-        <div>
-          <span className="inline-flex items-center gap-2 text-sm font-medium bg-[#EDE7DF] text-[#6B3E26] px-4 py-1.5 rounded-full mb-6">
-            Soluciones B2B
-          </span>
+            <h2 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-[#0F172A] md:text-5xl">
+              Soluciones de café para negocios que buscan operar mejor
+            </h2>
 
-          <h2 className="text-4xl md:text-5xl font-semibold leading-tight mb-6">
-            Café de altura <br />
-            <span className="text-[#6B3E26]">para tu negocio</span>
-          </h2>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-[#475569] md:text-lg">
+               Ayudamos a negocios a operar mejor su servicio de café con un modelo de
+               abastecimiento, soporte y acompañamiento continuo. Diseñado para cafeterías,
+               restaurantes, hoteles y oficinas que buscan mayor orden y continuidad.
+            </p>
 
-          <p className="text-gray-700 text-lg mb-10 max-w-xl">
-            Ofrecemos soluciones integrales para cafeterías, restaurantes,
-            hoteles y oficinas. Desde el suministro de granos premium hasta
-            capacitación barista, equipamiento y suministros.
-          </p>
-
-          {/* BENEFICIOS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-            <div className="flex flex-col gap-3">
-              <div className="h-12 w-12 flex items-center justify-center rounded-xl bg-white border shadow-sm">
-                ☕
-              </div>
-              <h4 className="font-semibold">Calidad Premium</h4>
-              <p className="text-sm text-gray-600">
-                Café de especialidad con puntaje SCA +85
-              </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              {highlights.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-[#E5DED4] bg-white px-4 py-2 text-sm text-[#334155]"
+                >
+                  {item}
+                </span>
+              ))}
             </div>
 
-            <div className="flex flex-col gap-3">
-              <div className="h-12 w-12 flex items-center justify-center rounded-xl bg-white border shadow-sm">
-                🚚
-              </div>
-              <h4 className="font-semibold">Logística Eficiente</h4>
-              <p className="text-sm text-gray-600">
-                Entregas programadas en todo México
-              </p>
-            </div>
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <Link
+                href="/contacto"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#2A1A12] px-6 py-3.5 text-sm font-medium text-white transition hover:bg-[#1E120D]"
+              >
+                Solicitar cotización
+                <ArrowRight className="h-4 w-4" />
+              </Link>
 
-            <div className="flex flex-col gap-3">
-              <div className="h-12 w-12 flex items-center justify-center rounded-xl bg-white border shadow-sm">
-                🎧
-              </div>
-              <h4 className="font-semibold">Soporte Dedicado</h4>
-              <p className="text-sm text-gray-600">
-                Asesoría y capacitación para tu equipo
-              </p>
+              <Link
+                href="/contacto"
+                className="inline-flex items-center justify-center rounded-full border border-[#2A1A12]/15 bg-white px-6 py-3.5 text-sm font-medium text-[#2A1A12] transition hover:border-[#2A1A12] hover:bg-[#2A1A12] hover:text-white"
+              >
+                Hablar con un asesor
+              </Link>
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link
-              href="/contacto"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-[#2A1A12] text-white font-medium hover:bg-[#1f130d] transition"
-            >
-              Solicitar Cotización →
-            </Link>
+          {/* Card lateral */}
+          <div className="rounded-[28px] border border-[#E8E0D6] bg-white p-6 shadow-[0_20px_60px_rgba(42,26,18,0.06)] md:p-7">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#94A3B8]">
+                  Modelo de servicio
+                </p>
+                <h3 className="mt-2 text-xl font-semibold text-[#0F172A]">
+                  Suministro + soporte + capacitación
+                </h3>
+              </div>
 
-            <Link
-              href="/contacto"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-[#2A1A12] text-[#2A1A12] font-medium hover:bg-[#2A1A12] hover:text-white transition"
-            >
-              Hablar con un Asesor
-            </Link>
+              <div className="rounded-2xl bg-[#F5EFE8] px-3 py-1 text-xs font-semibold text-[#6B3E26]">
+                Escalable
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-4">
+              {features.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.title}
+                    className="flex gap-4 rounded-2xl border border-[#EFE8DE] bg-[#FCFBF9] p-4"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F3ECE5] text-[#6B3E26]">
+                      <Icon className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-semibold text-[#0F172A] md:text-base">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1 text-sm leading-6 text-[#475569]">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-
-        {/* COLUMNA IMÁGENES */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="row-span-2 rounded-3xl overflow-hidden">
-            <Image
-              src="/recursos/tostador.png"
-              alt="Cafetería"
-              width={600}
-              height={800}
-              className="object-cover w-full h-full"
-              priority
-            />
-          </div>
-
-          <div className="rounded-3xl overflow-hidden">
-            <Image
-              src="/recursos/artelatte.svg"
-              alt="Latte art"
-              width={400}
-              height={300}
-              className="object-cover w-full h-full"
-            />
-          </div>
-
-          <div className="rounded-3xl overflow-hidden">
-            <Image
-              src="/recursos/granoscafe.png"
-              alt="Granos de café"
-              width={400}
-              height={300}
-              className="object-cover w-full h-full"
-            />
-          </div>
-        </div>
-
       </div>
     </section>
   );

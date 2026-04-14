@@ -19,6 +19,8 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+BriefcaseBusiness,
+
 } from "lucide-react";
 
 const BRAND_GREEN = "#31572c";
@@ -82,6 +84,24 @@ export default function SuperAdminLayout({ children }) {
       label: "Reportes",
       icon: BarChart3,
     },
+    {
+      href: "/portal/super-admin/b2b-leads",
+      label: "Clientes B2B",
+      icon: BriefcaseBusiness,
+     },
+
+     {
+      href: "/portal/super-admin/promociones",
+      label: "Promociones",
+      icon: BriefcaseBusiness,
+     },
+
+      {
+      href: "/portal/super-admin/checkout",
+      label: "Pedidos B2C",
+      icon: BriefcaseBusiness,
+     },
+
   ],
   []
 );
@@ -92,11 +112,13 @@ export default function SuperAdminLayout({ children }) {
     if (p.startsWith("/portal/super-admin/clientes")) return "Clientes";
     if (p.startsWith("/portal/super-admin/suministros/solicitudes")) {
       return "Solicitudes de productos";
+      
     }
     if (p.startsWith("/portal/super-admin/suministros")) return "Suministros";
     if (p.startsWith("/portal/super-admin/pedidos")) return "Pedidos";
     if (p.startsWith("/portal/super-admin/usuarios-y-roles")) return "Usuarios y roles";
     if (p.startsWith("/portal/super-admin/reportes")) return "Reportes";
+    if (p.startsWith("/portal/super-admin/b2b-leads")) return "Clientes B2B";
     return "Super administrador";
   }, [pathname]);
 

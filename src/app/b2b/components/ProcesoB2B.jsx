@@ -3,89 +3,86 @@
 import {
   MessageSquare,
   FileText,
-  Coffee,
+  Settings,
   Handshake,
 } from "lucide-react";
 
 const pasos = [
   {
     icono: MessageSquare,
-    titulo: "Contacto inicial",
+    titulo: "Conocemos tu operación",
     descripcion:
-      "Conocemos tu negocio, volumen, necesidades y objetivos para entender cómo podemos ayudarte.",
+      "Entendemos tu tipo de negocio, necesidades, ritmo operativo y objetivos para identificar la mejor solución.",
   },
   {
     icono: FileText,
-    titulo: "Propuesta personalizada",
+    titulo: "Diseñamos una propuesta",
     descripcion:
-      "Diseñamos una propuesta a la medida: cafés, precios, logística y servicios específicos.",
+      "Armamos una propuesta clara con enfoque en abastecimiento, seguimiento y acompañamiento para tu operación.",
   },
   {
-    icono: Coffee,
-    titulo: "Pruebas & arranque",
+    icono: Settings,
+    titulo: "Implementamos la solución",
     descripcion:
-      "Realizamos pruebas de producto y ajustes antes de iniciar el suministro formal.",
+      "Definimos la dinámica de trabajo, el esquema de suministro y los puntos clave para arrancar con mayor orden.",
   },
   {
     icono: Handshake,
-    titulo: "Relación a largo plazo",
+    titulo: "Damos seguimiento continuo",
     descripcion:
-      "Acompañamiento continuo, abastecimiento constante y evolución conforme crece tu negocio.",
+      "Mantenemos una relación comercial cercana para ayudarte a sostener y escalar tu operación con continuidad.",
   },
 ];
 
 export default function ProcesoB2B() {
   return (
-    <section className="py-28 bg-[#F8F7F5]">
-      <div className="max-w-7xl mx-auto px-8">
+    <section id="proceso-b2b" className="bg-[#F7F5F1] py-24 md:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="max-w-3xl">
+          <span className="inline-flex rounded-full border border-[#E6DED4] bg-white px-4 py-2 text-sm font-medium text-[#6B3E26]">
+            Proceso
+          </span>
 
-        {/* TÍTULO */}
-        <div className="max-w-2xl mb-20">
-          <h2 className="text-4xl font-semibold mb-4">
-            Nuestro proceso de trabajo
+          <h2 className="mt-6 text-4xl font-semibold tracking-[-0.03em] text-[#0F172A] md:text-5xl">
+            Así trabajamos con cada negocio
           </h2>
-          <p className="text-gray-600 text-lg">
-            Un proceso claro, humano y eficiente que nos permite
-            construir relaciones sólidas con cada cliente.
+
+          <p className="mt-5 max-w-2xl text-base leading-8 text-[#475569] md:text-lg">
+            Un proceso claro para implementar una solución más ordenada, funcional
+            y sostenible en el tiempo.
           </p>
         </div>
 
-        {/* PASOS */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 relative">
-
-          {/* LÍNEA CONECTORA */}
-          <div className="hidden md:block absolute top-10 left-0 right-0 h-px bg-gray-300"></div>
+        <div className="relative mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="absolute left-0 right-0 top-10 hidden h-px bg-[#DDD4C8] xl:block" />
 
           {pasos.map((paso, index) => {
             const Icon = paso.icono;
 
             return (
               <div
-                key={index}
-                className="relative bg-white border border-gray-200 rounded-3xl p-8 text-center"
+                key={paso.titulo}
+                className="relative rounded-[28px] border border-[#E8E0D6] bg-white p-7 text-left shadow-[0_16px_40px_rgba(42,26,18,0.04)]"
               >
-                {/* NUMERO */}
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gray-900 text-white h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold">
+                <span className="absolute -top-4 left-7 flex h-9 w-9 items-center justify-center rounded-full bg-[#2A1A12] text-sm font-semibold text-white">
                   {index + 1}
                 </span>
 
-                {/* ICONO */}
-                <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-gray-900 text-white mx-auto mb-6 mt-6">
-                  <Icon size={26} />
+                <div className="mt-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F3ECE5] text-[#6B3E26]">
+                  <Icon className="h-5 w-5" />
                 </div>
 
-                {/* TEXTO */}
-                <h3 className="text-xl font-semibold mb-3">
+                <h3 className="mt-6 text-xl font-semibold text-[#0F172A]">
                   {paso.titulo}
                 </h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
+
+                <p className="mt-3 text-sm leading-7 text-[#475569] md:text-[15px]">
                   {paso.descripcion}
                 </p>
               </div>
             );
           })}
         </div>
-
       </div>
     </section>
   );

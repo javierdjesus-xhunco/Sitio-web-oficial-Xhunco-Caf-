@@ -11,6 +11,7 @@ export async function GET() {
       sku: true,
       nombre: true,
       categoria: true,
+      marca: true,
       presentacion: true,
       precio_web: true,
       unidad: true,
@@ -25,13 +26,12 @@ export async function GET() {
     sku: r.sku,
     nombre: r.nombre,
     categoria: r.categoria,
+    marca: r.marca ?? null,
     presentacion: r.presentacion,
-    precio: r.precio_web ?? 0, // ✅ usa precio_web pero conserva "precio" para el front
+    precio_web: r.precio_web ?? 0,
     unidad: r.unidad,
     stock: typeof r.stock === "bigint" ? Number(r.stock) : r.stock ?? 0,
     activo: Boolean(r.activo),
-    createdAt: null,
-    updatedAt: null,
     imagen: r.imagen ?? null,
   }));
 

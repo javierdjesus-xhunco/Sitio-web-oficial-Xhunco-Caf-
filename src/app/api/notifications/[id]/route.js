@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function getIdFromUrl(req) {
   try {
@@ -24,18 +25,19 @@ export async function PATCH(req, ctx) {
     if (authErr) {
       return NextResponse.json({ error: authErr.message }, { status: 401 });
     }
-    if (!auth?.user) {
+    if (!auth?.user?.id) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
+    const userId = auth.user.id;
     const body = await req.json().catch(() => ({}));
     const is_read = body?.is_read === false ? false : true;
 
-    const { data, error: updErr } = await supabase
+    const { data, error: updErr } = await supabaseAdmin
       .from("notifications")
       .update({ is_read })
       .eq("id", id)
-      .eq("recipient_user_id", auth.user.id)
+      .eq("recipient_user_id", userId)
       .select("id, is_read")
       .maybeSingle();
 
