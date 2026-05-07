@@ -1,106 +1,205 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+
 import CafeCard from "./CafeCard";
 
-const cafes = [
-  {
-    nombre: "Café Veracruz - Zongolica",
-    descripcion: "Notas a chocolate oscuro y nuez.",
-    precio: "369 MXN",
-    imagen: "/cafes/xhuncoveracruz.png",
-  },
-  {
-    nombre: "Café Chiapas - Chilon",
-    descripcion: "Aromas cítricos y cuerpo balanceado.",
-    precio: "379 MXN",
-    imagen: "/cafes/xhuncochiapas.png",
-  },
-  {
-    nombre: "Café Oaxaca - Pluma Hidalgo",
-    descripcion: "Suave, floral y acidez brillante.",
-    precio: "389 MXN",
-    imagen: "/cafes/xhuncooaxaca.png",
-  },
-];
+import cafes from "@/data/cafes";
+
+import { getCafePricesClient } from "@/lib/getCafePricesClient";
 
 export default function CafesDestacados() {
+
+  const [productosDB, setProductosDB] =
+    useState([]);
+
   const sliderRef = useRef(null);
+
   const intervalRef = useRef(null);
 
+  const timeoutRef = useRef(null);
+
+  // =========================
+  // CARGAR PRECIOS SUPABASE
+  // =========================
+
   useEffect(() => {
-    const slider = sliderRef.current;
-    if (!slider) return;
 
-    const startAutoScroll = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    async function loadData() {
+
+const data =
+  await getCafePricesClient();
+
+      setProductosDB(data);
+    }
+
+    loadData();
+
+  }, []);
+
+  // =========================
+  // AUTOSCROLL
+  // =========================
+
+  const startAutoScroll = () => {
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    intervalRef.current = setInterval(() => {
+
+      const slider = sliderRef.current;
+
+      if (!slider) return;
+
+      slider.scrollLeft += 1;
+
+      if (
+        slider.scrollLeft + slider.offsetWidth >=
+        slider.scrollWidth
+      ) {
+        slider.scrollTo({
+          left: 0,
+          behavior: "auto",
+        });
       }
-      intervalRef.current = setInterval(() => {
-        slider.scrollLeft += 1;
 
-        if (
-          slider.scrollLeft + slider.offsetWidth >=
-          slider.scrollWidth
-        ) {
-          slider.scrollTo({ left: 0, behavior: "auto" });
-        }
-      }, 20);
-    };
+    }, 20);
+  };
+
+  // =========================
+  // PAUSA TEMPORAL
+  // =========================
+
+  const pauseAutoScroll = () => {
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      startAutoScroll();
+    }, 4000);
+  };
+
+  useEffect(() => {
 
     startAutoScroll();
 
     return () => {
-      clearInterval(intervalRef.current);
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
+
   }, []);
 
+  // =========================
+  // BOTONES
+  // =========================
+
   const handleScroll = (direction) => {
+
     const slider = sliderRef.current;
+
     if (!slider) return;
-    const offset = slider.offsetWidth * 0.8;
-    slider.scrollLeft += direction * offset;
+
+    pauseAutoScroll();
+
+    const offset =
+      slider.offsetWidth * 0.85;
+
+    slider.scrollBy({
+      left: direction * offset,
+      behavior: "smooth",
+    });
   };
 
   return (
-    <section className="py-24 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-8">
-        <div className="flex flex-wrap items-center justify-between gap-6 mb-12">
-          <h2 className="text-4xl font-semibold">
-            Productos destacados
-          </h2>
+    <section className="py-28 bg-gray-50 overflow-hidden">
+
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-6 mb-14">
+
+          <div>
+
+            <p className="uppercase tracking-[0.3em] text-sm text-[#31572c] mb-3">
+              Xhunco Coffee
+            </p>
+
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight">
+              Productos destacados
+            </h2>
+
+          </div>
+
+          {/* Botones */}
           <div className="flex items-center gap-3">
+
             <button
               type="button"
-              onClick={() => handleScroll(-1)}
-              aria-label="Retroceder productos destacados"
-              className="h-10 w-10 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+              onClick={() =>
+                handleScroll(-1)
+              }
+              className="h-12 w-12 rounded-full border border-gray-300 text-gray-700 hover:bg-white hover:shadow-lg hover:scale-105 transition-all duration-300"
             >
               ←
             </button>
+
             <button
               type="button"
-              onClick={() => handleScroll(1)}
-              aria-label="Avanzar productos destacados"
-              className="h-10 w-10 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+              onClick={() =>
+                handleScroll(1)
+              }
+              className="h-12 w-12 rounded-full border border-gray-300 text-gray-700 hover:bg-white hover:shadow-lg hover:scale-105 transition-all duration-300"
             >
               →
             </button>
+
           </div>
         </div>
 
+        {/* Slider */}
         <div
           ref={sliderRef}
-          className="flex gap-6 overflow-x-auto no-scrollbar"
+          className="flex gap-7 overflow-x-auto no-scrollbar scroll-smooth"
         >
-          {[...cafes, ...cafes].map((cafe, index) => (
-            <div
-              key={index}
-              className="min-w-[300px] md:min-w-[360px]"
-            >
-              <CafeCard cafe={cafe} />
-            </div>
-          ))}
+          {[...cafes, ...cafes].map(
+            (cafe, index) => {
+
+              const productoDB =
+                productosDB.find(
+                  (item) =>
+                    item.sku === cafe.sku
+                );
+
+              return (
+                <div
+                  key={index}
+                  className="min-w-[320px] md:min-w-[380px] flex-shrink-0"
+                >
+                  <CafeCard
+                    cafe={cafe}
+                    precioDB={
+                      productoDB?.precio_web
+                    }
+                  />
+                </div>
+              );
+            }
+          )}
         </div>
 
       </div>

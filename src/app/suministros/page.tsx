@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useCart } from "@/context/CartContext";
+
 import {
   Search,
   ShoppingCart,
@@ -575,8 +577,8 @@ function DesktopSidebar(props: {
   } = props;
 
   return (
-    <aside className="hidden xl:block">
-      <div className="sticky top-5 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+   <aside className="hidden xl:block h-full overflow-hidden">
+      <div className="sticky top-5 h-full overflow-y-auto rounded-3xl border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-100 px-5 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
@@ -757,7 +759,7 @@ function ProductCard(props: {
   return (
     <article className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
+       <div className="min-w-0">
           <p className="truncate text-[11px] uppercase tracking-[0.18em] text-gray-500">
             {producto.categoria}
           </p>
@@ -908,8 +910,8 @@ export default function SuministrosPage() {
   const busqueda = useDebouncedValue(busquedaRaw, 180);
 
   const [cantidades, setCantidades] = useState<Record<string, number>>({});
-  const [carrito, setCarrito] = useState<Record<string, any>>({});
-  const [carritoCargado, setCarritoCargado] = useState(false);
+
+const { addItem, totalItems } = useCart();
 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1000,22 +1002,6 @@ export default function SuministrosPage() {
       cancelado = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const guardado = window.localStorage.getItem("suministrosCarrito");
-    if (guardado) {
-      try {
-        setCarrito(JSON.parse(guardado));
-      } catch {}
-    }
-    setCarritoCargado(true);
-  }, []);
-
-  useEffect(() => {
-    if (!carritoCargado || typeof window === "undefined") return;
-    window.localStorage.setItem("suministrosCarrito", JSON.stringify(carrito));
-  }, [carrito, carritoCargado]);
 
   const marcas = useMemo(() => {
     const map = new Map<string, MarcaUI>();
@@ -1122,13 +1108,6 @@ export default function SuministrosPage() {
     return Array.from(unicos);
   }, [busquedaRaw, productosDb]);
 
-  const totalCarrito = useMemo(() => {
-    return Object.values(carrito).reduce(
-      (total: number, item: any) => total + (item?.cantidad ?? 0),
-      0
-    );
-  }, [carrito]);
-
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE);
   }, [categoriaActiva, marcaActiva, disponibilidad, orden, busqueda]);
@@ -1143,35 +1122,29 @@ export default function SuministrosPage() {
     });
   };
 
-  const agregarAlCarrito = (producto: ProductoUI) => {
-    const key = producto.key;
-    const cantidad = cantidades[key] ?? 0;
+ const agregarAlCarrito = (producto: ProductoUI) => {
+  const key = producto.key;
+  const cantidad = cantidades[key] ?? 0;
 
-    const stock = Number(producto.stock ?? 0);
-    const activo = Boolean(producto.activo);
+  const stock = Number(producto.stock ?? 0);
+  const activo = Boolean(producto.activo);
 
-    if (!activo || stock <= 0 || cantidad <= 0) return;
+  if (!activo || stock <= 0 || cantidad <= 0) return;
 
-    setCarrito((prev) => {
-      const existente = prev[key];
-      const yaEnCarrito = Number(existente?.cantidad ?? 0);
-
-      const permitido = Math.max(0, stock - yaEnCarrito);
-      const aAgregar = Math.min(cantidad, permitido);
-
-      if (aAgregar <= 0) return prev;
-
-      return {
-        ...prev,
-        [key]: {
-          ...producto,
-          cantidad: yaEnCarrito + aAgregar,
-        },
-      };
+  for (let i = 0; i < cantidad; i++) {
+    addItem({
+      id: producto.key,
+      suministro_id: producto.id,
+      nombre: producto.nombre,
+      precio: producto.precio,
+      imagen: producto.imagen,
+      categoria: producto.categoria,
+      sku: producto.sku || undefined,
     });
+  }
 
-    setCantidades((prev) => ({ ...prev, [key]: 0 }));
-  };
+  setCantidades((prev) => ({ ...prev, [key]: 0 }));
+};
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
@@ -1200,8 +1173,9 @@ export default function SuministrosPage() {
               </p>
             </div>
 
-            <a
+        <a
               href="/suministros/carrito"
+              id="cart-button"
               className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white shadow-sm transition"
               style={{ backgroundColor: "#31572c" }}
               onMouseEnter={(e) => {
@@ -1214,7 +1188,7 @@ export default function SuministrosPage() {
               <ShoppingCart className="h-4 w-4" />
               Carrito
               <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                {totalCarrito}
+                {totalItems}
               </span>
             </a>
           </div>
@@ -1222,7 +1196,7 @@ export default function SuministrosPage() {
       </section>
 
       <section className="w-full px-4 py-8 md:px-6 xl:px-8">
-        <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)] h-[calc(100vh-220px)]">
           <DesktopSidebar
             categorias={categorias}
             categoriaActiva={categoriaActiva}
@@ -1239,8 +1213,7 @@ export default function SuministrosPage() {
             sugerencias={sugerencias}
             onClearFilters={clearFilters}
           />
-
-          <div className="min-w-0">
+<div className="min-w-0 h-full overflow-y-auto pr-2">
             <section className="sticky top-3 z-30 mb-6 xl:hidden">
               <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">

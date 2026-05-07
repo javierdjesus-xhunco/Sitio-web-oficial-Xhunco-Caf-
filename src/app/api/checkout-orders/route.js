@@ -169,19 +169,47 @@ export async function POST(req) {
       );
     }
 
-    const normalizedItems = items.map((item) => {
-      const qty = toQty(item.qty ?? item.cantidad);
+    // 1. Obtener IDs
+const ids = items.map((item) => item.suministro_id || item.id).filter(Boolean);
 
-      return {
-        suministro_id: item.suministro_id || item.id || null,
-        nombre: String(item.nombre || "").trim(),
-        qty,
-        precio: Number(item.precio || 0),
-        imagen: item.imagen || null,
-        categoria: item.categoria || null,
-        sku: item.sku || null,
-      };
-    });
+const { data: productosDB, error: productosError } = await supabaseAdmin
+  .from("suministros")
+  .select("id, nombre, precio, imagen, categoria, sku")
+  .in("id", ids);
+
+if (productosError || !productosDB) {
+  return NextResponse.json(
+    { error: "Error obteniendo productos desde base de datos." },
+    { status: 500 }
+  );
+}
+
+// 2. Convertir a mapa para lookup rápido
+const productosMap = new Map(
+  productosDB.map((p) => [p.id, p])
+);
+
+// 3. Reconstruir items SEGUROS
+const normalizedItems = items.map((item) => {
+  const id = item.suministro_id || item.id;
+  const producto = productosMap.get(id);
+
+  if (!producto) {
+    throw new Error(`Producto no encontrado: ${id}`);
+  }
+
+  const qty = toQty(item.qty ?? item.cantidad);
+
+  return {
+    suministro_id: producto.id,
+    nombre: producto.nombre,
+    qty,
+    precio: Number(producto.precio), // 🔒 precio REAL
+    imagen: producto.imagen,
+    categoria: producto.categoria,
+    sku: producto.sku,
+  };
+});
 
     for (const item of normalizedItems) {
       if (!item.nombre) {

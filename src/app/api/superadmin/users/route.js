@@ -81,7 +81,7 @@ export async function POST(req) {
     if (!role || !email || !password) {
       return NextResponse.json({ error: "Faltan role/email/password" }, { status: 400 });
     }
-    if (!["super_admin", "admin", "cliente"].includes(role)) {
+    if (!["super_admin", "admin", "cliente", "distribuidor"].includes(role)) {
       return NextResponse.json({ error: "Role inválido" }, { status: 400 });
     }
     if (!isValidEmail(email)) {

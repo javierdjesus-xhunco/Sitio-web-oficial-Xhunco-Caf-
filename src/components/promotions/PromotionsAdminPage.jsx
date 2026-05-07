@@ -522,7 +522,7 @@ export default function PromotionsAdminPage({ scope = "admin" }) {
                         {uploading ? "Subiendo imagen..." : "Subir imagen"}
                         <input
                           type="file"
-                          accept="image/png,image/jpeg,image/webp"
+                          accept="image/png,image/jpeg,image/webp,image/avif"
                           className="hidden"
                           onChange={(e) => onUpload(e.target.files?.[0])}
                           disabled={uploading}

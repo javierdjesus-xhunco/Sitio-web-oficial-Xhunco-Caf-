@@ -400,6 +400,11 @@ export default function ClientesPage() {
   const [editRow, setEditRow] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignRow, setAssignRow] = useState(null);
+  const [distributors, setDistributors] = useState([]);
+  const [selectedDistributor, setSelectedDistributor] = useState("");
+
   useEffect(() => setPage(1), [dq, pageSize]);
 
   async function load({ signal } = {}) {
@@ -488,6 +493,82 @@ export default function ClientesPage() {
       setSaving(false);
     }
   }
+  async function loadDistributors() {
+  try {
+    const res = await fetch("/api/superadmin/distribuidores/list");
+    const json = await res.json();
+
+    if (!res.ok) throw new Error(json?.error || "Error cargando distribuidores");
+
+    setDistributors(json.rows || []);
+  } catch (e) {
+    pushToast({
+      type: "error",
+      title: "Error",
+      message: e.message,
+    });
+  }
+}
+
+async function assignDistributor(forceReplace = false) {
+  if (!assignRow?.id || !selectedDistributor) return;
+
+  setSaving(true);
+
+  try {
+    const res = await fetch("/api/superadmin/clientes/asignar", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_id: assignRow.id,
+        distributor_id: selectedDistributor,
+        force_replace: forceReplace,
+      }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) throw new Error(json?.error || "No se pudo asignar");
+
+    // YA EXISTÍA ASIGNACIÓN
+    if (json.already_assigned) {
+      const ok = confirm(
+        `Este cliente ya está asignado a ${json.current_distributor_name}. ¿Deseas reemplazarlo?`
+      );
+
+      if (ok) {
+        setSaving(false);
+        return assignDistributor(true);
+      } else {
+        setSaving(false);
+        return;
+      }
+    }
+
+    pushToast({
+      type: "success",
+      title: json.replaced ? "Reasignado" : "Asignado",
+      message: json.replaced
+        ? "Distribuidor cambiado correctamente."
+        : "Distribuidor asignado correctamente.",
+    });
+
+    setAssignOpen(false);
+    setAssignRow(null);
+    setSelectedDistributor("");
+
+  } catch (e) {
+    pushToast({
+      type: "error",
+      title: "Error",
+      message: e.message,
+    });
+  } finally {
+    setSaving(false);
+  }
+}
 
   return (
     <>
@@ -563,12 +644,20 @@ export default function ClientesPage() {
                       <Th icon={Mail}>Email</Th>
                       <Th icon={Phone}>Teléfono</Th>
                       <Th icon={Tag}>Tipo de precio</Th>
+                      <Th icon={User}>Distribuidor</Th>
                       <Th right>Acciones</Th>
                     </tr>
+                    
                   </thead>
+
 
                   <tbody>
                     {rows.map((r) => {
+                    const distributor =
+  r.distributor_clients?.[0]?.profiles
+    ? `${r.distributor_clients[0].profiles.first_name || ""} ${r.distributor_clients[0].profiles.last_name_paterno || ""}`.trim()
+    : "";
+
                       const owner = [
                         r.owner_first_name,
                         r.owner_middle_name,
@@ -604,6 +693,17 @@ export default function ClientesPage() {
                               {tierLabel}
                             </span>
                           </td>
+                          <td className="px-4 py-3">
+  {distributor ? (
+    <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+      {distributor}
+    </span>
+  ) : (
+    <span className="text-xs text-neutral-400">
+      Sin asignar
+    </span>
+  )}
+</td>
 
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-2">
@@ -612,6 +712,9 @@ export default function ClientesPage() {
                                   setEditRow(r);
                                   setEditOpen(true);
                                 }}
+
+                                
+                                
                                 className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
                                 style={{ backgroundColor: BRAND_GREEN }}
                                 onMouseEnter={(e) =>
@@ -631,6 +734,17 @@ export default function ClientesPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                                 Eliminar
+                              </button>
+
+                              <button
+                              onClick={async () => {
+                              setAssignRow(r);
+                              setAssignOpen(true);
+                              await loadDistributors();
+                              }}
+                              className="inline-flex items-center gap-2 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
+                              >
+                              Asignar
                               </button>
                             </div>
                           </td>
@@ -698,6 +812,51 @@ export default function ClientesPage() {
             }}
           />
         </Modal>
+
+       <Modal
+  open={assignOpen}
+  title="Asignar distribuidor"
+  busy={saving}
+  onClose={() => {
+    setAssignOpen(false);
+    setAssignRow(null);
+    setSelectedDistributor("");
+  }}
+>
+  <div className="space-y-4">
+    <div className="text-sm text-neutral-700">
+      Cliente:
+      <b className="ml-2">{assignRow?.business_name}</b>
+    </div>
+
+    <select
+      value={selectedDistributor}
+      onChange={(e) => setSelectedDistributor(e.target.value)}
+      className="w-full rounded-2xl border border-neutral-300 px-4 py-3"
+    >
+      <option value="">Selecciona distribuidor</option>
+
+      {distributors.map((d) => (
+        <option key={d.id} value={d.id}>
+          {d.first_name} {d.last_name_paterno}
+        </option>
+      ))}
+    </select>
+
+    <div className="flex justify-end">
+      <button
+       onClick={() => assignDistributor()}
+        disabled={!selectedDistributor || saving}
+        className="rounded-full px-5 py-2 text-sm font-semibold text-white"
+        style={{ backgroundColor: BRAND_GREEN }}
+        
+
+      >
+        Guardar asignación
+      </button>
+    </div>
+  </div>
+</Modal> 
       </div>
     </>
   );

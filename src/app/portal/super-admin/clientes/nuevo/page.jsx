@@ -324,6 +324,7 @@ export default function NuevoClientePage() {
                   <option value="cliente">Cliente</option>
                   <option value="admin">Administrador</option>
                   <option value="super_admin">Super Administrador</option>
+                  <option value="distribuidor">Distribuidor</option>
                 </select>
               </Field>
               <HintCard />

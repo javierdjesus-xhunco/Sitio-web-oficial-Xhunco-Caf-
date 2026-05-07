@@ -9,25 +9,20 @@ export async function GET() {
       .from("promotions")
       .select("*")
       .eq("active", true)
+      .or(`starts_at.is.null,starts_at.lte.${now}`)
+      .or(`ends_at.is.null,ends_at.gte.${now}`)
       .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
+      .limit(10);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (error) throw error;
 
-    const item =
-      (data ?? []).find((promo) => {
-        const startsOk = !promo.starts_at || promo.starts_at <= now;
-        const endsOk = !promo.ends_at || promo.ends_at >= now;
-        return startsOk && endsOk;
-      }) ?? null;
-
-    return NextResponse.json({ item });
+    return NextResponse.json({
+      items: data || [],
+    });
   } catch (error) {
-    return NextResponse.json(
-      { error: error?.message || "Error al obtener promoción activa" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      items: [],
+      error: error.message,
+    });
   }
 }

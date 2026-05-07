@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+import { useCart } from "@/context/CartContext"; // ajusta ruta
+
 import {
   AlertCircle,
   BadgeCheck,
@@ -20,10 +23,47 @@ import {
   User,
 } from "lucide-react";
 
-const LS_KEY = "suministrosCarrito";
+
 const PLACEHOLDER = "/suministros/placeholder.svg";
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
+
+const getCardBrand = (number: string) => {
+  const cleaned = number.replace(/\D/g, "");
+
+  if (/^4/.test(cleaned)) return "visa";
+  if (/^5[1-5]/.test(cleaned)) return "mastercard";
+
+  return "unknown";
+};
+
+const formatCardNumber = (value: string) => {
+  const cleaned = value.replace(/\D/g, "").slice(0, 16);
+  return cleaned.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+};
+const isValidCardNumber = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+
+  let sum = 0;
+  let shouldDouble = false;
+
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let digit = parseInt(digits.charAt(i));
+
+    if (shouldDouble) {
+      digit *= 2;
+
+      if (digit > 9) {
+        digit -= 9;
+      }
+    }
+
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+
+  return sum % 10 === 0;
+};
 
 type CartItem = {
   id?: string | null;
@@ -59,7 +99,16 @@ type StatusMessage = {
 };
 
 export default function CarritoPage() {
-  const [carrito, setCarrito] = useState<Record<string, CartItem>>({});
+
+  const {
+    items,
+    subtotal,
+    totalItems,
+    updateQty,
+    removeItem,
+    clearCart,
+  } = useCart();
+
   const [mounted, setMounted] = useState(false);
   const [submitIntent, setSubmitIntent] = useState(false);
   const [statusMsg, setStatusMsg] = useState<StatusMessage | null>(null);
@@ -88,72 +137,27 @@ export default function CarritoPage() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+const totalArticulos = totalItems;
+const totalPrecio = subtotal;
 
-    const guardado = window.localStorage.getItem(LS_KEY);
-    if (!guardado) return;
-
-    try {
-      setCarrito(JSON.parse(guardado));
-    } catch (error) {
-      console.error("No se pudo leer el carrito guardado.", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(LS_KEY, JSON.stringify(carrito));
-  }, [carrito]);
-
-  const items = useMemo(() => Object.entries(carrito), [carrito]);
-
-  const totalArticulos = useMemo(
-    () =>
-      items.reduce((total, [, item]) => total + Number(item.cantidad ?? 0), 0),
-    [items],
+const actualizarCantidad = (id: string, delta: number) => {
+  const item = items.find(
+    (i) => i.id === id || i.suministro_id === id
   );
 
-  const subtotal = useMemo(
-    () =>
-      items.reduce(
-        (total, [, item]) =>
-          total + Number(item.cantidad ?? 0) * Number(item.precio ?? 0),
-        0,
-      ),
-    [items],
+  if (!item) return;
+
+  const nuevaCantidad = Math.max(
+    1,
+    (item.cantidad ?? 1) + delta
   );
 
-  const totalPrecio = subtotal;
+  updateQty(id, nuevaCantidad);
+};
 
-  const actualizarCantidad = (key: string, delta: number) => {
-    setCarrito((prev) => {
-      const item = prev[key];
-      if (!item) return prev;
-
-      const nuevaCantidad = Math.max(0, Number(item.cantidad ?? 0) + delta);
-
-      if (nuevaCantidad === 0) {
-        const { [key]: _, ...resto } = prev;
-        return resto;
-      }
-
-      return {
-        ...prev,
-        [key]: {
-          ...item,
-          cantidad: nuevaCantidad,
-        },
-      };
-    });
-  };
-
-  const eliminarProducto = (key: string) => {
-    setCarrito((prev) => {
-      const { [key]: _, ...resto } = prev;
-      return resto;
-    });
-  };
+  const eliminarProducto = (id: string) => {
+  removeItem(id);
+};
 
   const handleBlur = (name: keyof FormState) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -231,11 +235,15 @@ export default function CarritoPage() {
     }
 
     const cardDigits = values.cardNumber.replace(/\D/g, "");
-    if (!cardDigits) {
-      errors.cardNumber = "El número de tarjeta es obligatorio.";
-    } else if (cardDigits.length < 16) {
-      errors.cardNumber = "El número de tarjeta debe tener 16 dígitos.";
-    }
+
+if (!cardDigits) {
+  errors.cardNumber = "El número de tarjeta es obligatorio.";
+} else if (cardDigits.length < 16) {
+  errors.cardNumber = "El número de tarjeta debe tener 16 dígitos.";
+} else if (!isValidCardNumber(values.cardNumber)) {
+  errors.cardNumber = "Número de tarjeta inválido.";
+}
+
 
     if (!values.cardExpiry.trim()) {
       errors.cardExpiry = "La fecha de vencimiento es obligatoria.";
@@ -245,9 +253,23 @@ export default function CarritoPage() {
         errors.cardExpiry = "Usa el formato MM/AA.";
       } else {
         const month = Number(match[1]);
-        if (month < 1 || month > 12) {
-          errors.cardExpiry = "Mes inválido.";
-        }
+const year = Number(match[2]);
+
+if (month < 1 || month > 12) {
+  errors.cardExpiry = "Mes inválido.";
+} else {
+  const now = new Date();
+
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear() % 100;
+
+  if (
+    year < currentYear ||
+    (year === currentYear && month < currentMonth)
+  ) {
+    errors.cardExpiry = "La tarjeta está vencida.";
+  }
+}
       }
     }
 
@@ -325,27 +347,50 @@ export default function CarritoPage() {
           terminacion: form.cardNumber.replace(/\D/g, "").slice(-4),
           expira: form.cardExpiry,
         },
-        items: items.map(([key, item]) => ({
-          key,
-          suministro_id: item.suministro_id ?? item.id ?? null,
-          nombre: item.nombre,
-          cantidad: item.cantidad,
-          precio: item.precio,
-          imagen: item.imagen,
-          categoria: item.categoria,
-          sku: item.sku,
-        })),
+        items: items.map((item) => ({
+  key: item.id,
+  suministro_id: item.suministro_id ?? item.id ?? null,
+  nombre: item.nombre,
+  cantidad: item.cantidad,
+  precio: item.precio,
+  imagen: item.imagen,
+  categoria: item.categoria,
+  sku: item.sku,
+})),
       };
 
-      const res = await fetch("/api/checkout-orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+     const controller = new AbortController();
 
-      const data = await res.json();
+const timeout = setTimeout(() => {
+  controller.abort();
+}, 15000);
+
+const res = await fetch("/api/checkout-orders", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(payload),
+  signal: controller.signal,
+});
+
+clearTimeout(timeout);
+
+
+let data = null;
+
+try {
+  data = await res.json();
+} catch (err) {
+  console.error("Respuesta inválida:", err);
+
+  setStatusMsg({
+    type: "error",
+    text: "El servidor devolvió una respuesta inválida.",
+  });
+
+  return;
+}
 
       if (!res.ok) {
         setStatusMsg({
@@ -356,10 +401,9 @@ export default function CarritoPage() {
       }
 
       if (typeof window !== "undefined") {
-        window.localStorage.removeItem(LS_KEY);
       }
 
-      setCarrito({});
+     clearCart();
       setStatusMsg({
         type: "success",
         text: `Pedido creado correctamente. Número de pedido: ${data.order.order_no}`,
@@ -403,7 +447,7 @@ export default function CarritoPage() {
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-[#31572c]/15 bg-[#31572c]/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-[#31572c]">
             <Lock className="h-3.5 w-3.5" />
-            Checkout seguro
+            Pago seguro
           </div>
 
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
@@ -411,8 +455,7 @@ export default function CarritoPage() {
           </h1>
 
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-            Completa tus datos, selecciona el tipo de tarjeta y revisa tu pedido
-            en una experiencia más limpia, profesional y lista para producción.
+            Completa tus datos, selecciona el tipo de tarjeta y revisa tu pedido.
           </p>
         </div>
 
@@ -458,14 +501,17 @@ export default function CarritoPage() {
                   </div>
                 ) : (
                   <ul className="space-y-4">
-                    {items.map(([key, item], idx) => {
+                    {items.map((item, idx) => {
+                      const itemId = item.suministro_id || item.id;
+                      if (!itemId) return null;
                       const cantidad = Number(item.cantidad ?? 0);
                       const precio = Number(item.precio ?? 0);
                       const totalLinea = cantidad * precio;
 
                       return (
                         <li
-                          key={key}
+
+                           key={item.id ?? item.suministro_id ?? idx}
                           className="group rounded-3xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-5"
                           style={{
                             transitionDelay: `${idx * 30}ms`,
@@ -506,7 +552,7 @@ export default function CarritoPage() {
                               <div className="flex items-center rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
                                 <button
                                   type="button"
-                                  onClick={() => actualizarCantidad(key, -1)}
+                                 onClick={() => actualizarCantidad(itemId, -1)}
                                   className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 transition hover:bg-white hover:shadow-sm"
                                   aria-label={`Disminuir ${item.nombre}`}
                                 >
@@ -519,7 +565,7 @@ export default function CarritoPage() {
 
                                 <button
                                   type="button"
-                                  onClick={() => actualizarCantidad(key, 1)}
+                                  onClick={() => actualizarCantidad(itemId, 1)}
                                   className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 transition hover:bg-white hover:shadow-sm"
                                   aria-label={`Aumentar ${item.nombre}`}
                                 >
@@ -538,7 +584,10 @@ export default function CarritoPage() {
 
                               <button
                                 type="button"
-                                onClick={() => eliminarProducto(key)}
+                                onClick={() => {
+                                const removeId = item.id || item.suministro_id;
+                                if (removeId) eliminarProducto(removeId);
+                                  }}
                                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -672,163 +721,130 @@ export default function CarritoPage() {
               </div>
             </section>
 
-            <section
-              className={`overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur transition-all duration-700 delay-200 ${
-                mounted ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
-              }`}
-            >
-              <div className="border-b border-slate-200 px-6 py-5 sm:px-8">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-11 w-11 items-center justify-center rounded-2xl text-white shadow-sm"
-                    style={{ backgroundColor: BRAND_GREEN }}
-                  >
-                    <CreditCard className="h-5 w-5" />
-                  </div>
+            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl">
+  <div className="border-b px-6 py-5">
+    <h2 className="text-xl font-semibold">Pago con tarjeta</h2>
+    <p className="text-sm text-slate-500">
+      Procesado de forma segura con Spin
+    </p>
+  </div>
 
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-950">
-                      Método de pago
-                    </h2>
-                    <p className="text-sm text-slate-500">
-                      Selecciona el tipo de tarjeta y captura los datos de pago.
-                    </p>
-                  </div>
-                </div>
-              </div>
+  <div className="p-6 space-y-6">
 
-              <div className="px-6 py-6 sm:px-8">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <CardSelector
-                    title="Tarjeta de crédito"
-                    description="Ideal para pagos empresariales y compras a meses."
-                    active={form.tipoTarjeta === "credito"}
-                    onClick={() =>
-                      setForm((prev) => ({ ...prev, tipoTarjeta: "credito" }))
-                    }
-                  />
+    <div className="grid gap-4 sm:grid-cols-2">
+      <CardSelector
+        title="Crédito"
+        description="Compra a meses"
+        active={form.tipoTarjeta === "credito"}
+        onClick={() =>
+          setForm((prev) => ({ ...prev, tipoTarjeta: "credito" }))
+        }
+      />
+      <CardSelector
+        title="Débito"
+        description="Pago inmediato"
+        active={form.tipoTarjeta === "debito"}
+        onClick={() =>
+          setForm((prev) => ({ ...prev, tipoTarjeta: "debito" }))
+        }
+      />
+    </div>
 
-                  <CardSelector
-                    title="Tarjeta de débito"
-                    description="Pago directo desde la cuenta del cliente."
-                    active={form.tipoTarjeta === "debito"}
-                    onClick={() =>
-                      setForm((prev) => ({ ...prev, tipoTarjeta: "debito" }))
-                    }
-                  />
-                </div>
+    <div className="relative rounded-3xl p-6 text-white bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#31572c] shadow-2xl">
 
-                <div className="mt-6 rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] p-5 shadow-inner">
-                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-                      <ShieldCheck className="h-4 w-4 text-[#31572c]" />
-                      Captura segura de tarjeta
-                    </div>
+      <div className="flex justify-between items-center">
+        <span className="text-xs uppercase tracking-widest text-white/60">
+          Xhunco Pay · Spin
+        </span>
 
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                      <Lock className="h-3.5 w-3.5" />
-                      {form.tipoTarjeta === "credito"
-                        ? "Crédito seleccionado"
-                        : "Débito seleccionado"}
-                    </div>
-                  </div>
+        <span className="text-sm font-semibold">
+          {getCardBrand(form.cardNumber).toUpperCase()}
+        </span>
+      </div>
 
-                  <div className="mb-6 overflow-hidden rounded-[28px] bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_45%,#31572c_100%)] p-6 text-white shadow-[0_20px_40px_rgba(15,23,42,0.22)] transition-all duration-300 hover:-translate-y-0.5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.28em] text-white/70">
-                          Xhunco Pay
-                        </p>
-                        <p className="mt-3 text-sm text-white/70">
-                          {form.tipoTarjeta === "credito"
-                            ? "Tarjeta de crédito"
-                            : "Tarjeta de débito"}
-                        </p>
-                      </div>
-                      <CreditCard className="h-6 w-6 text-white/90" />
-                    </div>
+      <div className="mt-6 font-mono text-2xl tracking-widest">
+        {form.cardNumber || "•••• •••• •••• ••••"}
+      </div>
 
-                    <div className="mt-8 font-mono text-xl tracking-[0.25em] text-white/95 sm:text-2xl">
-                      {form.cardNumber || "•••• •••• •••• ••••"}
-                    </div>
+      <div className="mt-6 flex justify-between text-sm">
+        <div>
+          <p className="text-white/60 text-xs">Titular</p>
+          <p>{form.cardName || "NOMBRE COMPLETO"}</p>
+        </div>
+        <div>
+          <p className="text-white/60 text-xs">Expira</p>
+          <p>{form.cardExpiry || "MM/AA"}</p>
+        </div>
+      </div>
+    </div>
 
-                    <div className="mt-8 flex items-end justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.25em] text-white/60">
-                          Titular
-                        </p>
-                        <p className="mt-1 truncate text-sm font-medium text-white/95">
-                          {form.cardName || "NOMBRE DEL TITULAR"}
-                        </p>
-                      </div>
+    <div className="grid gap-5">
 
-                      <div className="text-right">
-                        <p className="text-[10px] uppercase tracking-[0.25em] text-white/60">
-                          Expira
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-white/95">
-                          {form.cardExpiry || "MM/AA"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+      <Field
+        label="Nombre en la tarjeta"
+        name="cardName"
+        required
+        value={form.cardName}
+        onChange={handleChange}
+        onBlur={() => handleBlur("cardName")}
+        placeholder="Nombre como aparece en la tarjeta"
+        icon={<User className="h-4 w-4" />}
+        error={visibleError("cardName")}
+      />
 
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
-                      <Field
-                        label="Nombre en la tarjeta"
-                        name="cardName"
-                        required
-                        value={form.cardName}
-                        onChange={handleChange}
-                        onBlur={() => handleBlur("cardName")}
-                        placeholder="Nombre como aparece en la tarjeta"
-                        icon={<User className="h-4 w-4" />}
-                        error={visibleError("cardName")}
-                      />
-                    </div>
+      <Field
+        label="Número de tarjeta"
+        name="cardNumber"
+        required
+        value={form.cardNumber}
+        onChange={(e) =>
+          setForm((prev) => ({
+            ...prev,
+            cardNumber: formatCardNumber(e.target.value),
+          }))
+        }
+        onBlur={() => handleBlur("cardNumber")}
+        placeholder="1234 5678 9012 3456"
+        icon={<CreditCard className="h-4 w-4" />}
+        error={visibleError("cardNumber")}
+      />
 
-                    <div className="sm:col-span-2">
-                      <Field
-                        label="Número de tarjeta"
-                        name="cardNumber"
-                        required
-                        value={form.cardNumber}
-                        onChange={handleChange}
-                        onBlur={() => handleBlur("cardNumber")}
-                        placeholder="1234 5678 9012 3456"
-                        icon={<CreditCard className="h-4 w-4" />}
-                        error={visibleError("cardNumber")}
-                      />
-                    </div>
+      <div className="grid grid-cols-2 gap-4">
+        <Field
+          label="Expiración"
+          name="cardExpiry"
+          required
+          value={form.cardExpiry}
+          onChange={handleChange}
+          onBlur={() => handleBlur("cardExpiry")}
+          placeholder="MM/AA"
+          icon={<BadgeCheck className="h-4 w-4" />}
+          error={visibleError("cardExpiry")}
+        />
 
-                    <Field
-                      label="Vencimiento"
-                      name="cardExpiry"
-                      required
-                      value={form.cardExpiry}
-                      onChange={handleChange}
-                      onBlur={() => handleBlur("cardExpiry")}
-                      placeholder="MM/AA"
-                      icon={<BadgeCheck className="h-4 w-4" />}
-                      error={visibleError("cardExpiry")}
-                    />
+        <Field
+          label="CVC"
+          name="cardCvc"
+          required
+          value={form.cardCvc}
+          onChange={handleChange}
+          onBlur={() => handleBlur("cardCvc")}
+          placeholder="123"
+          icon={<ShieldCheck className="h-4 w-4" />}
+          error={visibleError("cardCvc")}
+        />
+      </div>
+    </div>
 
-                    <Field
-                      label="CVC"
-                      name="cardCvc"
-                      required
-                      value={form.cardCvc}
-                      onChange={handleChange}
-                      onBlur={() => handleBlur("cardCvc")}
-                      placeholder="123"
-                      icon={<ShieldCheck className="h-4 w-4" />}
-                      error={visibleError("cardCvc")}
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
+    <div className="rounded-2xl border bg-slate-50 p-4 flex items-center gap-3">
+      <Lock className="h-5 w-5 text-[#31572c]" />
+      <p className="text-xs text-slate-600">
+        Tus datos están protegidos mediante tokenización segura (Spin)
+      </p>
+    </div>
+  </div>
+</section>
+       
           </div>
 
           <aside
@@ -842,7 +858,7 @@ export default function CarritoPage() {
                   Resumen del pedido
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Vista consolidada antes de finalizar.
+                 Visualiza la cantidad de productos y el monto a pagar.
                 </p>
               </div>
 
@@ -909,11 +925,10 @@ export default function CarritoPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-slate-800">
-                        Checkout protegido
+                        Pago protegido
                       </p>
                       <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Los campos del cliente y de pago son obligatorios y se
-                        validan antes de continuar.
+                        Los campos del cliente y de pago son obligatorios.
                       </p>
                     </div>
                   </div>
@@ -926,11 +941,10 @@ export default function CarritoPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-slate-800">
-                        Validación en tiempo real
+                        Validación de datos
                       </p>
                       <p className="mt-1 text-xs leading-5 text-slate-500">
-                        El botón se habilita únicamente cuando el carrito tiene
-                        productos y todos los campos requeridos están correctos.
+                       Podrás continuar una vez que todos los datos estén ingresados.
                       </p>
                     </div>
                   </div>

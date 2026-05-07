@@ -46,10 +46,16 @@ export async function POST(request) {
       return NextResponse.json({ error: "Archivo inválido" }, { status: 400 });
     }
 
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    const allowed = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+];
     if (!allowed.includes(file.type)) {
       return NextResponse.json(
-        { error: "Solo se permiten imágenes JPG, PNG o WEBP" },
+      { error: "Solo se permiten imágenes JPG, PNG, WEBP o AVIF" },
         { status: 400 }
       );
     }
@@ -63,7 +69,9 @@ export async function POST(request) {
     }
 
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+   const safeExt = ["jpg", "jpeg", "png", "webp", "avif"].includes(ext)
+  ? ext
+  : "jpg";
 
     const fileName = `promo-${Date.now()}-${Math.random()
       .toString(36)

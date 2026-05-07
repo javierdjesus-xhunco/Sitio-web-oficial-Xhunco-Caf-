@@ -115,32 +115,41 @@ export async function GET(req) {
   const to = from + pageSize - 1;
 
   let query = supabaseAdmin
-    .from("clients")
-    .select(
-      [
-        "id",
-        "user_id",
-        "business_name",
-        "price_tier",
-        "owner_name",
-        "owner_first_name",
-        "owner_middle_name",
-        "owner_last_name_paterno",
-        "owner_last_name_materno",
-        "phone",
-        "email",
-        "street",
-        "ext_number",
-        "int_number",
-        "neighborhood",
-        "municipality",
-        "state",
-        "postal_code",
-        "address",
-        "logo_url",
-        "created_at",
-      ].join(","),
-      { count: "exact" }
+  .from("clients")
+  .select(
+    `
+    id,
+    user_id,
+    business_name,
+    price_tier,
+    owner_name,
+    owner_first_name,
+    owner_middle_name,
+    owner_last_name_paterno,
+    owner_last_name_materno,
+    phone,
+    email,
+    street,
+    ext_number,
+    int_number,
+    neighborhood,
+    municipality,
+    state,
+    postal_code,
+    address,
+    logo_url,
+    created_at,
+
+    distributor_clients (
+      distributor_id,
+      profiles (
+        first_name,
+        last_name_paterno
+      )
+    )
+    `,
+    { count: "exact" }
+  
     )
     .order("business_name", { ascending: true })
     .range(from, to);
