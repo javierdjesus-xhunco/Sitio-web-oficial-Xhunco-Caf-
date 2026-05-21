@@ -109,7 +109,7 @@ export default function Header() {
           </Link>
 
           <Link href="/suministros" className={navLinkClass(pathname, "/suministros")}>
-            Suministros
+            Insumos para cafeteria
             {isSupplies && (
               <span className="absolute -bottom-2 left-0 h-0.5 w-full rounded-full bg-[#2A1A12]" />
             )}
@@ -121,7 +121,15 @@ export default function Header() {
               <span className="absolute -bottom-2 left-0 h-0.5 w-full rounded-full bg-[#2A1A12]" />
             )}
           </Link>
+
+           <Link href="/blog" className={navLinkClass(pathname, "/blog")}>
+            Blog
+            {isContact && (
+              <span className="absolute -bottom-2 left-0 h-0.5 w-full rounded-full bg-[#2A1A12]" />
+            )}
+          </Link>
         </nav>
+        
 
         {/* ACCIONES DESKTOP */}
         <div className="hidden items-center gap-4 md:flex">
@@ -202,7 +210,7 @@ export default function Header() {
               onClick={closeMobileMenu}
               className="block rounded-xl px-3 py-3 text-sm font-medium text-[#334155] transition hover:bg-[#F7F5F1] hover:text-[#2A1A12]"
             >
-              Suministros
+              Insumos para Cafeteria
             </Link>
 
             <Link
@@ -212,6 +220,15 @@ export default function Header() {
             >
               Contacto
             </Link>
+
+            <Link
+              href="/blog"
+              onClick={closeMobileMenu}
+              className="block rounded-xl px-3 py-3 text-sm font-medium text-[#334155] transition hover:bg-[#F7F5F1] hover:text-[#2A1A12]"
+            >
+              Blog
+            </Link>
+
           </div>
 
           <div className="mt-5 border-t border-[#E8E0D6] pt-5">

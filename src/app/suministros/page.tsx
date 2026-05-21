@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { useSearchParams }
+from "next/navigation";
+
+
 import { useCart } from "@/context/CartContext";
+
 
 import {
   Search,
@@ -900,13 +910,25 @@ function ProductCard(props: {
 }
 
 export default function SuministrosPage() {
+
+const searchParams =
+  useSearchParams();
+
+const skuUrl =
+  searchParams.get("sku");
+
+const buscarInicial =
+  searchParams.get("buscar") || "";
+
   const [categoriaActiva, setCategoriaActiva] = useState("General");
   const [marcaActiva, setMarcaActiva] = useState("Todas");
   const [disponibilidad, setDisponibilidad] = useState("todas");
   const [orden, setOrden] = useState("az");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const [busquedaRaw, setBusquedaRaw] = useState("");
+  
+  const [busquedaRaw, setBusquedaRaw] =
+  useState(buscarInicial);
   const busqueda = useDebouncedValue(busquedaRaw, 180);
 
   const [cantidades, setCantidades] = useState<Record<string, number>>({});
@@ -986,6 +1008,28 @@ const { addItem, totalItems } = useCart();
         });
 
         if (!cancelado) setProductosDb(mapped);
+
+if (skuUrl) {
+  const productoCafe =
+    mapped.find(
+      (p) =>
+        p.sku?.trim() ===
+        skuUrl.trim()
+    );
+
+  if (productoCafe) {
+    setProductoModal(
+      productoCafe
+    );
+
+    setModalOpen(true);
+
+    setBusquedaRaw(
+      productoCafe.nombre
+    );
+  }
+}
+
       } catch (e: any) {
         if (!cancelado) {
           setError(e?.message ?? "Error cargando catálogo");

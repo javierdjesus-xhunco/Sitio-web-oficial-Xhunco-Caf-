@@ -80,6 +80,36 @@ export default function AdminPedidoManualPage() {
   // ✅ AbortController para cancelar requests
   const abortRef = useRef(null);
 
+  // ✅ Traer TODOS los clientes paginando
+  const fetchAllClients = useCallback(async () => {
+    const pageSize = 50;
+    let page = 1;
+    let all = [];
+
+    while (true) {
+      const url = `/api/admin/clientes?page=${page}&pageSize=${pageSize}`;
+
+      const r = await fetch(url, {
+        cache: "no-store",
+        signal: abortRef.current?.signal,
+      });
+
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || "Error cargando clientes");
+
+      const data = j?.data || [];
+      all = all.concat(data);
+
+      const totalPages = Number(j?.totalPages || 1);
+      if (page >= totalPages) break;
+
+      page++;
+      if (page > 500) break; // safety
+    }
+
+    return all;
+  }, []);
+
   // ✅ Traer TODO el catálogo paginando (tu API es paginada)
   const fetchAllSuministros = useCallback(async () => {
     const pageSize = 50; // max en tu API
@@ -124,23 +154,22 @@ export default function AdminPedidoManualPage() {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
 
-      // ✅ tu ruta real es /api/admin/clientes
-      const [r1, suministrosAll] = await Promise.all([
-        fetch("/api/admin/clientes", {
-          cache: "no-store",
-          signal: abortRef.current.signal,
-        }),
+      const [clientsAll, suministrosAll] = await Promise.all([
+        fetchAllClients(),
         fetchAllSuministros(),
       ]);
 
-      const j1 = await r1.json().catch(() => ({}));
-      if (!r1.ok) throw new Error(j1?.error || "Error cargando clientes");
-
       // ✅ Normaliza tier de cada cliente (para que siempre funcione)
-      const rawClients = j1?.data || [];
+      const rawClients = clientsAll || [];
       const normalizedClients = rawClients.map((c) => ({
         ...c,
         price_tier: normalizeTier(c?.price_tier || "precio_publico"),
+        label:
+          c?.label ||
+          c?.business_name ||
+          c?.name ||
+          c?.email ||
+          "Cliente sin nombre",
       }));
 
       const sup = suministrosAll || [];
@@ -368,7 +397,9 @@ export default function AdminPedidoManualPage() {
     <section className="w-full max-w-[1680px] space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-black">Crear Pedido Manual</h1>
+          <h1 className="text-3xl font-semibold text-black">
+            Crear Pedido Manual
+          </h1>
           <p className="text-sm text-gray-500">
             Precio del cliente:{" "}
             <span className="font-semibold text-black">
@@ -396,7 +427,9 @@ export default function AdminPedidoManualPage() {
           {/* Col 1 */}
           <div className="xl:col-span-4 rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
             <div>
-              <div className="text-sm font-semibold text-black mb-2">Negocio</div>
+              <div className="text-sm font-semibold text-black mb-2">
+                Negocio
+              </div>
               <select
                 value={clientUserId}
                 onChange={(e) => {
@@ -406,16 +439,27 @@ export default function AdminPedidoManualPage() {
                   const c = (clients || []).find((x) => x.user_id === id);
 
                   // ✅ Si no existe o viene raro, cae a público
-                  setClientTier(normalizeTier(c?.price_tier || "precio_publico"));
+                  setClientTier(
+                    normalizeTier(c?.price_tier || "precio_publico")
+                  );
                 }}
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold outline-none"
               >
                 <option value="">Selecciona un negocio…</option>
                 {(clients || [])
                   .filter((c) => c?.user_id)
-                  .map((c, idx) => (
-                    <option key={`${c.user_id}-${idx}`} value={c.user_id}>
-                      {c.label}
+                  .sort((a, b) =>
+                    String(a?.label || "").localeCompare(
+                      String(b?.label || ""),
+                      "es"
+                    )
+                  )
+                  .map((c) => (
+                    <option key={c.user_id} value={c.user_id}>
+                      {c.label ||
+                        c.business_name ||
+                        c.email ||
+                        "Cliente sin nombre"}
                     </option>
                   ))}
               </select>
@@ -423,7 +467,9 @@ export default function AdminPedidoManualPage() {
 
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <div className="text-sm font-semibold text-black mb-2">Método de entrega</div>
+                <div className="text-sm font-semibold text-black mb-2">
+                  Método de entrega
+                </div>
                 <select
                   value={deliveryMethod}
                   onChange={(e) => setDeliveryMethod(e.target.value)}
@@ -435,7 +481,9 @@ export default function AdminPedidoManualPage() {
               </div>
 
               <div>
-                <div className="text-sm font-semibold text-black mb-2">Método de pago</div>
+                <div className="text-sm font-semibold text-black mb-2">
+                  Método de pago
+                </div>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
@@ -450,7 +498,9 @@ export default function AdminPedidoManualPage() {
 
             <div className="rounded-xl bg-gray-50 p-4 border border-gray-200">
               <div className="text-sm text-gray-600">Subtotal</div>
-              <div className="text-2xl font-semibold text-black">{money(subtotal)}</div>
+              <div className="text-2xl font-semibold text-black">
+                {money(subtotal)}
+              </div>
             </div>
           </div>
 
@@ -519,7 +569,9 @@ export default function AdminPedidoManualPage() {
                       <div>
                         <div className="text-sm font-semibold text-black">
                           {s.nombre}{" "}
-                          <span className="text-xs text-gray-500">({s.sku})</span>
+                          <span className="text-xs text-gray-500">
+                            ({s.sku})
+                          </span>
                         </div>
                         <div className="text-xs text-gray-600">
                           {s.categoria ? `${s.categoria} · ` : ""}
@@ -544,7 +596,9 @@ export default function AdminPedidoManualPage() {
 
                       <div className="text-right">
                         <div className="text-[11px] text-gray-500">Stock</div>
-                        <div className="text-sm font-semibold text-black">{stock}</div>
+                        <div className="text-sm font-semibold text-black">
+                          {stock}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -559,7 +613,9 @@ export default function AdminPedidoManualPage() {
               <div className="text-sm font-semibold text-black">Carrito</div>
 
               {cart.length === 0 ? (
-                <div className="text-sm text-gray-600">Aún no agregas productos.</div>
+                <div className="text-sm text-gray-600">
+                  Aún no agregas productos.
+                </div>
               ) : (
                 <div className="max-h-[55vh] overflow-auto space-y-3 pr-1">
                   {cart.map((it) => {
@@ -575,7 +631,9 @@ export default function AdminPedidoManualPage() {
                           <div className="min-w-0">
                             <div className="truncate text-sm font-semibold text-black">
                               {it.nombre}{" "}
-                              <span className="text-xs text-gray-500">({it.sku})</span>
+                              <span className="text-xs text-gray-500">
+                                ({it.sku})
+                              </span>
                             </div>
                             <div className="text-xs text-gray-600">
                               {it.marca ? `${it.marca} · ` : ""}
@@ -584,7 +642,9 @@ export default function AdminPedidoManualPage() {
 
                             <div className="mt-1 text-[11px] text-gray-500">
                               Stock disponible:{" "}
-                              <span className="font-semibold text-black">{stock}</span>
+                              <span className="font-semibold text-black">
+                                {stock}
+                              </span>
                             </div>
 
                             <div className="mt-1 text-xs text-gray-600">
@@ -595,7 +655,8 @@ export default function AdminPedidoManualPage() {
                             </div>
 
                             <div className="text-xs font-semibold text-gray-900 mt-1">
-                              Línea: {money(Number(it.qty) * Number(it.unit_price))}
+                              Línea:{" "}
+                              {money(Number(it.qty) * Number(it.unit_price))}
                             </div>
                           </div>
 
@@ -624,7 +685,9 @@ export default function AdminPedidoManualPage() {
                               min="1"
                               max={Math.max(1, stock)}
                               value={it.qty}
-                              onChange={(e) => setQty(it.suministro_id, e.target.value)}
+                              onChange={(e) =>
+                                setQty(it.suministro_id, e.target.value)
+                              }
                               className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none text-center"
                             />
 
@@ -637,7 +700,11 @@ export default function AdminPedidoManualPage() {
                                   ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
                                   : "border-gray-200 bg-white hover:bg-gray-50",
                               ].join(" ")}
-                              title={atMax ? "Ya alcanzaste el máximo por stock" : "Aumentar"}
+                              title={
+                                atMax
+                                  ? "Ya alcanzaste el máximo por stock"
+                                  : "Aumentar"
+                              }
                             >
                               +
                             </button>
@@ -651,7 +718,9 @@ export default function AdminPedidoManualPage() {
 
               <div className="border-t border-gray-200 pt-4 flex items-center justify-between">
                 <div className="text-sm text-gray-600">Subtotal</div>
-                <div className="text-lg font-semibold text-black">{money(subtotal)}</div>
+                <div className="text-lg font-semibold text-black">
+                  {money(subtotal)}
+                </div>
               </div>
 
               <button

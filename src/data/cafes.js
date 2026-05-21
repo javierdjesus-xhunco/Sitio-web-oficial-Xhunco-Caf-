@@ -2,6 +2,8 @@ const cafes = [
   {
     slug: "veracruz-zongolica",
 
+    dbMatch: "veracruz",
+
     sku: "CAF-VER-001",
 
     nombre: "Café Veracruz - Zongolica",
@@ -36,11 +38,8 @@ const cafes = [
     ],
 
     intensidad: 4,
-
     acidez: 3,
-
     cuerpo: 5,
-
     dulzor: 4,
 
     recomendados: [
@@ -57,6 +56,8 @@ const cafes = [
 
   {
     slug: "chiapas-chilon",
+
+    dbMatch: "chiapas",
 
     sku: "CAF-CHI-001",
 
@@ -92,11 +93,8 @@ const cafes = [
     ],
 
     intensidad: 3,
-
     acidez: 4,
-
     cuerpo: 4,
-
     dulzor: 5,
 
     recomendados: [
@@ -108,11 +106,13 @@ const cafes = [
     historia:
       "Procesado cuidadosamente para conservar una acidez limpia y una dulzura natural excepcional.",
 
-    color: "#7f5539",
+    color: "#8b5e3c",
   },
 
   {
     slug: "oaxaca-pluma-hidalgo",
+
+    dbMatch: "oaxaca",
 
     sku: "CAF-OAX-001",
 
@@ -148,11 +148,8 @@ const cafes = [
     ],
 
     intensidad: 2,
-
     acidez: 5,
-
     cuerpo: 3,
-
     dulzor: 4,
 
     recomendados: [
