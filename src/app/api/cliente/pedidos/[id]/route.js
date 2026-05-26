@@ -16,7 +16,6 @@ function normalizePaymentMethod(raw) {
 function sanitizePaymentSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== "object") return null;
 
-  // Solo limpiamos lo que te importa, sin romper estructura si ya existe más info
   const out = { ...snapshot };
 
   if (typeof out.clabe === "string") {
@@ -26,9 +25,15 @@ function sanitizePaymentSnapshot(snapshot) {
   return out;
 }
 
+function joinName(parts = []) {
+  return parts
+    .map((x) => String(x || "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
 export async function GET(request, { params }) {
   try {
-    // ✅ id por params (fallback por URL si hiciera falta)
     const url = new URL(request.url);
     const fallbackId = url.pathname.split("/").filter(Boolean).pop();
     const id = params?.id || fallbackId;
@@ -51,18 +56,14 @@ export async function GET(request, { params }) {
 
     const userId = authData.user.id;
 
-    // ✅ Traer SOLO lo que usas (más óptimo que select('*'))
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .select(
         [
           "id",
           "status",
-
-          // ✅ NUEVO: pago independiente (para que el cliente lo vea)
           "payment_status",
           "paid_at",
-
           "total",
           "created_at",
           "client_user_id",
@@ -85,12 +86,79 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
     }
 
-    // ✅ Normalizar pago para que tu UI muestre “Transferencia” siempre
+    const { data: client } = await supabaseAdmin
+      .from("clients")
+      .select(
+        `
+        business_name,
+        owner_first_name,
+        owner_middle_name,
+        owner_last_name_paterno,
+        owner_last_name_materno,
+        phone,
+        email,
+        street,
+        ext_number,
+        int_number,
+        neighborhood,
+        municipality,
+        state,
+        postal_code
+      `
+      )
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select(
+        `
+        email,
+        phone,
+        first_name,
+        middle_name,
+        last_name_paterno,
+        last_name_materno
+      `
+      )
+      .eq("id", userId)
+      .maybeSingle();
+
+    const clientFullName = joinName([
+      client?.owner_first_name,
+      client?.owner_middle_name,
+      client?.owner_last_name_paterno,
+      client?.owner_last_name_materno,
+    ]);
+
+    const profileFullName = joinName([
+      profile?.first_name,
+      profile?.middle_name,
+      profile?.last_name_paterno,
+      profile?.last_name_materno,
+    ]);
+
+    const clientSnapshot = {
+      business_name: client?.business_name || null,
+      client_name: clientFullName || profileFullName || null,
+      phone: client?.phone || profile?.phone || null,
+      email: client?.email || profile?.email || authData.user.email || null,
+      address: {
+        street: client?.street || null,
+        ext_number: client?.ext_number || null,
+        int_number: client?.int_number || null,
+        neighborhood: client?.neighborhood || null,
+        municipality: client?.municipality || null,
+        state: client?.state || null,
+        postal_code: client?.postal_code || null,
+      },
+    };
+
     const normalizedOrder = {
       ...order,
       payment_method: normalizePaymentMethod(order.payment_method),
       payment_snapshot: sanitizePaymentSnapshot(order.payment_snapshot),
-      // payment_status y paid_at ya vienen en "order" por el select (no se tocan)
+      client_snapshot: clientSnapshot,
     };
 
     const { data: items, error: itemsErr } = await supabaseAdmin

@@ -47,12 +47,11 @@ export default function TrazabilidadPage() {
       <div className="max-w-xl mx-auto text-center">
 
         <h1 className="text-4xl font-semibold mb-4">
-          Buscar mi lote
+          Trazabilidad del Café: Conoce el Origen de tu Lote
         </h1>
 
         <p className="text-gray-600 mb-10">
-          Ingresa el código de lote impreso en tu empaque para conocer
-          el origen y proceso de tu café.
+        Rastrea el origen de cada lote de café: productor, región, fecha de cosecha y proceso. La trazabilidad real que tu cafetería o restaurante puede mostrar a sus clientes.
         </p>
 
         <div className="flex gap-4 mb-6">

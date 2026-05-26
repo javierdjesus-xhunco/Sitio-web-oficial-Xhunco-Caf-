@@ -1206,14 +1206,14 @@ if (skuUrl) {
                 Catálogo de suministros
               </p>
 
-              <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] leading-[0.95] text-gray-950 md:text-5xl xl:whitespace-nowrap xl:text-[58px] 2xl:text-[64px]">
-                Abastece tu barra desde un solo catálogo
+              <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] leading-[0.95] text-gray-950 md:text-5xl xl:whitespace-nowrap xl:text-[45px] 2xl:text-[55px]">
+                Insumos para Cafetería: Catálogo Completo para tu Barra
               </h1>
 
               <p className="mt-5 max-w-[760px] text-base leading-8 text-gray-600 md:text-lg">
-                Encuentra insumos, accesorios y productos esenciales para operar con mayor
-                agilidad, orden y consistencia. Filtra por marca, categoría y disponibilidad
-                para comprar más rápido.
+                Catálogo de insumos para cafetería: café en grano, accesorios, jarabes 
+                y consumibles. Filtra por marca y disponibilidad. Pedidos B2B con entrega programada.
+
               </p>
             </div>
 

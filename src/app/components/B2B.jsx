@@ -41,13 +41,12 @@ export default function B2B() {
             </span>
 
             <h2 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-[#0F172A] md:text-5xl">
-              Soluciones de café para negocios que buscan operar mejor
+               Proveedor de Café para Cafeterías y Restaurantes 
             </h2>
 
             <p className="mt-5 max-w-2xl text-base leading-8 text-[#475569] md:text-lg">
-               Ayudamos a negocios a operar mejor su servicio de café con un modelo de
-               abastecimiento, soporte y acompañamiento continuo. Diseñado para cafeterías,
-               restaurantes, hoteles y oficinas que buscan mayor orden y continuidad.
+               Suministro continuo de café de especialidad para cafeterías, restaurantes, hoteles 
+               y oficinas en México. Atención B2B con acompañamiento. Solicita una cotización.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -68,13 +67,6 @@ export default function B2B() {
               >
                 Solicitar cotización
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-
-              <Link
-                href="/contacto"
-                className="inline-flex items-center justify-center rounded-full border border-[#2A1A12]/15 bg-white px-6 py-3.5 text-sm font-medium text-[#2A1A12] transition hover:border-[#2A1A12] hover:bg-[#2A1A12] hover:text-white"
-              >
-                Hablar con un asesor
               </Link>
             </div>
           </div>

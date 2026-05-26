@@ -45,12 +45,11 @@ export default function Hero() {
       {/* CONTENIDO */}
       <div className="relative z-10 text-center max-w-3xl px-6 text-white">
         <h1 className="text-5xl md:text-6xl font-semibold mb-6 leading-tight">
-          Café con origen, <br /> historia y trazabilidad
+         Proveedor de Café Mexicano de Especialidad para Negocios
         </h1>
 
         <p className="text-lg md:text-xl mb-10 text-gray-200">
-          Cafés de altura cuidadosamente seleccionados,
-          con procesos transparentes desde el origen hasta tu taza.
+          Café mexicano de origen con trazabilidad por lote para cafeterías, restaurantes y hoteles. Abastecimiento continuo, soporte y catálogo de insumos. Cotiza hoy.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

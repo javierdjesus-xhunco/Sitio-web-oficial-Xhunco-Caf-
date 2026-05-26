@@ -115,12 +115,6 @@ export default function Header() {
             )}
           </Link>
 
-          <Link href="/contacto" className={navLinkClass(pathname, "/contacto")}>
-            Contacto
-            {isContact && (
-              <span className="absolute -bottom-2 left-0 h-0.5 w-full rounded-full bg-[#2A1A12]" />
-            )}
-          </Link>
 
            <Link href="/blog" className={navLinkClass(pathname, "/blog")}>
             Blog
@@ -211,14 +205,6 @@ export default function Header() {
               className="block rounded-xl px-3 py-3 text-sm font-medium text-[#334155] transition hover:bg-[#F7F5F1] hover:text-[#2A1A12]"
             >
               Insumos para Cafeteria
-            </Link>
-
-            <Link
-              href="/contacto"
-              onClick={closeMobileMenu}
-              className="block rounded-xl px-3 py-3 text-sm font-medium text-[#334155] transition hover:bg-[#F7F5F1] hover:text-[#2A1A12]"
-            >
-              Contacto
             </Link>
 
             <Link

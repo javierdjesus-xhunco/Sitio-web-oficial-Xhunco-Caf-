@@ -303,243 +303,362 @@ export default function PedidoDetallePage() {
     if (fromSnap) setBusinessName(fromSnap);
   }, [order]);
 
-  const downloadPdf = async () => {
-    if (!order) return;
+const downloadPdf = async () => {
+  if (!order) return;
 
-    setDownloading(true);
+  setDownloading(true);
+
+  try {
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+
+    const BRAND_RGB = [49, 87, 44];
+    const DARK_RGB = [37, 68, 31];
+
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 14;
+
+    const folioShort = String(order?.id || "").slice(0, 8).toUpperCase();
+    const filename = `Xhunco_Pedido_${folioShort}.pdf`;
+
+    let xhuncoLogo = null;
+    let clientLogo = null;
+
     try {
-      const { jsPDF } = await import("jspdf");
-      const autoTable = (await import("jspdf-autotable")).default;
-
-      const BRAND_RGB = [49, 87, 44];
-      const doc = new jsPDF({ unit: "mm", format: "a4" });
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const margin = 14;
-
-      let xhuncoLogo = null;
-      let clientLogo = null;
-
-      try {
-        xhuncoLogo = await toDataUrlFromAny(LOGO_PUBLIC_PATH);
-      } catch {
-        xhuncoLogo = null;
-      }
-
-      if (clientLogoUrl) {
-        try {
-          clientLogo = await toDataUrlFromAny(clientLogoUrl);
-        } catch {
-          clientLogo = null;
-        }
-      }
-
-      const business = safeText(businessName || getBusinessNameFromAddressSnapshot(order) || "Cliente");
-      const folioShort = String(order?.id || "").slice(0, 8).toUpperCase();
-      const uuid = safeText(order?.id, "—");
-      const fecha = formatDateTime(order?.created_at);
-      const statusLabel = statusLabelFromKey(normalizeStatusKey(order?.status));
-      const entrega = formatDelivery(order?.delivery_method);
-      const pago = formatPayment(order?.payment_method);
-
-      const a = order?.delivery_address_snapshot || null;
-      const isDelivery = String(order?.delivery_method || "").toLowerCase() === "delivery";
-
-      doc.setFillColor(247, 248, 249);
-      doc.rect(0, 0, pageW, 26, "F");
-      doc.setFillColor(...BRAND_RGB);
-      doc.rect(0, 25, pageW, 1.2, "F");
-
-      const logoY = 8.7;
-      const maxH = 14;
-
-      let leftW = 0;
-      if (xhuncoLogo) {
-        const r = addImageFit(doc, xhuncoLogo, margin, logoY, 38, maxH);
-        leftW = r.w;
-      }
-
-      const pedidoText = `Pedido #${folioShort}`;
-
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      const pedidoTextW = doc.getTextWidth(pedidoText);
-
-      const gap = 3;
-      if (clientLogo) {
-        const props = doc.getImageProperties(clientLogo);
-        const ratio = props.height / props.width;
-
-        let clientW = 14;
-        let clientH = clientW * ratio;
-
-        const clientMaxH = 10;
-        if (clientH > clientMaxH) {
-          clientH = clientMaxH;
-          clientW = clientH / ratio;
-        }
-
-        const blockW = clientW + gap + pedidoTextW;
-        const blockX = pageW - margin - blockW;
-
-        doc.addImage(clientLogo, "PNG", blockX, 9.2, clientW, clientH);
-        doc.text(pedidoText, blockX + clientW + gap, 11);
-      } else {
-        doc.text(pedidoText, pageW - margin, 11, { align: "right" });
-      }
-
-      doc.setFontSize(9);
-      doc.setTextColor(90, 90, 90);
-      doc.text(fecha, pageW - margin, 17, { align: "right" });
-
-      const textX = xhuncoLogo ? margin + leftW + 6 : margin;
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(12);
-      doc.text("Comprobante de pedido", textX, 12);
-
-      doc.setFontSize(10);
-      doc.setTextColor(80, 80, 80);
-      doc.text(business, textX, 17);
-
-      let y = 34;
-      doc.setDrawColor(230, 230, 230);
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(margin, y, pageW - margin * 2, 28, 3, 3, "FD");
-
-      doc.setFontSize(9);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Negocio", margin + 4, y + 7);
-      doc.text("Estatus", pageW / 2, y + 7);
-      doc.text("UUID", margin + 4, y + 18);
-
-      doc.setFontSize(11);
-      doc.setTextColor(0, 0, 0);
-      doc.text(business, margin + 4, y + 13);
-
-      doc.setFontSize(10);
-      doc.text(statusLabel, pageW / 2, y + 13);
-
-      doc.setFontSize(8);
-      doc.setTextColor(110, 110, 110);
-      doc.text(uuid, margin + 4, y + 23);
-
-      y += 36;
-
-      doc.setDrawColor(230, 230, 230);
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(margin, y, pageW - margin * 2, isDelivery ? 34 : 20, 3, 3, "FD");
-
-      doc.setFontSize(9);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Entrega", margin + 4, y + 7);
-      doc.text("Pago", pageW / 2, y + 7);
-
-      doc.setFontSize(11);
-      doc.setTextColor(0, 0, 0);
-      doc.text(entrega, margin + 4, y + 13);
-      doc.text(pago, pageW / 2, y + 13);
-
-      if (isDelivery) {
-        const line1 = `${a?.street || "—"}${a?.ext_number ? ` #${a.ext_number}` : ""}${a?.int_number ? ` Int ${a.int_number}` : ""}`;
-        const line2 = `${a?.neighborhood || "—"}, ${a?.municipality || "—"}`;
-        const line3 = `${a?.state || "—"} · CP ${a?.postal_code || "—"}`;
-
-        doc.setFontSize(9);
-        doc.setTextColor(90, 90, 90);
-        doc.text("Domicilio", margin + 4, y + 20);
-
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        doc.text(line1, margin + 4, y + 26);
-        doc.text(line2, margin + 4, y + 31);
-        doc.text(line3, margin + 4, y + 36);
-
-        y += 46;
-      } else {
-        y += 28;
-      }
-
-      const rows = items.map((it, idx) => {
-        const name =
-          it?.suministros_xhunco?.nombre ||
-          it?.nombre ||
-          it?.suministro_nombre ||
-          it?.product_name ||
-          `Item ${idx + 1}`;
-
-        const qty = Number(it?.qty ?? 0);
-        const unit = Number(it?.unit_price ?? 0);
-        const line =
-          Number(it?.line_total ?? 0) ||
-          (Number.isFinite(qty) && Number.isFinite(unit) ? qty * unit : 0);
-
-        return [String(name), String(qty), formatMoney(unit), formatMoney(line)];
-      });
-
-      autoTable(doc, {
-        startY: y,
-        head: [["Producto", "Cant.", "Precio unit.", "Subtotal"]],
-        body: rows,
-        theme: "grid",
-        styles: { fontSize: 9, cellPadding: 2.4, lineColor: [230, 230, 230], lineWidth: 0.2 },
-        headStyles: { fillColor: BRAND_RGB, textColor: 255, fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [250, 250, 250] },
-        columnStyles: {
-          0: { cellWidth: 90 },
-          1: { halign: "center", cellWidth: 18 },
-          2: { halign: "right", cellWidth: 36 },
-          3: { halign: "right", cellWidth: 36 },
-        },
-      });
-
-      const tableEndY = doc.lastAutoTable?.finalY || y;
-      const panelY = tableEndY + 8;
-
-      doc.setDrawColor(...BRAND_RGB);
-      doc.setFillColor(250, 252, 250);
-      doc.roundedRect(pageW - margin - 78, panelY, 78, 20, 3, 3, "FD");
-
-      doc.setFontSize(9);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Total", pageW - margin - 74, panelY + 7);
-
-      doc.setFontSize(13);
-      doc.setTextColor(0, 0, 0);
-      doc.text(formatMoney(order?.total), pageW - margin - 74, panelY + 15);
-
-      const footerY = Math.min(panelY + 34, pageH - 18);
-      doc.setDrawColor(235, 235, 235);
-      doc.line(margin, footerY - 6, pageW - margin, footerY - 6);
-
-      doc.setFontSize(9);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Xhunco Café — Gracias por tu compra.", margin, footerY);
-      doc.text("En un momento nos comunicamos con ustedes para seguimiento y entrega.", margin, footerY + 5);
-
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 120);
-      doc.text("Este documento es un comprobante interno de pedido.", margin, footerY + 11);
-
-      const filename = `Xhunco_Pedido_${folioShort}.pdf`;
-      const pdfBlob = doc.output("blob");
-      const url = URL.createObjectURL(pdfBlob);
-      window.open(url, "_blank", "noopener,noreferrer");
-
-      const aTag = document.createElement("a");
-      aTag.href = url;
-      aTag.download = filename;
-      document.body.appendChild(aTag);
-      aTag.click();
-      aTag.remove();
-
-      setTimeout(() => URL.revokeObjectURL(url), 15000);
-    } catch (e) {
-      console.error(e);
-      setError("No se pudo generar el PDF.");
-    } finally {
-      setDownloading(false);
+      xhuncoLogo = await toDataUrlFromAny(LOGO_PUBLIC_PATH);
+    } catch {
+      xhuncoLogo = null;
     }
-  };
+
+    if (clientLogoUrl) {
+      try {
+        clientLogo = await toDataUrlFromAny(clientLogoUrl);
+      } catch {
+        clientLogo = null;
+      }
+    }
+
+    const clientSnapshot = order?.client_snapshot || {};
+    const snapshotAddress = clientSnapshot?.address || {};
+    const deliveryAddress = order?.delivery_address_snapshot || {};
+
+    const business = safeText(
+      clientSnapshot?.business_name ||
+        businessName ||
+        getBusinessNameFromAddressSnapshot(order) ||
+        "Cliente"
+    );
+
+    const uuid = safeText(order?.id, "—");
+    const fecha = formatDateTime(order?.created_at);
+
+    const isDelivery =
+      String(order?.delivery_method || "").toLowerCase() === "delivery";
+
+    const addressSource = isDelivery ? deliveryAddress : snapshotAddress;
+
+    const domicilioLine1 = isDelivery
+      ? `${addressSource?.street || "—"}${
+          addressSource?.ext_number ? ` #${addressSource.ext_number}` : ""
+        }${addressSource?.int_number ? ` Int ${addressSource.int_number}` : ""}`
+      : `${snapshotAddress?.street || "El Tordo 31"}${
+          snapshotAddress?.ext_number ? ` #${snapshotAddress.ext_number}` : ""
+        }${snapshotAddress?.int_number ? ` Int ${snapshotAddress.int_number}` : ""}`;
+
+    const domicilioLine2 = isDelivery
+      ? `${addressSource?.neighborhood || "—"}, ${addressSource?.municipality || "—"}`
+      : `${snapshotAddress?.neighborhood || "Los Potrillos"}, ${
+          snapshotAddress?.municipality || "Ocotlán"
+        }`;
+
+    const domicilioLine3 = isDelivery
+      ? `${addressSource?.state || "—"} · CP ${addressSource?.postal_code || "—"}`
+      : `${snapshotAddress?.state || "Tlaxcala"} · CP ${
+          snapshotAddress?.postal_code || "90014"
+        }`;
+
+    const addressFull = `${domicilioLine1}, ${domicilioLine2}, ${domicilioLine3}`;
+
+    const clientName = safeText(clientSnapshot?.client_name || "—");
+    const clientPhone = safeText(clientSnapshot?.phone || "—");
+    const clientEmail = safeText(clientSnapshot?.email || "—");
+
+    // =========================
+    // HEADER
+    // =========================
+    doc.setFillColor(250, 250, 247);
+    doc.rect(0, 0, pageW, 34, "F");
+
+    doc.setFillColor(...BRAND_RGB);
+    doc.rect(0, 33, pageW, 1.4, "F");
+
+    if (xhuncoLogo) {
+      addImageFit(doc, xhuncoLogo, margin, 8, 38, 13);
+    } else {
+      doc.setFontSize(14);
+      doc.setFont(undefined, "bold");
+      doc.setTextColor(...BRAND_RGB);
+      doc.text("XHUNCO Café", margin, 15);
+    }
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("Comprobante de pedido", 58, 13);
+
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(business, 58, 19);
+
+    if (clientLogo) {
+      const props = doc.getImageProperties(clientLogo);
+      const ratio = props.height / props.width;
+
+      let logoW = 16;
+      let logoH = logoW * ratio;
+
+      if (logoH > 12) {
+        logoH = 12;
+        logoW = logoH / ratio;
+      }
+
+      doc.addImage(
+        clientLogo,
+        "PNG",
+        pageW - margin - logoW,
+        20.5,
+        logoW,
+        logoH
+      );
+    }
+
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Pedido #${folioShort}`, pageW - margin, 13, {
+      align: "right",
+    });
+
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(fecha, clientLogo ? pageW - margin - 20 : pageW - margin, 19, {
+      align: "right",
+    });
+
+    // =========================
+    // BLOQUE CORPORATIVO
+    // =========================
+    let y = 44;
+
+    doc.setFontSize(11);
+    doc.setFont(undefined, "bold");
+    doc.setTextColor(...DARK_RGB);
+    doc.text("Corporativo Xhunco Foodservice", margin, y);
+
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(8.8);
+    doc.setTextColor(71, 85, 105);
+    doc.text("El Tordo 31 Col. Los Potrillos", margin, y + 6);
+    doc.text("Ocotlán, Tlaxcala. Código Postal 90014", margin, y + 11);
+
+    // Orden de compra sutil
+    doc.setDrawColor(180, 198, 176);
+    doc.setFillColor(247, 250, 247);
+    doc.roundedRect(pageW - margin - 44, y - 5, 44, 16, 2.5, 2.5, "FD");
+
+    doc.setTextColor(...DARK_RGB);
+    doc.setFontSize(8.2);
+    doc.setFont(undefined, "bold");
+    doc.text("ORDEN DE COMPRA", pageW - margin - 22, y + 4.5, {
+      align: "center",
+    });
+
+    // =========================
+    // INFORMACIÓN DEL PEDIDO
+    // =========================
+    y = 72;
+
+    doc.setDrawColor(224, 231, 224);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(margin, y, pageW - margin * 2, 64, 3, 3, "FD");
+
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...DARK_RGB);
+    doc.text("Información del pedido", margin + 5, y + 8);
+
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(7.6);
+    doc.setTextColor(100, 116, 139);
+
+    doc.text("Negocio", margin + 5, y + 18);
+    doc.text("UUID", margin + 5, y + 31);
+    doc.text("Domicilio", margin + 5, y + 44);
+
+    doc.text("Nombre del cliente", pageW / 2 + 4, y + 18);
+    doc.text("Teléfono", pageW / 2 + 4, y + 31);
+    doc.text("Correo electrónico", pageW / 2 + 4, y + 44);
+
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(8.7);
+    doc.setTextColor(15, 23, 42);
+    doc.text(business, margin + 5, y + 23, { maxWidth: 80 });
+
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(7.4);
+    doc.text(uuid, margin + 5, y + 36, { maxWidth: 80 });
+    doc.text(addressFull, margin + 5, y + 49, { maxWidth: 82 });
+
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(8.7);
+    doc.text(clientName, pageW / 2 + 4, y + 23, { maxWidth: 78 });
+    doc.text(clientPhone, pageW / 2 + 4, y + 36, { maxWidth: 78 });
+    doc.text(clientEmail, pageW / 2 + 4, y + 49, { maxWidth: 78 });
+
+    // =========================
+    // TABLA PRODUCTOS
+    // =========================
+    y = 154;
+
+    const rows = items.map((it, idx) => {
+      const name =
+        it?.suministros_xhunco?.nombre ||
+        it?.nombre ||
+        it?.suministro_nombre ||
+        it?.product_name ||
+        `Item ${idx + 1}`;
+
+      const qty = Number(it?.qty ?? 0);
+      const unit = Number(it?.unit_price ?? 0);
+      const line =
+        Number(it?.line_total ?? 0) ||
+        (Number.isFinite(qty) && Number.isFinite(unit) ? qty * unit : 0);
+
+      return [String(name), String(qty), formatMoney(unit), formatMoney(line)];
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Producto", "Cant.", "Precio unit.", "Subtotal"]],
+      body: rows,
+      theme: "grid",
+      margin: { left: margin, right: margin },
+      styles: {
+        fontSize: 8.8,
+        cellPadding: 2.7,
+        lineColor: [226, 232, 240],
+        lineWidth: 0.2,
+        textColor: [15, 23, 42],
+      },
+      headStyles: {
+        fillColor: BRAND_RGB,
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 248],
+      },
+      columnStyles: {
+        0: { cellWidth: 92 },
+        1: { halign: "center", cellWidth: 20 },
+        2: { halign: "right", cellWidth: 36 },
+        3: { halign: "right", cellWidth: 36 },
+      },
+    });
+
+    const tableEndY = doc.lastAutoTable?.finalY || y;
+    const panelY = tableEndY + 9;
+
+    doc.setDrawColor(...BRAND_RGB);
+    doc.setFillColor(250, 252, 250);
+    doc.roundedRect(pageW - margin - 75, panelY, 75, 24, 3, 3, "FD");
+
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Total", pageW - margin - 70, panelY + 8);
+
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42);
+    doc.text(formatMoney(order?.total), pageW - margin - 70, panelY + 17);
+
+    let footerStartY = panelY + 36;
+
+    if (isTransfer && transferInfo) {
+      const boxY = panelY + 32;
+
+      doc.setDrawColor(187, 247, 208);
+      doc.setFillColor(240, 253, 244);
+      doc.roundedRect(margin, boxY, pageW - margin * 2, 24, 3, 3, "FD");
+
+      doc.setFont(undefined, "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...DARK_RGB);
+      doc.text("Datos para transferencia", margin + 5, boxY + 7);
+
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Banco: ${transferInfo.bank || "—"}`, margin + 5, boxY + 14);
+      doc.text(`Beneficiario: ${transferInfo.holder || "—"}`, margin + 55, boxY + 14);
+      doc.text(`CLABE: ${transferInfo.clabe || "—"}`, margin + 5, boxY + 20);
+
+      footerStartY = boxY + 34;
+    }
+
+    const footerY = Math.max(footerStartY, pageH - 32);
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, footerY - 7, pageW - margin, footerY - 7);
+
+    doc.setFont(undefined, "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...DARK_RGB);
+    doc.text("Xhunco Café — Gracias por tu compra.", margin, footerY);
+
+    doc.setFont(undefined, "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      "El Tordo 31 Col. Los Potrillos. Ocotlán, Tlaxcala C.P. 90014 · soporte@xhunco.com · negocios.xhunco.com",
+      margin,
+      footerY + 5,
+      { maxWidth: pageW - margin * 2 }
+    );
+
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      "Este documento es un comprobante interno de pedido y no es un comprobante fiscal.",
+      margin,
+      footerY + 11
+    );
+
+    const pdfBlob = doc.output("blob");
+    const url = URL.createObjectURL(pdfBlob);
+
+    window.open(url, "_blank", "noopener,noreferrer");
+
+    const aTag = document.createElement("a");
+    aTag.href = url;
+    aTag.download = filename;
+    document.body.appendChild(aTag);
+    aTag.click();
+    aTag.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  } catch (e) {
+    console.error(e);
+    setError("No se pudo generar el PDF.");
+  } finally {
+    setDownloading(false);
+  }
+};
 
   if (loading) return <div className="text-gray-600">Cargando pedido…</div>;
 
