@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -127,6 +128,15 @@ export default function PortalLogin() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+
+          <div className="mt-3 text-right">
+  <Link
+    href="/recuperar-password"
+    className="text-sm font-medium text-[#31572c] hover:text-[#25441f] hover:underline transition"
+  >
+    ¿Olvidaste tu contraseña?
+  </Link>
+</div>
 
           {/* BOTÓN */}
           <button

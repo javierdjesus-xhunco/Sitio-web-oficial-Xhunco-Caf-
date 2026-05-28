@@ -470,202 +470,306 @@ export default function NuevoPedidoPage() {
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lista */}
-        <div className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white p-4 sm:p-6">
+        <div className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white p-3 sm:p-6">
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="text-sm font-semibold text-gray-900">Suministros</div>
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="text-sm font-semibold text-gray-900">Suministros</div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="text-xs text-gray-600">Categoría</div>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
-                    style={{ borderColor: "rgba(0,0,0,0.12)" }}
-                  >
-                    {categories.map((c) => (
-                      <option key={c} value={c}>
-                        {c === "ALL" ? "General" : c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+    {/* Filtros desktop */}
+    <div className="hidden sm:flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2">
+        <div className="text-xs text-gray-600">Categoría</div>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
+          style={{ borderColor: "rgba(0,0,0,0.12)" }}
+        >
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c === "ALL" ? "General" : c}
+            </option>
+          ))}
+        </select>
+      </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="text-xs text-gray-600">Ordenar</div>
-                  <select
-                    value={orderBy}
-                    onChange={(e) => setOrderBy(e.target.value)}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
-                    style={{ borderColor: "rgba(0,0,0,0.12)" }}
-                  >
-                    <option value="nombre">Nombre A–Z</option>
-                    <option value="precio">Precio (mayor → menor)</option>
-                    <option value="stock">Stock (mayor → menor)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+      <div className="flex items-center gap-2">
+        <div className="text-xs text-gray-600">Ordenar</div>
+        <select
+          value={orderBy}
+          onChange={(e) => setOrderBy(e.target.value)}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
+          style={{ borderColor: "rgba(0,0,0,0.12)" }}
+        >
+          <option value="nombre">Nombre A–Z</option>
+          <option value="precio">Precio (mayor → menor)</option>
+          <option value="stock">Stock (mayor → menor)</option>
+        </select>
+      </div>
+    </div>
+  </div>
 
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar por nombre, marca, categoría o SKU…"
-                className="w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none"
-                style={{ borderColor: "rgba(0,0,0,0.12)" }}
+  {/* Categorías móvil tipo tabs deslizables */}
+  <div className="-mx-3 block border-b border-gray-200 sm:hidden">
+    <div
+      className="
+        flex gap-7 overflow-x-auto px-3
+        [scrollbar-width:none] [-ms-overflow-style:none]
+        [&::-webkit-scrollbar]:hidden
+      "
+    >
+      {categories.map((c) => {
+        const active = category === c;
+        const label = c === "ALL" ? "General" : c;
+
+        return (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCategory(c)}
+            className={[
+              "relative shrink-0 whitespace-nowrap pb-3 pt-1 text-[14px] font-semibold transition",
+              active ? "text-[#31572c]" : "text-gray-950",
+            ].join(" ")}
+          >
+            {label}
+
+            {active ? (
+              <span className="absolute bottom-0 left-0 h-[3px] w-full rounded-full bg-[#31572c]" />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+
+  {/* Ordenar móvil */}
+  <div className="flex items-center gap-2 sm:hidden">
+    <div className="text-xs text-gray-600">Ordenar</div>
+    <select
+      value={orderBy}
+      onChange={(e) => setOrderBy(e.target.value)}
+      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
+      style={{ borderColor: "rgba(0,0,0,0.12)" }}
+    >
+      <option value="nombre">Nombre A–Z</option>
+      <option value="precio">Precio (mayor → menor)</option>
+      <option value="stock">Stock (mayor → menor)</option>
+    </select>
+  </div>
+
+  <div className="flex flex-col gap-2 sm:flex-row">
+    <input
+      value={q}
+      onChange={(e) => setQ(e.target.value)}
+      placeholder="Buscar por nombre, marca, categoría o SKU…"
+      className="w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none"
+      style={{ borderColor: "rgba(0,0,0,0.12)" }}
+    />
+    <button
+      type="button"
+      onClick={() => setQ("")}
+      className="rounded-xl border bg-white px-4 py-3 text-sm transition"
+      style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
+    >
+      Limpiar
+    </button>
+  </div>
+
+  <div className="text-xs text-gray-500">
+    Mostrando: <span className="text-gray-900">{filteredItems.length}</span>{" "}
+    productos
+  </div>
+</div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
+  {filteredItems.map((p) => {
+    const stock = Number(p?.stock ?? 0);
+    const outOfStock = !Number.isFinite(stock) || stock <= 0;
+    const inCart = getInCart(p.id);
+    const atMax = inCart >= stock && stock > 0;
+
+    return (
+      <div
+        key={p.id}
+        className="
+          flex flex-col overflow-hidden rounded-[22px] border border-gray-200 bg-white
+          p-2.5 shadow-[0_1px_8px_rgba(0,0,0,0.04)]
+          sm:rounded-2xl sm:bg-gray-50 sm:p-4 sm:shadow-none
+        "
+      >
+        <button
+          type="button"
+          onClick={() => openImage(p.imagen, p.nombre)}
+          className="mb-3 flex justify-center"
+          title={p.imagen ? "Ver imagen" : "Sin imagen"}
+        >
+          <div
+            className="
+              h-32 w-full overflow-hidden rounded-2xl bg-gray-50
+              sm:h-28 sm:w-28 sm:border sm:border-gray-200 sm:bg-white
+            "
+          >
+            {p.imagen ? (
+              <img
+                src={p.imagen}
+                alt={p.nombre}
+                className="
+                  h-full w-full object-contain p-1.5
+                  sm:object-cover sm:p-0
+                "
+                loading="lazy"
               />
-              <button
-                type="button"
-                onClick={() => setQ("")}
-                className="rounded-xl border bg-white px-4 py-3 text-sm transition"
-                style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
-              >
-                Limpiar
-              </button>
-            </div>
+            ) : (
+              <div className="grid h-full w-full place-items-center text-[11px] text-gray-400">
+                Sin imagen
+              </div>
+            )}
+          </div>
+        </button>
 
-            <div className="text-xs text-gray-500">
-              Mostrando: <span className="text-gray-900">{filteredItems.length}</span>{" "}
-              productos
-            </div>
+        <div className="flex-1 text-left sm:text-center">
+          <div
+            className="
+              line-clamp-2 text-[15px] font-semibold leading-[1.12] text-gray-950
+              sm:text-base sm:font-medium sm:leading-tight sm:text-gray-900
+            "
+          >
+            {p.nombre}
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredItems.map((p) => {
-              const stock = Number(p?.stock ?? 0);
-              const outOfStock = !Number.isFinite(stock) || stock <= 0;
-              const inCart = getInCart(p.id);
-              const atMax = inCart >= stock && stock > 0;
+          <div
+            className="
+              mt-1 line-clamp-2 text-[12px] leading-snug text-gray-700
+              sm:text-[11px] sm:text-gray-600
+            "
+          >
+            <span className="sm:hidden">
+              {p.categoria || ""}
+              {p.presentacion ? ` ${p.presentacion}` : ""}
+              {p.sku ? ` · ${p.sku}` : ""}
+            </span>
 
-              return (
-                <div
-                  key={p.id}
-                  className="rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:p-4 flex flex-col"
-                >
-                  <button
-                    type="button"
-                    onClick={() => openImage(p.imagen, p.nombre)}
-                    className="mb-3 flex justify-center"
-                    title={p.imagen ? "Ver imagen" : "Sin imagen"}
-                  >
-                    <div className="h-24 w-24 sm:h-28 sm:w-28 overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                      {p.imagen ? (
-                        <img
-                          src={p.imagen}
-                          alt={p.nombre}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="h-full w-full grid place-items-center text-[11px] text-gray-400">
-                          Sin imagen
-                        </div>
-                      )}
-                    </div>
-                  </button>
-
-                  <div className="flex-1 text-center">
-                    <div className="text-gray-900 font-medium leading-tight line-clamp-2">
-                      {p.nombre}
-                    </div>
-
-                    <div className="mt-1 text-[11px] text-gray-600">
-                      {p.categoria || ""}
-                    </div>
-
-                    <div className="mt-1 text-[11px] text-gray-500">
-                      {p.marca ? `${p.marca} · ` : ""}
-                      {p.presentacion ? `${p.presentacion}` : ""}
-                      {p.unidad ? ` · ${p.unidad}` : ""}
-                      {p.sku ? ` · ${p.sku}` : ""}
-                    </div>
-
-                    <div className="mt-2 text-base sm:text-lg font-semibold text-gray-900">
-                      {formatMoney(p.price)}
-                    </div>
-
-                    <div className="mt-1 text-[11px]">
-                      {outOfStock ? (
-                        <span className="text-red-700">Sin stock</span>
-                      ) : (
-                        <span className="text-gray-600">
-                          Stock: {stock} {inCart ? `· En carrito: ${inCart}` : ""}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ✅ Acciones */}
-                  {outOfStock ? (
-                    <div className="mt-3">
-                      {pendingReqBySuministro.has(p.id) ? (
-                        <div className="mb-2 text-center text-[11px] text-amber-800">
-                          Solicitud pendiente · Cantidad:{" "}
-                          <span className="font-semibold">
-                            {pendingReqBySuministro.get(p.id)?.qty}
-                          </span>
-                        </div>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        onClick={() => openRequestModal(p)}
-                        className="w-full rounded-xl py-2 text-sm text-white transition"
-                        style={{ backgroundColor: BRAND_GREEN }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = BRAND_GREEN;
-                        }}
-                      >
-                        Solicitar
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => removeOne(p)}
-                        disabled={inCart <= 0}
-                        className="rounded-xl border bg-white py-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ borderColor: "rgba(0,0,0,0.12)", color: BRAND_GREEN }}
-                      >
-                        −
-                      </button>
-
-                      <div
-                        className="rounded-xl border bg-white py-2 text-sm text-gray-900 text-center"
-                        style={{ borderColor: "rgba(0,0,0,0.12)" }}
-                      >
-                        {inCart}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => addOne(p)}
-                        disabled={outOfStock || atMax}
-                        className="rounded-xl py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
-                        style={{ backgroundColor: BRAND_GREEN }}
-                        onMouseEnter={(e) => {
-                          if (!outOfStock && !atMax)
-                            e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = BRAND_GREEN;
-                        }}
-                        title={outOfStock ? "Sin stock" : atMax ? "Máximo por stock" : "Agregar"}
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <span className="hidden sm:inline">{p.categoria || ""}</span>
           </div>
+
+          <div className="mt-1 hidden text-[11px] text-gray-500 sm:block">
+            {p.marca ? `${p.marca} · ` : ""}
+            {p.presentacion ? `${p.presentacion}` : ""}
+            {p.unidad ? ` · ${p.unidad}` : ""}
+            {p.sku ? ` · ${p.sku}` : ""}
+          </div>
+
+          <div
+            className="
+              mt-3 text-[17px] font-bold leading-none text-gray-950
+              sm:mt-2 sm:text-lg sm:font-semibold sm:text-gray-900
+            "
+          >
+            {formatMoney(p.price)}
+          </div>
+
+          <div className="mt-1 text-[11px]">
+            {outOfStock ? (
+              <span className="text-red-700">Sin stock</span>
+            ) : (
+              <span className="text-gray-600">
+                Stock: {stock} {inCart ? `· En carrito: ${inCart}` : ""}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ✅ Acciones */}
+        {outOfStock ? (
+          <div className="mt-3">
+            {pendingReqBySuministro.has(p.id) ? (
+              <div className="mb-2 text-center text-[11px] text-amber-800">
+                Solicitud pendiente · Cantidad:{" "}
+                <span className="font-semibold">
+                  {pendingReqBySuministro.get(p.id)?.qty}
+                </span>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => openRequestModal(p)}
+              className="w-full rounded-xl py-2 text-sm text-white transition"
+              style={{ backgroundColor: BRAND_GREEN }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = BRAND_GREEN;
+              }}
+            >
+              Solicitar
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 grid grid-cols-[1fr_34px_1fr] items-center gap-2 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={() => removeOne(p)}
+              disabled={inCart <= 0}
+              className="
+                rounded-full border bg-white py-2 text-sm transition
+                disabled:cursor-not-allowed disabled:opacity-40
+                sm:rounded-xl sm:disabled:opacity-50
+              "
+              style={{
+                borderColor: "rgba(0,0,0,0.12)",
+                color: BRAND_GREEN,
+              }}
+            >
+              −
+            </button>
+
+            <div
+              className="
+                rounded-full border bg-white py-2 text-center text-sm text-gray-900
+                sm:rounded-xl
+              "
+              style={{ borderColor: "rgba(0,0,0,0.12)" }}
+            >
+              {inCart}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => addOne(p)}
+              disabled={outOfStock || atMax}
+              className="
+                rounded-full py-2 text-sm text-white transition
+                disabled:cursor-not-allowed disabled:opacity-40
+                sm:rounded-xl sm:disabled:opacity-50
+              "
+              style={{ backgroundColor: BRAND_GREEN }}
+              onMouseEnter={(e) => {
+                if (!outOfStock && !atMax) {
+                  e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK;
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = BRAND_GREEN;
+              }}
+              title={
+                outOfStock
+                  ? "Sin stock"
+                  : atMax
+                    ? "Máximo por stock"
+                    : "Agregar"
+              }
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
         </div>
 
         {/* Carrito (desktop) */}
