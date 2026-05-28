@@ -1,9 +1,7 @@
 import "./globals.css";
-import Header from "./components/Header";
-import PromoModal from "@/components/PromoModal";
+import AppShell from "./components/AppShell";
 
 import { CartProvider } from "@/context/CartContext";
-import CartFloating from "@/components/CartFloating";
 
 export const metadata = {
   title: "Xhunco® Café",
@@ -28,12 +26,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body className="pt-20 bg-white text-gray-900">
+      <body className="bg-white text-gray-900">
         <CartProvider>
-          <Header />
-          <PromoModal />
-          <CartFloating />
-          {children}
+          <AppShell>{children}</AppShell>
         </CartProvider>
       </body>
     </html>

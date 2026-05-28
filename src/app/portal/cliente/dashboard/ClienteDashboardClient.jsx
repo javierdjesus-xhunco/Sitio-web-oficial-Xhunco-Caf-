@@ -213,15 +213,15 @@ export default function ClienteDashboardClient({ initialData }) {
   const refreshing = loading;
 
   return (
-    <div className="w-full max-w-none bg-white text-black">
-      <div className="rounded-3xl border border-black/10 bg-white p-4 sm:p-6 lg:p-8 shadow-sm">
+  <div className="w-full max-w-none bg-white text-black">
+    <div className="rounded-3xl border border-black/10 bg-white p-4 sm:p-5 lg:p-6 shadow-sm">
         <div className="text-sm text-black/60">Bienvenid@, {firstName}</div>
         <div className="mt-1 text-xs text-black/45">{greeting}</div>
 
-        <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="min-w-0 text-3xl sm:text-4xl lg:text-5xl font-semibold text-black/70 break-words">
+              <h1 className="min-w-0 text-2xl sm:text-3xl lg:text-4xl font-semibold text-black/70 break-words">
                 {businessName || "Panel del cliente"}
               </h1>
               <p className="mt-2 text-sm text-black/55">
@@ -280,7 +280,7 @@ export default function ClienteDashboardClient({ initialData }) {
           </div>
         )}
 
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 sm:mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <KPI
             title="PEDIDOS POR MES"
             value={loading ? "…" : String(selectedMonthCount)}
@@ -357,7 +357,7 @@ export default function ClienteDashboardClient({ initialData }) {
           />
         </div>
 
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mt-5 sm:mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <KPI
             title="TU PRODUCTO MÁS COMPRADO ES"
             value={loading ? "…" : productsTop?.[0]?.name || "—"}
