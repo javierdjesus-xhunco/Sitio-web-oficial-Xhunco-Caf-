@@ -2,15 +2,27 @@ import "./globals.css";
 import Header from "./components/Header";
 import PromoModal from "@/components/PromoModal";
 
-// 👇 AGREGA ESTO
 import { CartProvider } from "@/context/CartContext";
 import CartFloating from "@/components/CartFloating";
 
 export const metadata = {
   title: "Xhunco® Café",
+  description: "Portal de pedidos de Xhunco Café",
+
+  manifest: "/manifest.webmanifest",
+
   icons: {
     icon: [{ url: "/favicon.png", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png" }],
   },
+
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Xhunco",
+  },
+
+  themeColor: "#31572c",
 };
 
 export default function RootLayout({ children }) {
@@ -20,9 +32,8 @@ export default function RootLayout({ children }) {
         <CartProvider>
           <Header />
           <PromoModal />
-           <CartFloating />
+          <CartFloating />
           {children}
-          
         </CartProvider>
       </body>
     </html>

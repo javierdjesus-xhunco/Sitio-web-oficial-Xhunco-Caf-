@@ -1,0 +1,22 @@
+{
+  "name": "Portal Xhunco Café",
+  "short_name": "Xhunco",
+  "description": "Portal de pedidos de Xhunco Café",
+  "start_url": "/portal",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ea",
+  "theme_color": "#31572c",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
