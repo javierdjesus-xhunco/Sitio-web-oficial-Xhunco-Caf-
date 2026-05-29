@@ -8,6 +8,7 @@ import {
   Package,
   LogOut,
   ClipboardList,
+  User,
   Menu,
   X,
   PanelLeftClose,
@@ -44,6 +45,7 @@ export default function ClienteLayoutClient({ children, initialClient }) {
   const links = useMemo(
     () => [
       { href: "/portal/cliente/dashboard", label: "Inicio", icon: Home },
+      { href: "/portal/cliente/perfil", label: "Mi Perfil", icon: User },
       { href: "/portal/cliente/pedidos/nuevo", label: "Crear Pedido", icon: PlusCircle },
       { href: "/portal/cliente/pedidos", label: "Mis Pedidos", icon: Package },
       { href: "/portal/cliente/suministros/solicitudes", label: "Mis Solicitudes", icon: ClipboardList },
