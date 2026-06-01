@@ -14,106 +14,70 @@ export default function CafesDestacados() {
   const [productosDB, setProductosDB] =
     useState([]);
 
-  const sliderRef =
-    useRef(null);
-
-  const intervalRef =
-    useRef(null);
-
-  const timeoutRef =
-    useRef(null);
-
-  // =========================
-  // SUPABASE
-  // =========================
+  const sliderRef = useRef(null);
+  const intervalRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     async function loadData() {
-      const data =
-        await getCafePricesClient();
-
+      const data = await getCafePricesClient();
       setProductosDB(data);
     }
 
     loadData();
   }, []);
 
-  // =========================
-  // AUTO SCROLL
-  // =========================
+  const startAutoScroll = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
 
-  const startAutoScroll =
-    () => {
-      if (
-        intervalRef.current
-      ) {
-        clearInterval(
-          intervalRef.current
-        );
-      }
+    intervalRef.current = setInterval(() => {
+      const slider = sliderRef.current;
 
-      intervalRef.current =
-        setInterval(() => {
-          const slider =
-            sliderRef.current;
+      if (!slider) return;
 
-          if (!slider) return;
-
-          slider.scrollLeft += 2;
-
-          if (
-            slider.scrollLeft +
-              slider.offsetWidth >=
-            slider.scrollWidth - 10
-          ) {
-            slider.scrollLeft = 0;
-          }
-        }, 20);
-    };
-
-  const pauseAutoScroll =
-    () => {
-      if (
-        intervalRef.current
-      ) {
-        clearInterval(
-          intervalRef.current
-        );
-      }
+      slider.scrollLeft += 2;
 
       if (
-        timeoutRef.current
+        slider.scrollLeft + slider.offsetWidth >=
+        slider.scrollWidth - 10
       ) {
-        clearTimeout(
-          timeoutRef.current
-        );
+        slider.scrollLeft = 0;
       }
+    }, 20);
+  };
 
-      timeoutRef.current =
-        setTimeout(() => {
-          startAutoScroll();
-        }, 4000);
-    };
+  const pauseAutoScroll = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      startAutoScroll();
+    }, 4000);
+  };
 
   useEffect(() => {
     startAutoScroll();
 
     return () => {
-      clearInterval(
-        intervalRef.current
-      );
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
 
-      clearTimeout(
-        timeoutRef.current
-      );
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, []);
 
-  const handleScroll = (
-    direction
-  ) => {
-    const slider =
-      sliderRef.current;
+  const handleScroll = (direction) => {
+    const slider = sliderRef.current;
 
     if (!slider) return;
 
@@ -128,6 +92,28 @@ export default function CafesDestacados() {
     });
   };
 
+  const getProductoDB = (cafe) => {
+    const productosCafe =
+      productosDB.filter((item) => {
+        const nombre =
+          item.nombre
+            ?.toLowerCase()
+            .trim() || "";
+
+        return nombre.includes(
+          `xhunco ${cafe.dbMatch}`
+        );
+      });
+
+    return (
+      productosCafe.find((item) =>
+        item.nombre
+          ?.toLowerCase()
+          .includes("grano")
+      ) || productosCafe[0]
+    );
+  };
+
   return (
     <section className="py-28 bg-gray-50 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -138,26 +124,25 @@ export default function CafesDestacados() {
             </p>
 
             <h2 className="text-4xl md:text-5xl font-semibold tracking-tight">
-              Productos
-              Destacados
+              Productos Destacados
             </h2>
           </div>
 
           <div className="flex gap-3">
             <button
-              onClick={() =>
-                handleScroll(-1)
-              }
+              type="button"
+              onClick={() => handleScroll(-1)}
               className="h-12 w-12 rounded-full border"
+              aria-label="Retroceder productos destacados"
             >
               ←
             </button>
 
             <button
-              onClick={() =>
-                handleScroll(1)
-              }
+              type="button"
+              onClick={() => handleScroll(1)}
               className="h-12 w-12 rounded-full border"
+              aria-label="Avanzar productos destacados"
             >
               →
             </button>
@@ -165,35 +150,29 @@ export default function CafesDestacados() {
         </div>
 
         <div
-  ref={sliderRef}
-  className="flex gap-7 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory"
->
-          {[...cafes, ...cafes].map(
-            (cafe, index) => {
-              const productoDB =
-                productosDB.find(
-                  (
-                    item
-                  ) =>
-                    item.sku?.trim() ===
-                    cafe.sku?.trim()
-                );
+          ref={sliderRef}
+          onMouseEnter={pauseAutoScroll}
+          onTouchStart={pauseAutoScroll}
+          className="flex gap-7 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory"
+        >
+          {[...cafes, ...cafes].map((cafe, index) => {
+            const productoDB =
+              getProductoDB(cafe);
 
-              return (
-                <div
-                  key={index}
-                  className="w-[320px] md:w-[380px] flex-shrink-0"
-                >
-                  <CafeCard
-                    cafe={cafe}
-                    precioDB={
-                      productoDB?.precio_web
-                    }
-                  />
-                </div>
-              );
-            }
-          )}
+            return (
+              <div
+                key={`${cafe.slug}-${index}`}
+                className="w-[320px] md:w-[380px] flex-shrink-0"
+              >
+                <CafeCard
+                  cafe={cafe}
+                  precioDB={
+                    productoDB?.precio_web
+                  }
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

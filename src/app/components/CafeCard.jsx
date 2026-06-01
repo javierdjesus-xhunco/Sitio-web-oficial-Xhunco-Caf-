@@ -8,7 +8,7 @@ export default function CafeCard({
 }) {
 
   const precio =
-    precioDB || cafe.precio;
+   precioDB ?? cafe.precio;
 
   return (
     <Link

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const BRAND_GREEN = "#31572c";
 
@@ -31,6 +33,7 @@ function paymentLabel(v) {
   if (s === "cash") return "Efectivo";
   if (s === "tpv") return "TPV";
   if (s === "online") return "En línea";
+  if (s === "transfer") return "Transferencia";
   if (!s) return "—";
   return s;
 }
@@ -54,6 +57,31 @@ function statusLabel(v) {
   if (s === "entregado") return "Entregado";
   if (s === "cancelado") return "Cancelado";
   return v || "—";
+}
+
+function loadImageAsBase64(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        resolve(null);
+      }
+    };
+
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
 }
 
 const STATUS = [
@@ -88,10 +116,8 @@ export default function PedidosPageView({ role = "admin" }) {
 
   const [total, setTotal] = useState(0);
 
-  // expandir / contraer productos por pedido
   const [expandedProducts, setExpandedProducts] = useState({});
 
-  // realtime
   const mountedRef = useRef(false);
   const realtimeTimerRef = useRef(null);
   const refreshingRealtimeRef = useRef(false);
@@ -100,8 +126,11 @@ export default function PedidosPageView({ role = "admin" }) {
     const r = await fetch("/api/admin/clientes?page=1&pageSize=200", {
       cache: "no-store",
     });
+
     const j = await r.json().catch(() => ({}));
+
     if (!r.ok) throw new Error(j?.error || "Error cargando clientes");
+
     setClients(j?.data || []);
   }
 
@@ -111,12 +140,15 @@ export default function PedidosPageView({ role = "admin" }) {
 
     const sp = new URLSearchParams();
     sp.set("status", st);
+
     if (cu) sp.set("client_user_id", cu);
 
     const r = await fetch(`/api/admin/orders/count?${sp.toString()}`, {
       cache: "no-store",
     });
+
     const j = await r.json().catch(() => ({}));
+
     if (!r.ok) throw new Error(j?.error || "Error contando pedidos");
 
     setTotal(Number(j?.total || 0));
@@ -126,21 +158,23 @@ export default function PedidosPageView({ role = "admin" }) {
     const st = next.status ?? status;
     const cu = next.clientUserId ?? clientUserId;
 
-    const cursorToUse =
-      Object.prototype.hasOwnProperty.call(next, "cursor")
-        ? next.cursor
-        : currentCursor;
+    const cursorToUse = Object.prototype.hasOwnProperty.call(next, "cursor")
+      ? next.cursor
+      : currentCursor;
 
     const sp = new URLSearchParams();
     sp.set("pageSize", String(pageSize));
     sp.set("status", st);
+
     if (cu) sp.set("client_user_id", cu);
     if (cursorToUse) sp.set("cursor", cursorToUse);
 
     const r = await fetch(`/api/admin/orders?${sp.toString()}`, {
       cache: "no-store",
     });
+
     const j = await r.json().catch(() => ({}));
+
     if (!r.ok) throw new Error(j?.error || "Error cargando pedidos");
 
     setRows(j?.data || []);
@@ -151,6 +185,7 @@ export default function PedidosPageView({ role = "admin" }) {
 
   const refreshCurrentPage = useCallback(async () => {
     if (refreshingRealtimeRef.current) return;
+
     refreshingRealtimeRef.current = true;
 
     try {
@@ -180,7 +215,10 @@ export default function PedidosPageView({ role = "admin" }) {
     setNextCursor(null);
 
     try {
-      await Promise.all([loadTotal(next), loadOrders({ ...next, cursor: null })]);
+      await Promise.all([
+        loadTotal(next),
+        loadOrders({ ...next, cursor: null }),
+      ]);
     } catch (e) {
       await loadOrders({ ...next, cursor: null }).catch(() => {});
       console.error(e);
@@ -189,6 +227,7 @@ export default function PedidosPageView({ role = "admin" }) {
 
   async function loadAll() {
     setLoading(true);
+
     try {
       await Promise.all([
         loadClients(),
@@ -254,14 +293,17 @@ export default function PedidosPageView({ role = "admin" }) {
 
   const clientLabelById = useMemo(() => {
     const m = new Map();
+
     (clients || []).forEach((c) => {
       if (c?.user_id) m.set(c.user_id, c.label || c.user_id);
     });
+
     return m;
   }, [clients]);
 
   async function updateStatus(orderId, nextStatus) {
     setSavingId(orderId);
+
     try {
       const r = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PATCH",
@@ -270,6 +312,7 @@ export default function PedidosPageView({ role = "admin" }) {
       });
 
       const j = await r.json().catch(() => ({}));
+
       if (!r.ok) throw new Error(j?.error || "No se pudo actualizar el status");
 
       setRows((prev) =>
@@ -286,6 +329,7 @@ export default function PedidosPageView({ role = "admin" }) {
 
   async function updatePaymentStatus(orderId, nextPaymentStatus) {
     setSavingId(orderId);
+
     try {
       const r = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PATCH",
@@ -294,7 +338,9 @@ export default function PedidosPageView({ role = "admin" }) {
       });
 
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || "No se pudo actualizar el estado de pago");
+
+      if (!r.ok)
+        throw new Error(j?.error || "No se pudo actualizar el estado de pago");
 
       const nextPaidAt = j?.paid_at ?? null;
       const nextPaidBy = j?.paid_by ?? null;
@@ -318,6 +364,322 @@ export default function PedidosPageView({ role = "admin" }) {
     }
   }
 
+  async function downloadOrderPDF(order) {
+    try {
+      if (!order?.id) {
+        alert("No se encontró el pedido.");
+        return;
+      }
+
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "letter",
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      const marginX = 48;
+      const green = [49, 87, 44];
+      const dark = [20, 35, 25];
+      const muted = [85, 102, 118];
+      const softBorder = [210, 224, 210];
+
+      const folio = String(order.id).slice(0, 8).toUpperCase();
+
+      const negocioNombre =
+        order?.negocio_nombre ||
+        clientLabelById.get(order.client_user_id) ||
+        order.client_user_id ||
+        "—";
+
+      const clienteNombre = order?.cliente_nombre || "—";
+
+      const items = Array.isArray(order.items) ? order.items : [];
+
+      const totalValue = Number(order.total ?? order.subtotal ?? 0);
+      const subtotalValue = Number(order.subtotal ?? order.total ?? 0);
+
+      const logoBase64 = await loadImageAsBase64("/logo-xhunco.png");
+
+      let y = 34;
+
+      if (logoBase64) {
+        doc.addImage(logoBase64, "PNG", marginX, y - 6, 108, 28);
+      } else {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(...green);
+        doc.text("Xhunco Café", marginX, y + 10);
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...dark);
+      doc.text("Comprobante de pedido", pageWidth / 2, y + 8, {
+        align: "center",
+      });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...muted);
+      doc.text(String(negocioNombre), pageWidth / 2, y + 25, {
+        align: "center",
+      });
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...dark);
+      doc.text(`Pedido #${folio}`, pageWidth - marginX, y + 6, {
+        align: "right",
+      });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...muted);
+      doc.text(fmtDate(order.created_at), pageWidth - marginX, y + 23, {
+        align: "right",
+      });
+
+      doc.setDrawColor(...green);
+      doc.setLineWidth(3);
+      doc.line(0, 92, pageWidth, 92);
+
+      y = 120;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...dark);
+      doc.text("Corporativo Xhunco Foodservice", marginX, y);
+
+      y += 15;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...muted);
+      doc.text("El Tordo 31 Col. Los Potrillos", marginX, y);
+
+      y += 12;
+      doc.text("Ocotlán, Tlaxcala. Código Postal 90014", marginX, y);
+
+      const badgeW = 126;
+      const badgeH = 46;
+      const badgeX = pageWidth - marginX - badgeW;
+      const badgeY = 108;
+
+      doc.setDrawColor(...green);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 7, 7, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(...green);
+      doc.text("ORDEN DE COMPRA", badgeX + badgeW / 2, badgeY + 27, {
+        align: "center",
+      });
+
+      y = 204;
+
+      const cardX = marginX;
+      const cardW = pageWidth - marginX * 2;
+      const cardH = 105;
+
+      doc.setDrawColor(...softBorder);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(cardX, y, cardW, cardH, 8, 8, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...dark);
+      doc.text("Información del pedido", cardX + 16, y + 24);
+
+      const leftX = cardX + 16;
+      const rightX = cardX + cardW / 2 + 12;
+
+      const infoY = y + 52;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text("Negocio", leftX, infoY);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(...dark);
+      doc.text(String(negocioNombre), leftX, infoY + 12, {
+        maxWidth: 210,
+      });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text("UUID", leftX, infoY + 34);
+
+      doc.setFont("helvetica", "normal");
+doc.setFontSize(7);
+doc.setTextColor(...dark);
+
+const uuidLines = doc.splitTextToSize(String(order.id), 190);
+
+doc.text(uuidLines, leftX, infoY + 46);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text("Nombre del cliente", rightX, infoY);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(...dark);
+      doc.text(String(clienteNombre), rightX, infoY + 12, {
+        maxWidth: 200,
+      });
+
+      y = 335;
+
+      const payCardH = 82;
+
+      doc.setDrawColor(...softBorder);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(cardX, y, cardW, payCardH, 8, 8, "FD");
+
+      const col1 = cardX + 24;
+      const col2 = cardX + cardW / 2 - 25;
+      const col3 = cardX + cardW - 150;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text("Entrega", col1, y + 28);
+      doc.text("Pago", col2, y + 28);
+      doc.text("Estado de pago", col3, y + 28);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(...dark);
+      doc.text(deliveryLabel(order.delivery_method), col1, y + 44);
+      doc.text(paymentLabel(order.payment_method), col2, y + 44);
+      doc.text(paymentStatusLabel(order.payment_status), col3, y + 44);
+
+      y = 438;
+
+      const tableRows = items.map((item) => {
+        const qty = Number(item?.qty || 0);
+        const unit = Number(item?.unit_price || 0);
+        const line = Number(item?.line_total || qty * unit);
+
+        return [item?.nombre || "Producto", qty, money(unit), money(line)];
+      });
+
+      autoTable(doc, {
+        startY: y,
+        head: [["Producto", "Cant.", "Precio unit.", "Subtotal"]],
+        body: tableRows.length
+          ? tableRows
+          : [["Sin detalle de productos", "—", "—", "—"]],
+        theme: "grid",
+        styles: {
+          font: "helvetica",
+          fontSize: 8,
+          cellPadding: 8,
+          textColor: dark,
+          lineColor: [224, 232, 224],
+          lineWidth: 0.6,
+          valign: "middle",
+        },
+        headStyles: {
+          fillColor: green,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 8,
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+        },
+        alternateRowStyles: {
+          fillColor: [250, 252, 250],
+        },
+        columnStyles: {
+          0: {
+            cellWidth: 275,
+            halign: "left",
+          },
+          1: {
+            cellWidth: 55,
+            halign: "center",
+          },
+          2: {
+            cellWidth: 95,
+            halign: "right",
+          },
+          3: {
+            cellWidth: 95,
+            halign: "right",
+          },
+        },
+        margin: {
+          left: marginX,
+          right: marginX,
+        },
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 28;
+
+      const totalBoxW = 214;
+      const totalBoxH = 72;
+      const totalBoxX = pageWidth - marginX - totalBoxW;
+
+      doc.setDrawColor(...green);
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(totalBoxX, finalY, totalBoxW, totalBoxH, 8, 8, "FD");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text("Total", totalBoxX + 18, finalY + 26);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(...dark);
+      doc.text(money(totalValue || subtotalValue), totalBoxX + 18, finalY + 52);
+
+      const footerY = pageHeight - 92;
+
+      doc.setDrawColor(225, 230, 225);
+      doc.setLineWidth(0.8);
+      doc.line(marginX, footerY, pageWidth - marginX, footerY);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(...dark);
+      doc.text("Xhunco Café — Gracias por tu compra.", marginX, footerY + 22);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...muted);
+      doc.text(
+        "El Tordo 31 Col. Los Potrillos, Ocotlán, Tlaxcala C.P. 90014 · soporte@xhunco.com · negocios.xhunco.com",
+        marginX,
+        footerY + 38
+      );
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(120, 130, 140);
+      doc.text(
+        "Este documento es un comprobante interno de pedido y no es un comprobante fiscal.",
+        marginX,
+        footerY + 56
+      );
+
+      doc.save(`pedido-${folio}.pdf`);
+    } catch (error) {
+      console.error("Error generando PDF:", error);
+      alert("No se pudo generar el PDF del pedido.");
+    }
+  }
+
   async function goNext() {
     if (!hasNext || !nextCursor) return;
 
@@ -330,9 +692,10 @@ export default function PedidosPageView({ role = "admin" }) {
     if (page <= 1) return;
 
     const prevCursor = cursorStack[cursorStack.length - 1] ?? null;
-    setCursorStack((prev) => prev.slice(0, -1));
 
+    setCursorStack((prev) => prev.slice(0, -1));
     setPage((p) => Math.max(1, p - 1));
+
     await loadOrders({ cursor: prevCursor });
   }
 
@@ -361,7 +724,10 @@ export default function PedidosPageView({ role = "admin" }) {
       <div className="rounded-2xl border border-gray-200 bg-white p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <div className="mb-1 text-xs font-semibold text-gray-700">Status</div>
+            <div className="mb-1 text-xs font-semibold text-gray-700">
+              Status
+            </div>
+
             <select
               value={status}
               onChange={async (e) => {
@@ -380,7 +746,10 @@ export default function PedidosPageView({ role = "admin" }) {
           </div>
 
           <div>
-            <div className="mb-1 text-xs font-semibold text-gray-700">Negocio</div>
+            <div className="mb-1 text-xs font-semibold text-gray-700">
+              Negocio
+            </div>
+
             <select
               value={clientUserId}
               onChange={async (e) => {
@@ -391,6 +760,7 @@ export default function PedidosPageView({ role = "admin" }) {
               className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
             >
               <option value="">Todos los negocios</option>
+
               {(clients || [])
                 .filter((c) => c?.user_id)
                 .map((c) => (
@@ -405,6 +775,7 @@ export default function PedidosPageView({ role = "admin" }) {
             <div className="text-xs text-gray-600">
               Mostrando {rows.length} de {total} (pág. {page})
             </div>
+
             <div className="text-lg font-semibold text-black">
               Total: {total} pedidos
             </div>
@@ -478,6 +849,7 @@ export default function PedidosPageView({ role = "admin" }) {
                         <span className="font-semibold text-black">
                           {paymentStatusLabel(o.payment_status)}
                         </span>
+
                         {o?.paid_at ? (
                           <span className="text-gray-500">
                             {" "}
@@ -489,6 +861,7 @@ export default function PedidosPageView({ role = "admin" }) {
                       <div className="text-xs text-gray-600">
                         Creado el: {fmtDate(o.created_at)}
                       </div>
+
                       <div className="text-xs text-gray-600">
                         Total: {money(o.total ?? o.subtotal)}
                       </div>
@@ -508,19 +881,27 @@ export default function PedidosPageView({ role = "admin" }) {
                         {Array.isArray(o.items) && o.items.length > 0 ? (
                           (() => {
                             const isExpanded = !!expandedProducts[o.id];
-                            const visibleItems = isExpanded ? o.items : o.items.slice(0, 3);
+                            const visibleItems = isExpanded
+                              ? o.items
+                              : o.items.slice(0, 3);
                             const hasMore = o.items.length > 3;
 
                             return (
                               <div className="space-y-2">
                                 {visibleItems.map((it) => {
-                                  const meta = [it?.marca, it?.presentacion, it?.unidad]
+                                  const meta = [
+                                    it?.marca,
+                                    it?.presentacion,
+                                    it?.unidad,
+                                  ]
                                     .filter(Boolean)
                                     .join(" · ");
 
                                   const qty = Number(it?.qty || 0);
                                   const unit = Number(it?.unit_price || 0);
-                                  const line = Number(it?.line_total || qty * unit);
+                                  const line = Number(
+                                    it?.line_total || qty * unit
+                                  );
 
                                   return (
                                     <div
@@ -579,10 +960,20 @@ export default function PedidosPageView({ role = "admin" }) {
                     </div>
 
                     <div className="w-full space-y-3 md:w-[280px]">
+                      <button
+                        type="button"
+                        onClick={() => downloadOrderPDF(o)}
+                        disabled={busy}
+                        className="w-full rounded-xl border border-[#31572c]/20 bg-[#f8f6f0] px-4 py-2.5 text-sm font-semibold text-[#31572c] shadow-sm transition hover:bg-[#f1eadf] disabled:opacity-60"
+                      >
+                        Descargar PDF
+                      </button>
+
                       <div>
                         <div className="mb-1 text-xs font-semibold text-gray-700">
                           Cambiar status
                         </div>
+
                         <select
                           value={o.status || "pendiente"}
                           disabled={busy}
@@ -602,10 +993,15 @@ export default function PedidosPageView({ role = "admin" }) {
                         <div className="mb-1 text-xs font-semibold text-gray-700">
                           Pago
                         </div>
+
                         <select
-                          value={String(o.payment_status || "pending").toLowerCase()}
+                          value={String(
+                            o.payment_status || "pending"
+                          ).toLowerCase()}
                           disabled={busy}
-                          onChange={(e) => updatePaymentStatus(o.id, e.target.value)}
+                          onChange={(e) =>
+                            updatePaymentStatus(o.id, e.target.value)
+                          }
                           className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none disabled:opacity-60"
                         >
                           <option value="pending">Pendiente de pago</option>

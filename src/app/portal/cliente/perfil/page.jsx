@@ -9,7 +9,6 @@ import {
   Phone,
   MapPin,
   BadgeCheck,
-  CreditCard,
   Loader2,
   AlertCircle,
   Store,
@@ -375,12 +374,6 @@ export default function ClientePerfilPage() {
                 label="Correo del negocio"
                 value={client?.email}
               />
-
-              <InfoCard
-                icon={CreditCard}
-                label="Lista de precios"
-                value={client?.price_tier_label}
-              />
             </div>
           </section>
 
@@ -410,10 +403,7 @@ export default function ClientePerfilPage() {
                 label="Rol"
                 value={profile?.role_label || profile?.role || "Cliente"}
               />
-              <DetailRow
-                label="Lista de precios"
-                value={client?.price_tier_label}
-              />
+              
               <DetailRow
                 label="Cliente desde"
                 value={formatDate(client?.created_at)}

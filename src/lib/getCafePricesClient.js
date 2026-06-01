@@ -1,33 +1,15 @@
-import { getSupabaseBrowser } from "./supabaseBrowser";
-
 export async function getCafePricesClient() {
+  try {
+    const res = await fetch("/api/cafes/precios", {
+      cache: "no-store",
+    });
 
-  const supabase =
-    getSupabaseBrowser();
+    if (!res.ok) {
+      return [];
+    }
 
-  const { data, error } =
-    await supabase
-      .from("suministros_xhunco")
-      .select(`
-        sku,
-        nombre,
-        precio_web,
-        imagen,
-        stock,
-        activo
-      `)
-      .eq("categoria", "Cafe")
-      .eq("activo", true);
-
-  if (error) {
-
-    console.error(
-      "Error obteniendo cafés:",
-      error
-    );
-
+    return await res.json();
+  } catch {
     return [];
   }
-
-  return data;
 }

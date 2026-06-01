@@ -1,6 +1,7 @@
-import { supabaseAdmin } from "./supabaseAdmin";
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export async function getCafePrices() {
+export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("suministros_xhunco")
     .select(`
@@ -16,12 +17,15 @@ export async function getCafePrices() {
     .eq("activo", true);
 
   if (error) {
-    console.log("Error obteniendo cafés:", error);
-    return [];
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 
-  return (data || []).filter((item) => {
-    const nombre = item.nombre?.toLowerCase().trim() || "";
+  const cafes = (data || []).filter((item) => {
+    const nombre =
+      item.nombre?.toLowerCase().trim() || "";
 
     return (
       nombre.includes("xhunco chiapas") ||
@@ -29,4 +33,6 @@ export async function getCafePrices() {
       nombre.includes("xhunco oaxaca")
     );
   });
+
+  return NextResponse.json(cafes);
 }
