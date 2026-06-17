@@ -38,10 +38,12 @@ function safeStr(v) {
 
 function useDebounced(value, ms = 350) {
   const [v, setV] = useState(value);
+
   useEffect(() => {
     const t = setTimeout(() => setV(value), ms);
     return () => clearTimeout(t);
   }, [value, ms]);
+
   return v;
 }
 
@@ -69,14 +71,16 @@ const CLIENT_FIELDS = [
   { key: "postal_code", label: "CP" },
   { key: "address", label: "Dirección (legacy)" },
   { key: "price_tier", label: "Tipo de precio" },
-  { key: "logo_url", label: "Logo URL" }, // se setea por upload
+  { key: "logo_url", label: "Logo URL" },
 ];
 
 function pickEditableClientFields(obj) {
   const out = {};
+
   for (const f of CLIENT_FIELDS) {
     if (f.key in obj) out[f.key] = obj[f.key];
   }
+
   return out;
 }
 
@@ -86,7 +90,13 @@ function Toasts({ toasts, onClose }) {
   return (
     <div className="fixed right-4 top-4 z-[1000] flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2">
       {toasts.map((t) => {
-        const Icon = t.type === "success" ? CheckCircle2 : t.type === "error" ? AlertTriangle : Info;
+        const Icon =
+          t.type === "success"
+            ? CheckCircle2
+            : t.type === "error"
+            ? AlertTriangle
+            : Info;
+
         const border =
           t.type === "success"
             ? "border-green-200 bg-green-50 text-green-900"
@@ -95,13 +105,23 @@ function Toasts({ toasts, onClose }) {
             : "border-neutral-200 bg-white text-neutral-900";
 
         return (
-          <div key={t.id} className={cx("rounded-2xl border p-3 shadow-sm", border)}>
+          <div
+            key={t.id}
+            className={cx("rounded-2xl border p-3 shadow-sm", border)}
+          >
             <div className="flex items-start gap-3">
               <Icon className="mt-0.5 h-5 w-5" />
+
               <div className="flex-1">
                 <div className="text-sm font-semibold">{t.title}</div>
-                {t.message ? <div className="mt-0.5 text-xs opacity-80">{t.message}</div> : null}
+
+                {t.message ? (
+                  <div className="mt-0.5 text-xs opacity-80">
+                    {t.message}
+                  </div>
+                ) : null}
               </div>
+
               <button
                 onClick={() => onClose(t.id)}
                 className="rounded-full px-2 py-1 text-xs font-semibold opacity-70 hover:opacity-100"
@@ -123,7 +143,14 @@ function useToasts() {
 
   function pushToast({ type = "info", title, message, ttl = 3200 }) {
     const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-    const toast = { id, type, title: title || "Info", message: message || "" };
+
+    const toast = {
+      id,
+      type,
+      title: title || "Info",
+      message: message || "",
+    };
+
     setToasts((s) => [toast, ...s].slice(0, 4));
 
     if (ttl > 0) {
@@ -144,16 +171,28 @@ function useToasts() {
 
 function Modal({ open, title, children, onClose, busy }) {
   if (!open) return null;
+
   return (
     <div className="fixed inset-0 z-[999]">
-      <div className="absolute inset-0 bg-black/50" onClick={busy ? undefined : onClose} aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={busy ? undefined : onClose}
+        aria-hidden="true"
+      />
+
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-3xl rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
-          <div className="flex items-start justify-between gap-4">
+        <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-neutral-100 p-6">
             <div>
-              <div className="text-lg font-semibold text-neutral-900">{title}</div>
-              <div className="mt-1 text-xs text-neutral-500">Solo super-admin</div>
+              <div className="text-lg font-semibold text-neutral-900">
+                {title}
+              </div>
+
+              <div className="mt-1 text-xs text-neutral-500">
+                Solo super-admin
+              </div>
             </div>
+
             <button
               onClick={busy ? undefined : onClose}
               className={cx(
@@ -164,7 +203,10 @@ function Modal({ open, title, children, onClose, busy }) {
               Cerrar
             </button>
           </div>
-          <div className="mt-5">{children}</div>
+
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {children}
+          </div>
         </div>
       </div>
     </div>
@@ -173,9 +215,12 @@ function Modal({ open, title, children, onClose, busy }) {
 
 function LogoThumb({ url, name }) {
   const src = safeStr(url).trim();
+
   const initials = useMemo(() => {
     const s = safeStr(name).trim();
+
     if (!s) return "—";
+
     return s
       .split(" ")
       .filter(Boolean)
@@ -186,16 +231,38 @@ function LogoThumb({ url, name }) {
 
   return (
     <div className="h-10 w-10 rounded-2xl border border-neutral-200 bg-white overflow-hidden flex items-center justify-center">
-      {src ? <img src={src} alt={safeStr(name) || "Logo"} className="h-full w-full object-cover" loading="lazy" /> : null}
-      {!src ? <div className="text-xs font-semibold text-neutral-500">{initials}</div> : null}
+      {src ? (
+        <img
+          src={src}
+          alt={safeStr(name) || "Logo"}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      ) : null}
+
+      {!src ? (
+        <div className="text-xs font-semibold text-neutral-500">
+          {initials}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function Th({ icon: Icon, children, right }) {
   return (
-    <th className={cx("px-4 py-3 text-xs font-semibold text-neutral-700", right && "text-right")}>
-      <span className={cx("inline-flex items-center gap-2", right && "justify-end w-full")}>
+    <th
+      className={cx(
+        "px-4 py-3 text-xs font-semibold text-neutral-700",
+        right && "text-right"
+      )}
+    >
+      <span
+        className={cx(
+          "inline-flex items-center gap-2",
+          right && "justify-end w-full"
+        )}
+      >
         {Icon ? <Icon className="h-4 w-4 text-neutral-500" /> : null}
         {children}
       </span>
@@ -218,6 +285,7 @@ async function uploadClientLogo({ file, clientId }) {
   });
 
   const json = await res.json();
+
   if (!res.ok) throw new Error(json?.error || "No se pudo subir el logo");
 
   return json.publicUrl || null;
@@ -241,6 +309,7 @@ function ClientForm({ initial, clientId, onSubmit, submitting, toast }) {
         return acc;
       }, {})
     );
+
     setLogoFile(null);
     setLogoLocalPreview("");
   }, [initial]);
@@ -250,8 +319,10 @@ function ClientForm({ initial, clientId, onSubmit, submitting, toast }) {
       setLogoLocalPreview("");
       return;
     }
+
     const url = URL.createObjectURL(logoFile);
     setLogoLocalPreview(url);
+
     return () => URL.revokeObjectURL(url);
   }, [logoFile]);
 
@@ -269,7 +340,12 @@ function ClientForm({ initial, clientId, onSubmit, submitting, toast }) {
         if (logoFile && clientId) {
           const url = await uploadClientLogo({ file: logoFile, clientId });
           patch.logo_url = url || patch.logo_url;
-          toast?.({ type: "success", title: "Logo subido", message: "Se actualizó el logo del cliente." });
+
+          toast?.({
+            type: "success",
+            title: "Logo subido",
+            message: "Se actualizó el logo del cliente.",
+          });
         }
 
         onSubmit(patch);
@@ -311,14 +387,19 @@ function ClientForm({ initial, clientId, onSubmit, submitting, toast }) {
               className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[rgba(49,87,44,0.18)]"
               disabled={submitting}
             />
+
             <div className="mt-2 text-xs text-neutral-500">
-              Al guardar, se sube al bucket <b>{CLIENT_LOGO_BUCKET}</b> y se actualiza <b>logo_url</b>.
+              Al guardar, se sube al bucket <b>{CLIENT_LOGO_BUCKET}</b> y se
+              actualiza <b>logo_url</b>.
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <LogoThumb url={previewLogo} name={form.business_name} />
-            <div className="text-xs text-neutral-600">{previewLogo ? "Preview listo" : "Sin logo"}</div>
+
+            <div className="text-xs text-neutral-600">
+              {previewLogo ? "Preview listo" : "Sin logo"}
+            </div>
           </div>
         </div>
       </div>
@@ -332,13 +413,20 @@ function ClientForm({ initial, clientId, onSubmit, submitting, toast }) {
             return (
               <label key={f.key} className="block">
                 <div className="text-xs text-neutral-600">{f.label}</div>
+
                 <select
                   value={safeStr(form.price_tier)}
-                  onChange={(e) => setForm((s) => ({ ...s, price_tier: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((s) => ({
+                      ...s,
+                      price_tier: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[rgba(49,87,44,0.18)]"
                   disabled={submitting}
                 >
                   <option value="">— Selecciona —</option>
+
                   {PRICE_TIER_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -352,9 +440,15 @@ function ClientForm({ initial, clientId, onSubmit, submitting, toast }) {
           return (
             <label key={f.key} className="block">
               <div className="text-xs text-neutral-600">{f.label}</div>
+
               <input
                 value={safeStr(form[f.key])}
-                onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}
+                onChange={(e) =>
+                  setForm((s) => ({
+                    ...s,
+                    [f.key]: e.target.value,
+                  }))
+                }
                 className="mt-1 w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-sm text-neutral-900 outline-none focus:ring-2 focus:ring-[rgba(49,87,44,0.18)]"
                 placeholder={f.label}
                 disabled={submitting}
@@ -370,8 +464,14 @@ function ClientForm({ initial, clientId, onSubmit, submitting, toast }) {
           disabled={submitting}
           className="rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ backgroundColor: BRAND_GREEN }}
-          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-          onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+          onMouseEnter={(e) =>
+            !e.currentTarget.disabled &&
+            (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)
+          }
+          onMouseLeave={(e) =>
+            !e.currentTarget.disabled &&
+            (e.currentTarget.style.backgroundColor = BRAND_GREEN)
+          }
         >
           {submitting ? "Guardando..." : "Guardar cambios"}
         </button>
@@ -410,6 +510,7 @@ export default function ClientesPage() {
   async function load({ signal } = {}) {
     setLoading(true);
     setError("");
+
     try {
       const url =
         `/api/superadmin/clientes?q=${encodeURIComponent(dq)}` +
@@ -422,13 +523,21 @@ export default function ClientesPage() {
       if (!res.ok) throw new Error(json?.error || "Error al cargar clientes");
 
       setRows(Array.isArray(json?.rows) ? json.rows : []);
-      setMeta({ total: json?.total || 0, totalPages: json?.totalPages || 1 });
+      setMeta({
+        total: json?.total || 0,
+        totalPages: json?.totalPages || 1,
+      });
     } catch (e) {
       if (String(e?.name) !== "AbortError") {
         setError(e.message || "Error inesperado");
         setRows([]);
         setMeta({ total: 0, totalPages: 1 });
-        pushToast({ type: "error", title: "Error", message: e.message || "No se pudo cargar." });
+
+        pushToast({
+          type: "error",
+          title: "Error",
+          message: e.message || "No se pudo cargar.",
+        });
       }
     } finally {
       setLoading(false);
@@ -438,6 +547,7 @@ export default function ClientesPage() {
   useEffect(() => {
     const ac = new AbortController();
     load({ signal: ac.signal });
+
     return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dq, page, pageSize]);
@@ -445,130 +555,168 @@ export default function ClientesPage() {
   async function updateClient(id, patch) {
     if (!id) {
       setError("id requerido");
-      pushToast({ type: "error", title: "Error", message: "id requerido" });
+
+      pushToast({
+        type: "error",
+        title: "Error",
+        message: "id requerido",
+      });
+
       return;
     }
 
     setSaving(true);
     setError("");
+
     try {
       const res = await fetch(`/api/superadmin/clientes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
+
       const json = await res.json();
+
       if (!res.ok) throw new Error(json?.error || "No se pudo actualizar");
 
-      pushToast({ type: "success", title: "Cliente actualizado", message: "Cambios guardados correctamente." });
+      pushToast({
+        type: "success",
+        title: "Cliente actualizado",
+        message: "Cambios guardados correctamente.",
+      });
 
       setEditOpen(false);
       setEditRow(null);
+
       await load();
     } catch (e) {
       setError(e.message || "Error inesperado");
-      pushToast({ type: "error", title: "Error al guardar", message: e.message || "Intenta de nuevo." });
+
+      pushToast({
+        type: "error",
+        title: "Error al guardar",
+        message: e.message || "Intenta de nuevo.",
+      });
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteClient(id) {
-    const ok = confirm("¿Seguro que deseas eliminar este cliente? Esta acción no se puede deshacer.");
+    const ok = confirm(
+      "¿Seguro que deseas eliminar este cliente? Esta acción no se puede deshacer."
+    );
+
     if (!ok) return;
 
     setSaving(true);
     setError("");
+
     try {
-      const res = await fetch(`/api/superadmin/clientes/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/superadmin/clientes/${id}`, {
+        method: "DELETE",
+      });
+
       const json = await res.json();
+
       if (!res.ok) throw new Error(json?.error || "No se pudo eliminar");
 
-      pushToast({ type: "success", title: "Cliente eliminado", message: "Se eliminó correctamente." });
+      pushToast({
+        type: "success",
+        title: "Cliente eliminado",
+        message: "Se eliminó correctamente.",
+      });
+
       await load();
     } catch (e) {
       setError(e.message || "Error inesperado");
-      pushToast({ type: "error", title: "Error al eliminar", message: e.message || "Intenta de nuevo." });
+
+      pushToast({
+        type: "error",
+        title: "Error al eliminar",
+        message: e.message || "Intenta de nuevo.",
+      });
     } finally {
       setSaving(false);
     }
   }
+
   async function loadDistributors() {
-  try {
-    const res = await fetch("/api/superadmin/distribuidores/list");
-    const json = await res.json();
+    try {
+      const res = await fetch("/api/superadmin/distribuidores/list");
+      const json = await res.json();
 
-    if (!res.ok) throw new Error(json?.error || "Error cargando distribuidores");
+      if (!res.ok)
+        throw new Error(json?.error || "Error cargando distribuidores");
 
-    setDistributors(json.rows || []);
-  } catch (e) {
-    pushToast({
-      type: "error",
-      title: "Error",
-      message: e.message,
-    });
-  }
-}
-
-async function assignDistributor(forceReplace = false) {
-  if (!assignRow?.id || !selectedDistributor) return;
-
-  setSaving(true);
-
-  try {
-    const res = await fetch("/api/superadmin/clientes/asignar", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        client_id: assignRow.id,
-        distributor_id: selectedDistributor,
-        force_replace: forceReplace,
-      }),
-    });
-
-    const json = await res.json();
-
-    if (!res.ok) throw new Error(json?.error || "No se pudo asignar");
-
-    // YA EXISTÍA ASIGNACIÓN
-    if (json.already_assigned) {
-      const ok = confirm(
-        `Este cliente ya está asignado a ${json.current_distributor_name}. ¿Deseas reemplazarlo?`
-      );
-
-      if (ok) {
-        setSaving(false);
-        return assignDistributor(true);
-      } else {
-        setSaving(false);
-        return;
-      }
+      setDistributors(json.rows || []);
+    } catch (e) {
+      pushToast({
+        type: "error",
+        title: "Error",
+        message: e.message,
+      });
     }
-
-    pushToast({
-      type: "success",
-      title: json.replaced ? "Reasignado" : "Asignado",
-      message: json.replaced
-        ? "Distribuidor cambiado correctamente."
-        : "Distribuidor asignado correctamente.",
-    });
-
-    setAssignOpen(false);
-    setAssignRow(null);
-    setSelectedDistributor("");
-
-  } catch (e) {
-    pushToast({
-      type: "error",
-      title: "Error",
-      message: e.message,
-    });
-  } finally {
-    setSaving(false);
   }
-}
+
+  async function assignDistributor(forceReplace = false) {
+    if (!assignRow?.id || !selectedDistributor) return;
+
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/superadmin/clientes/asignar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: assignRow.id,
+          distributor_id: selectedDistributor,
+          force_replace: forceReplace,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json?.error || "No se pudo asignar");
+
+      // YA EXISTÍA ASIGNACIÓN
+      if (json.already_assigned) {
+        const ok = confirm(
+          `Este cliente ya está asignado a ${json.current_distributor_name}. ¿Deseas reemplazarlo?`
+        );
+
+        if (ok) {
+          setSaving(false);
+          return assignDistributor(true);
+        } else {
+          setSaving(false);
+          return;
+        }
+      }
+
+      pushToast({
+        type: "success",
+        title: json.replaced ? "Reasignado" : "Asignado",
+        message: json.replaced
+          ? "Distribuidor cambiado correctamente."
+          : "Distribuidor asignado correctamente.",
+      });
+
+      setAssignOpen(false);
+      setAssignRow(null);
+      setSelectedDistributor("");
+    } catch (e) {
+      pushToast({
+        type: "error",
+        title: "Error",
+        message: e.message,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <>
@@ -578,7 +726,10 @@ async function assignDistributor(forceReplace = false) {
         <div className="rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h1 className="text-3xl font-semibold text-neutral-900">Socios Xhunco</h1>
+              <h1 className="text-3xl font-semibold text-neutral-900">
+                Socios Xhunco
+              </h1>
+
               <p className="mt-2 text-sm text-neutral-600">
                 Administra Socios: alta, edición, estado y datos de contacto.
               </p>
@@ -588,8 +739,12 @@ async function assignDistributor(forceReplace = false) {
               href="/portal/super-admin/clientes/nuevo"
               className="rounded-full px-5 py-2 text-sm font-semibold text-white transition"
               style={{ backgroundColor: BRAND_GREEN }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = BRAND_GREEN)
+              }
             >
               + Crear cliente
             </Link>
@@ -600,6 +755,7 @@ async function assignDistributor(forceReplace = false) {
             <div className="w-full md:max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
@@ -609,25 +765,43 @@ async function assignDistributor(forceReplace = false) {
               </div>
             </div>
 
-            <div className="text-xs text-neutral-500">{loading ? "Cargando..." : `Total: ${meta.total}`}</div>
+            <div className="text-xs text-neutral-500">
+              {loading ? "Cargando..." : `Total: ${meta.total}`}
+            </div>
           </div>
 
           {error && (
-            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {error}
+            </div>
           )}
 
           {loading ? (
-            <div className="mt-8 text-sm text-neutral-500">Cargando Socios…</div>
+            <div className="mt-8 text-sm text-neutral-500">
+              Cargando Socios…
+            </div>
           ) : rows.length === 0 ? (
             <div className="mt-10 rounded-3xl border border-neutral-200 bg-white p-10 text-center">
-              <div className="text-lg font-medium text-neutral-900">Sin Socios</div>
-              <div className="mt-2 text-sm text-neutral-600">Aún no hay registros. Crea el primer Socio.</div>
+              <div className="text-lg font-medium text-neutral-900">
+                Sin Socios
+              </div>
+
+              <div className="mt-2 text-sm text-neutral-600">
+                Aún no hay registros. Crea el primer Socio.
+              </div>
+
               <button
-                onClick={() => router.push("/portal/super-admin/clientes/nuevo")}
+                onClick={() =>
+                  router.push("/portal/super-admin/clientes/nuevo")
+                }
                 className="mt-6 rounded-full px-5 py-2 text-sm font-semibold text-white transition"
                 style={{ backgroundColor: BRAND_GREEN }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = BRAND_GREEN)
+                }
               >
                 + Crear cliente
               </button>
@@ -647,16 +821,18 @@ async function assignDistributor(forceReplace = false) {
                       <Th icon={User}>Distribuidor</Th>
                       <Th right>Acciones</Th>
                     </tr>
-                    
                   </thead>
-
 
                   <tbody>
                     {rows.map((r) => {
-                    const distributor =
-  r.distributor_clients?.[0]?.profiles
-    ? `${r.distributor_clients[0].profiles.first_name || ""} ${r.distributor_clients[0].profiles.last_name_paterno || ""}`.trim()
-    : "";
+                      const distributor = r.distributor_clients?.[0]?.profiles
+                        ? `${
+                            r.distributor_clients[0].profiles.first_name || ""
+                          } ${
+                            r.distributor_clients[0].profiles
+                              .last_name_paterno || ""
+                          }`.trim()
+                        : "";
 
                       const owner = [
                         r.owner_first_name,
@@ -668,16 +844,29 @@ async function assignDistributor(forceReplace = false) {
                         .join(" ");
 
                       const tierLabel =
-                        PRICE_TIER_OPTIONS.find((x) => x.value === r.price_tier)?.label || r.price_tier || "—";
+                        PRICE_TIER_OPTIONS.find(
+                          (x) => x.value === r.price_tier
+                        )?.label ||
+                        r.price_tier ||
+                        "—";
 
                       return (
-                        <tr key={r.id} className="border-t border-neutral-200 text-neutral-800">
+                        <tr
+                          key={r.id}
+                          className="border-t border-neutral-200 text-neutral-800"
+                        >
                           <td className="px-4 py-3">
-                            <LogoThumb url={r.logo_url} name={r.business_name} />
+                            <LogoThumb
+                              url={r.logo_url}
+                              name={r.business_name}
+                            />
                           </td>
 
                           <td className="px-4 py-3">
-                            <div className="font-semibold text-neutral-900">{r.business_name || "—"}</div>
+                            <div className="font-semibold text-neutral-900">
+                              {r.business_name || "—"}
+                            </div>
+
                             <div className="text-xs text-neutral-500">
                               {r.municipality ? `${r.municipality}, ` : ""}
                               {r.state || ""}
@@ -685,7 +874,9 @@ async function assignDistributor(forceReplace = false) {
                           </td>
 
                           <td className="px-4 py-3">{owner || "—"}</td>
+
                           <td className="px-4 py-3">{r.email || "—"}</td>
+
                           <td className="px-4 py-3">{r.phone || "—"}</td>
 
                           <td className="px-4 py-3">
@@ -693,17 +884,18 @@ async function assignDistributor(forceReplace = false) {
                               {tierLabel}
                             </span>
                           </td>
+
                           <td className="px-4 py-3">
-  {distributor ? (
-    <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-      {distributor}
-    </span>
-  ) : (
-    <span className="text-xs text-neutral-400">
-      Sin asignar
-    </span>
-  )}
-</td>
+                            {distributor ? (
+                              <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                                {distributor}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-neutral-400">
+                                Sin asignar
+                              </span>
+                            )}
+                          </td>
 
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-2">
@@ -712,15 +904,18 @@ async function assignDistributor(forceReplace = false) {
                                   setEditRow(r);
                                   setEditOpen(true);
                                 }}
-
-                                
-                                
                                 className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
                                 style={{ backgroundColor: BRAND_GREEN }}
                                 onMouseEnter={(e) =>
-                                  !saving && (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)
+                                  !saving &&
+                                  (e.currentTarget.style.backgroundColor =
+                                    BRAND_GREEN_DARK)
                                 }
-                                onMouseLeave={(e) => !saving && (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+                                onMouseLeave={(e) =>
+                                  !saving &&
+                                  (e.currentTarget.style.backgroundColor =
+                                    BRAND_GREEN)
+                                }
                                 disabled={saving}
                               >
                                 <Pencil className="h-4 w-4" />
@@ -737,14 +932,14 @@ async function assignDistributor(forceReplace = false) {
                               </button>
 
                               <button
-                              onClick={async () => {
-                              setAssignRow(r);
-                              setAssignOpen(true);
-                              await loadDistributors();
-                              }}
-                              className="inline-flex items-center gap-2 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
+                                onClick={async () => {
+                                  setAssignRow(r);
+                                  setAssignOpen(true);
+                                  await loadDistributors();
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
                               >
-                              Asignar
+                                Asignar
                               </button>
                             </div>
                           </td>
@@ -777,8 +972,12 @@ async function assignDistributor(forceReplace = false) {
                 onClick={() => setPage((p) => p + 1)}
                 className="rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
                 style={{ backgroundColor: BRAND_GREEN }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND_GREEN)}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = BRAND_GREEN_DARK)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = BRAND_GREEN)
+                }
               >
                 Siguiente
               </button>
@@ -805,58 +1004,63 @@ async function assignDistributor(forceReplace = false) {
             onSubmit={(form) => {
               if (!editRow?.id) {
                 setError("id requerido");
-                pushToast({ type: "error", title: "Error", message: "id requerido" });
+
+                pushToast({
+                  type: "error",
+                  title: "Error",
+                  message: "id requerido",
+                });
+
                 return;
               }
+
               updateClient(editRow.id, form);
             }}
           />
         </Modal>
 
-       <Modal
-  open={assignOpen}
-  title="Asignar distribuidor"
-  busy={saving}
-  onClose={() => {
-    setAssignOpen(false);
-    setAssignRow(null);
-    setSelectedDistributor("");
-  }}
->
-  <div className="space-y-4">
-    <div className="text-sm text-neutral-700">
-      Cliente:
-      <b className="ml-2">{assignRow?.business_name}</b>
-    </div>
+        <Modal
+          open={assignOpen}
+          title="Asignar distribuidor"
+          busy={saving}
+          onClose={() => {
+            setAssignOpen(false);
+            setAssignRow(null);
+            setSelectedDistributor("");
+          }}
+        >
+          <div className="space-y-4">
+            <div className="text-sm text-neutral-700">
+              Cliente:
+              <b className="ml-2">{assignRow?.business_name}</b>
+            </div>
 
-    <select
-      value={selectedDistributor}
-      onChange={(e) => setSelectedDistributor(e.target.value)}
-      className="w-full rounded-2xl border border-neutral-300 px-4 py-3"
-    >
-      <option value="">Selecciona distribuidor</option>
+            <select
+              value={selectedDistributor}
+              onChange={(e) => setSelectedDistributor(e.target.value)}
+              className="w-full rounded-2xl border border-neutral-300 px-4 py-3"
+            >
+              <option value="">Selecciona distribuidor</option>
 
-      {distributors.map((d) => (
-        <option key={d.id} value={d.id}>
-          {d.first_name} {d.last_name_paterno}
-        </option>
-      ))}
-    </select>
+              {distributors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.first_name} {d.last_name_paterno}
+                </option>
+              ))}
+            </select>
 
-    <div className="flex justify-end">
-      <button
-       onClick={() => assignDistributor()}
-        disabled={!selectedDistributor || saving}
-        className="rounded-full px-5 py-2 text-sm font-semibold text-white"
-        style={{ backgroundColor: BRAND_GREEN }}
-        
-
-      >
-        Guardar asignación
-      </button>
-    </div>
-  </div>
-</Modal> 
+            <div className="flex justify-end">
+              <button
+                onClick={() => assignDistributor()}
+                disabled={!selectedDistributor || saving}
+                className="rounded-full px-5 py-2 text-sm font-semibold text-white"
+                style={{ backgroundColor: BRAND_GREEN }}
+              >
+                Guardar asignación
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </>
   );

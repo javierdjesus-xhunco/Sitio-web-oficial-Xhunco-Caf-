@@ -45,6 +45,11 @@ type Suministro = {
   stock: number;
   activo: boolean;
   imagen: string | null;
+
+  descripcion_web: string | null;
+  uso_sugerido: string | null;
+  tip_preparacion: string | null;
+  ideal_para: string[] | null;
 };
 
 type ProductoUI = {
@@ -496,9 +501,7 @@ function ImageModal(props: {
 
               <div className="mt-5 rounded-2xl border border-dashed border-[#31572c]/30 bg-[#31572c]/5 px-4 py-4">
                 <p className="text-sm leading-7 text-gray-700">
-                  Puedes usar esta vista para mostrar una segunda cara del producto:
-                  recetas rápidas, sugerencias de uso, rendimiento, compatibilidades o
-                  aplicaciones dentro de barra.
+                    {producto.descripcion}
                 </p>
               </div>
             </div>
@@ -992,18 +995,29 @@ const { addItem, totalItems } = useCart();
             categoria: (s.categoria ?? "General").toString().trim() || "General",
             marca: marcaNormalizada,
             descripcion:
-              s.presentacion?.toString().trim() ||
-              "Producto disponible para tu barra de café.",
-            precio: Number(s.precio_web ?? 0),
-            imagen: normalizeImage(s.imagen),
-            stock: Number(s.stock ?? 0),
-            activo: Boolean(s.activo),
-            presentacion: s.presentacion,
-            unidad: s.unidad,
-            marcaLogo: getBrandLogo(marcaNormalizada),
-            usoSugerido: insights.usoSugerido,
-            tipPreparacion: insights.tipPreparacion,
-            idealPara: insights.idealPara,
+  s.descripcion_web?.toString().trim() ||
+  s.presentacion?.toString().trim() ||
+  "Producto disponible para tu barra de café.",
+precio: Number(s.precio_web ?? 0),
+imagen: normalizeImage(s.imagen),
+stock: Number(s.stock ?? 0),
+activo: Boolean(s.activo),
+presentacion: s.presentacion,
+unidad: s.unidad,
+marcaLogo: getBrandLogo(marcaNormalizada),
+
+usoSugerido:
+  s.uso_sugerido?.toString().trim() ||
+  insights.usoSugerido,
+
+tipPreparacion:
+  s.tip_preparacion?.toString().trim() ||
+  insights.tipPreparacion,
+
+idealPara:
+  Array.isArray(s.ideal_para) && s.ideal_para.length > 0
+    ? s.ideal_para
+    : insights.idealPara,
           };
         });
 
@@ -1045,7 +1059,7 @@ if (skuUrl) {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [skuUrl]);
 
   const marcas = useMemo(() => {
     const map = new Map<string, MarcaUI>();

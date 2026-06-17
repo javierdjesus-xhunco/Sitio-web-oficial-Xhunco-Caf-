@@ -376,7 +376,7 @@ export default function AdminReportesPage() {
 
           <Section
             title="Detalle de pedidos (con artículos)"
-            subtitle="Paginado para no cargar pesado. CSV exporta 1 fila por artículo."
+            subtitle="CSV exporta 1 fila por artículo."
             actions={
               <div className="flex items-center gap-2">
                 <select

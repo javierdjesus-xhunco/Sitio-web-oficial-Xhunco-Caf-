@@ -43,7 +43,9 @@ function displayName(p) {
   const parts = [p?.first_name, p?.last_name_paterno, p?.last_name_materno]
     .map((x) => (x || "").trim())
     .filter(Boolean);
+
   if (parts.length) return parts.join(" ");
+
   return (p?.email || "Administrador").trim();
 }
 
@@ -55,6 +57,7 @@ function displayName(p) {
  */
 function isRouteActive(pathname, href, options = {}) {
   const { exact = false } = options;
+
   if (!pathname || !href) return false;
 
   if (exact) return pathname === href;
@@ -104,7 +107,10 @@ function NavButton({
       }}
     >
       {Icon ? <Icon size={18} /> : null}
-      {!collapsed && <span className="truncate text-sm font-semibold">{label}</span>}
+
+      {!collapsed && (
+        <span className="truncate text-sm font-semibold">{label}</span>
+      )}
     </Link>
   );
 }
@@ -154,11 +160,17 @@ function QuickCard({
         <div
           className="grid h-10 w-10 place-items-center rounded-2xl border"
           style={{
-            borderColor: active ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.10)",
-            backgroundColor: active ? "rgba(255,255,255,0.15)" : "rgba(49,87,44,0.08)",
+            borderColor: active
+              ? "rgba(255,255,255,0.35)"
+              : "rgba(0,0,0,0.10)",
+            backgroundColor: active
+              ? "rgba(255,255,255,0.15)"
+              : "rgba(49,87,44,0.08)",
           }}
         >
-          {Icon ? <Icon size={18} color={active ? "white" : BRAND_GREEN} /> : null}
+          {Icon ? (
+            <Icon size={18} color={active ? "white" : BRAND_GREEN} />
+          ) : null}
         </div>
       </Link>
     );
@@ -194,19 +206,28 @@ function QuickCard({
         <div
           className="grid h-10 w-10 place-items-center rounded-2xl border"
           style={{
-            borderColor: active ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.10)",
-            backgroundColor: active ? "rgba(255,255,255,0.15)" : "rgba(49,87,44,0.08)",
+            borderColor: active
+              ? "rgba(255,255,255,0.35)"
+              : "rgba(0,0,0,0.10)",
+            backgroundColor: active
+              ? "rgba(255,255,255,0.15)"
+              : "rgba(49,87,44,0.08)",
           }}
         >
-          {Icon ? <Icon size={18} color={active ? "white" : BRAND_GREEN} /> : null}
+          {Icon ? (
+            <Icon size={18} color={active ? "white" : BRAND_GREEN} />
+          ) : null}
         </div>
       </div>
 
       <div className="min-w-0">
         <div className="text-sm font-semibold truncate">{title}</div>
+
         <div
           className="truncate text-xs"
-          style={{ color: active ? "rgba(255,255,255,0.85)" : "#6b7280" }}
+          style={{
+            color: active ? "rgba(255,255,255,0.85)" : "#6b7280",
+          }}
         >
           {subtitle}
         </div>
@@ -215,7 +236,13 @@ function QuickCard({
   );
 }
 
-function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, collapsed = false }) {
+function SidebarContent({
+  profile,
+  loadingProfile,
+  onLogoutClick,
+  onNavigate,
+  collapsed = false,
+}) {
   const name = displayName(profile);
   const initials = initialsFromProfile(profile);
 
@@ -248,6 +275,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
                 <div className="truncate text-sm font-semibold text-black">
                   {loadingProfile ? "Cargando…" : name}
                 </div>
+
                 <div className="truncate text-xs text-gray-500">
                   {profile?.role ? `Rol: ${profile.role}` : "Panel Admin"}
                 </div>
@@ -269,6 +297,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+
         <NavButton
           href="/portal/admin/pedidos"
           label="Pedidos"
@@ -277,6 +306,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+
         <NavButton
           href="/portal/admin/suministros/solicitudes"
           label="Solicitudes"
@@ -285,6 +315,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+
         <NavButton
           href="/portal/admin/b2b-leads"
           label="Clientes B2B"
@@ -292,7 +323,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           onNavigate={onNavigate}
           collapsed={collapsed}
           exact={false}
-         />
+        />
       </div>
 
       {/* Accesos rápidos */}
@@ -306,6 +337,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+
         <QuickCard
           href="/portal/admin/suministros"
           title="Suministros"
@@ -315,6 +347,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={true}
         />
+
         <QuickCard
           href="/portal/admin/inventario"
           title="Inventario"
@@ -324,6 +357,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+
         <QuickCard
           href="/portal/admin/reportes"
           title="Reportes"
@@ -333,6 +367,7 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
+
         <QuickCard
           href="/portal/admin/promociones"
           title="Nueva Promocion"
@@ -342,7 +377,8 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           collapsed={collapsed}
           exact={false}
         />
-            <QuickCard
+
+        <QuickCard
           href="/portal/admin/checkout"
           title="Pedidos B2C"
           subtitle="Visualiza y actualiza pedidos B2C"
@@ -352,7 +388,6 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
           exact={false}
         />
 
-
         {/* Crear pedido manual */}
         {collapsed ? (
           <button
@@ -361,7 +396,10 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
               "h-[48px] text-black transition"
             )}
             onClick={() =>
-              onNavigate?.({ href: "/portal/admin/pedidos/nuevo", isLink: false })
+              onNavigate?.({
+                href: "/portal/admin/pedidos/nuevo",
+                isLink: false,
+              })
             }
             type="button"
             title="Crear pedido manual"
@@ -384,7 +422,10 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
               "h-[48px] px-4 text-sm font-semibold text-black transition"
             )}
             onClick={() =>
-              onNavigate?.({ href: "/portal/admin/pedidos/nuevo", isLink: false })
+              onNavigate?.({
+                href: "/portal/admin/pedidos/nuevo",
+                isLink: false,
+              })
             }
             type="button"
             onMouseEnter={(e) => {
@@ -432,7 +473,11 @@ function SidebarContent({ profile, loadingProfile, onLogoutClick, onNavigate, co
         )}
       </div>
 
-      {!collapsed && <div className="mt-3 text-[11px] text-gray-400">Xhunco · Admin Panel</div>}
+      {!collapsed && (
+        <div className="mt-3 text-[11px] text-gray-400">
+          Xhunco · Admin Panel
+        </div>
+      )}
     </div>
   );
 }
@@ -443,7 +488,10 @@ export default function AdminLayout({ children }) {
 
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerClosing, setDrawerClosing] = useState(false);
+  const [drawerAnimatingIn, setDrawerAnimatingIn] = useState(false);
 
   // Desktop: colapsable + hover expand
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
@@ -451,6 +499,44 @@ export default function AdminLayout({ children }) {
   const desktopExpanded = !desktopCollapsed || desktopHovering;
 
   const aliveRef = useRef(true);
+  const drawerTimerRef = useRef(null);
+  const drawerRafRef = useRef(null);
+
+  const openMobileDrawer = useCallback(() => {
+    if (drawerTimerRef.current) {
+      clearTimeout(drawerTimerRef.current);
+    }
+
+    if (drawerRafRef.current) {
+      cancelAnimationFrame(drawerRafRef.current);
+    }
+
+    setDrawerClosing(false);
+    setDrawerAnimatingIn(false);
+    setDrawerOpen(true);
+
+    drawerRafRef.current = requestAnimationFrame(() => {
+      setDrawerAnimatingIn(true);
+    });
+  }, []);
+
+  const closeMobileDrawer = useCallback(() => {
+    if (drawerTimerRef.current) {
+      clearTimeout(drawerTimerRef.current);
+    }
+
+    if (drawerRafRef.current) {
+      cancelAnimationFrame(drawerRafRef.current);
+    }
+
+    setDrawerClosing(true);
+    setDrawerAnimatingIn(false);
+
+    drawerTimerRef.current = setTimeout(() => {
+      setDrawerOpen(false);
+      setDrawerClosing(false);
+    }, 300);
+  }, []);
 
   const handleNavigate = useCallback(
     (payload) => {
@@ -458,25 +544,40 @@ export default function AdminLayout({ children }) {
 
       // En links, Next ya navega solo.
       if (payload.isLink) {
-        setDrawerOpen(false);
+        closeMobileDrawer();
         return;
       }
 
       router.push(payload.href);
-      setDrawerOpen(false);
+      closeMobileDrawer();
     },
-    [router]
+    [router, closeMobileDrawer]
   );
 
   useEffect(() => {
-    setDrawerOpen(false);
+    if (drawerOpen) {
+      closeMobileDrawer();
+    }
   }, [pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (drawerTimerRef.current) {
+        clearTimeout(drawerTimerRef.current);
+      }
+
+      if (drawerRafRef.current) {
+        cancelAnimationFrame(drawerRafRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     aliveRef.current = true;
 
     async function loadProfile() {
       setLoadingProfile(true);
+
       try {
         const { data: auth } = await supabase.auth.getUser();
         const user = auth?.user;
@@ -488,7 +589,9 @@ export default function AdminLayout({ children }) {
 
         const { data, error } = await supabase
           .from("profiles")
-          .select("email, role, active, first_name, last_name_paterno, last_name_materno")
+          .select(
+            "email, role, active, first_name, last_name_paterno, last_name_materno"
+          )
           .eq("id", user.id)
           .limit(1)
           .maybeSingle();
@@ -528,7 +631,7 @@ export default function AdminLayout({ children }) {
       <div className="sticky top-0 z-40 border-b border-gray-200 bg-white md:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <button
-            onClick={() => setDrawerOpen(true)}
+            onClick={openMobileDrawer}
             className="rounded-xl border border-gray-200 bg-white p-2 text-black hover:bg-gray-50 active:scale-[0.99] transition"
             aria-label="Abrir menú"
             type="button"
@@ -540,11 +643,15 @@ export default function AdminLayout({ children }) {
             <div className="truncate text-sm font-semibold">
               {headerName || "Administrador"}
             </div>
-            <div className="truncate text-[11px] text-gray-500">Panel Admin</div>
+
+            <div className="truncate text-[11px] text-gray-500">
+              Panel Admin
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             <NotificationsBell />
+
             <div
               className="grid h-9 w-9 place-items-center rounded-xl text-sm font-extrabold text-white"
               style={{ background: BRAND_GREEN }}
@@ -560,15 +667,29 @@ export default function AdminLayout({ children }) {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"
-            onClick={() => setDrawerOpen(false)}
+            className={cx(
+              "absolute inset-0 bg-black/30 backdrop-blur-[1px]",
+              "transition-opacity duration-300 ease-out",
+              drawerAnimatingIn && !drawerClosing ? "opacity-100" : "opacity-0"
+            )}
+            onClick={closeMobileDrawer}
           />
 
-          <div className="absolute left-0 top-0 h-full w-[86%] max-w-[340px] bg-white shadow-2xl border-r border-gray-200">
+          <div
+            className={cx(
+              "absolute left-0 top-0 h-full w-[86%] max-w-[340px]",
+              "bg-white shadow-2xl border-r border-gray-200",
+              "transition-transform duration-300 ease-out will-change-transform",
+              drawerAnimatingIn && !drawerClosing
+                ? "translate-x-0"
+                : "-translate-x-full"
+            )}
+          >
             <div className="flex items-center justify-between border-b border-gray-200 p-4">
               <div className="text-sm font-semibold text-black">Menú</div>
+
               <button
-                onClick={() => setDrawerOpen(false)}
+                onClick={closeMobileDrawer}
                 className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50 active:scale-[0.99] transition"
                 aria-label="Cerrar menú"
                 type="button"
@@ -610,10 +731,16 @@ export default function AdminLayout({ children }) {
                   "hover:bg-gray-50 active:scale-[0.99] transition",
                   "flex items-center justify-center"
                 )}
-                aria-label={desktopCollapsed ? "Expandir menú" : "Colapsar menú"}
+                aria-label={
+                  desktopCollapsed ? "Expandir menú" : "Colapsar menú"
+                }
                 title={desktopCollapsed ? "Expandir menú" : "Colapsar menú"}
               >
-                {desktopCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                {desktopCollapsed ? (
+                  <PanelLeftOpen size={18} />
+                ) : (
+                  <PanelLeftClose size={18} />
+                )}
               </button>
             </div>
 

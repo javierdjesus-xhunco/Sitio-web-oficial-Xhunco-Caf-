@@ -39,7 +39,6 @@ export default function ClienteLayoutClient({ children, initialClient }) {
   const [hovering, setHovering] = useState(false);
   const expanded = !collapsed || hovering;
 
-  const cacheKeyRef = useRef(String(Date.now()));
   const openBtnRef = useRef(null);
 
   const links = useMemo(
@@ -64,8 +63,10 @@ export default function ClienteLayoutClient({ children, initialClient }) {
 
   useEffect(() => {
     if (!open) return;
+
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = prev;
     };
@@ -81,7 +82,7 @@ export default function ClienteLayoutClient({ children, initialClient }) {
   }, [router]);
 
   const logoSrc = useMemo(() => {
-    return client?.logo_url ? `${client.logo_url}?v=${cacheKeyRef.current}` : null;
+    return client?.logo_url || null;
   }, [client?.logo_url]);
 
   const businessName = useMemo(() => {
@@ -115,7 +116,10 @@ export default function ClienteLayoutClient({ children, initialClient }) {
                 PORTAL
               </span>
             </div>
-            <div className="text-sm font-semibold text-black truncate">{businessName}</div>
+
+            <div className="text-sm font-semibold text-black truncate">
+              {businessName}
+            </div>
           </div>
         </div>
       </header>
@@ -181,7 +185,7 @@ export default function ClienteLayoutClient({ children, initialClient }) {
               />
 
               <div className="text-[11px] leading-tight text-black/60">
-                © {new Date().getFullYear()} Xhunco Café
+                © 2026 Xhunco Café
               </div>
 
               <div className="text-[10px] text-black/50">
@@ -275,7 +279,7 @@ export default function ClienteLayoutClient({ children, initialClient }) {
                 />
 
                 <div className="text-[11px] leading-tight text-black/60">
-                  © {new Date().getFullYear()} Xhunco Café
+                  © 2026 Xhunco Café
                 </div>
 
                 <div className="text-[10px] text-black/50">
@@ -331,7 +335,9 @@ function ClienteBrandHeader({ expanded, logoSrc, businessName, mobile = false })
         )}
 
         <div className="text-center">
-          <div className="text-sm font-semibold text-black">{businessName || "Cliente"}</div>
+          <div className="text-sm font-semibold text-black">
+            {businessName || "Cliente"}
+          </div>
         </div>
       </div>
     </div>

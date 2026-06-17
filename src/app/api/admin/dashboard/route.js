@@ -1,277 +1,474 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export const dynamic = "force-dynamic"; // evita cache de Next en server
+export const dynamic = "force-dynamic";
 
-const STATUS_ACTIVE = new Set(["pendiente", "confirmado", "en preparación"]);
-const STATUS_DELIVERED = new Set(["entregado"]);
-const STATUS_CANCELLED = new Set(["cancelado"]);
+function buildMonthRange(rawMonth) {
+  const now = new Date();
 
-function norm(s) {
-  return String(s || "").toLowerCase().trim();
+  const fallback = `${now.getFullYear()}-${String(
+    now.getMonth() + 1
+  ).padStart(2, "0")}`;
+
+  const month = /^\d{4}-\d{2}$/.test(String(rawMonth || ""))
+    ? rawMonth
+    : fallback;
+
+  const [yearStr, monthStr] = month.split("-");
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+
+  const start = new Date(year, monthIndex, 1);
+  const end = new Date(year, monthIndex + 1, 1);
+
+  return {
+    month,
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+    daysInMonth: new Date(year, monthIndex + 1, 0).getDate(),
+  };
 }
 
-function ymKey(date) {
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return null;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
+async function requireAdminDashboard() {
+  const supabase = await supabaseServer();
+
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !auth?.user) {
+    return { error: "No autenticado", status: 401 };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, first_name, active")
+    .eq("id", auth.user.id)
+    .single();
+
+  if (profileError || !profile) {
+    return { error: "Perfil no encontrado", status: 404 };
+  }
+
+  const role = String(profile?.role || "").toLowerCase();
+
+  if (!profile?.active || !["admin", "superadmin", "super_admin"].includes(role)) {
+    return { error: "Sin permisos", status: 403 };
+  }
+
+  return {
+    user: {
+      id: auth.user.id,
+      first_name: profile.first_name || "Usuario",
+      role,
+    },
+  };
 }
 
-function dayKey(date) {
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return null;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function monthRange(ym) {
-  // ym = "YYYY-MM" => [startISO, endISO)
-  const [y, m] = String(ym).split("-").map((x) => Number(x));
-  const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
-  const end = new Date(Date.UTC(y, m, 1, 0, 0, 0));
-  return [start.toISOString(), end.toISOString()];
+function toNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
 }
 
 export async function GET(req) {
-  const supabase = await supabaseServer();
+  try {
+    const guard = await requireAdminDashboard();
 
-  // 1) Auth
-  const { data: auth } = await supabase.auth.getUser();
-  const user = auth?.user;
-  if (!user) return NextResponse.json({ error: "No auth" }, { status: 401 });
-
-  // 2) Role check
-  const { data: prof, error: profErr } = await supabase
-    .from("profiles")
-    .select("role, active")
-    .eq("id", user.id)
-    .single();
-
-  if (profErr) return NextResponse.json({ error: profErr.message }, { status: 500 });
-  if (prof?.active === false)
-    return NextResponse.json({ error: "Usuario desactivado" }, { status: 403 });
-
-  // OJO: tu rol real es super_admin
-  if (!["admin", "super_admin"].includes(prof?.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  // 3) Filtros
-  const { searchParams } = new URL(req.url);
-  const month = searchParams.get("month") || "ALL"; // "ALL" | "YYYY-MM"
-  const clientId = searchParams.get("client") || "ALL"; // "ALL" | clients.id
-
-  // 4) Clients (solo lo necesario para dropdown + nombres)
-  // Recomendación: si en tu sistema hay muchos clientes, puedes paginar o limitar a 2000.
-  const { data: clients, error: ce } = await supabase
-    .from("clients")
-    .select("id, user_id, business_name, owner_name, created_at")
-    .order("business_name", { ascending: true })
-    .limit(5000);
-
-  if (ce) return NextResponse.json({ error: ce.message }, { status: 500 });
-
-  const safeClients = Array.isArray(clients) ? clients : [];
-  const clientById = new Map(safeClients.map((c) => [String(c.id), c]));
-  const clientByUserId = new Map(safeClients.map((c) => [String(c.user_id), c]));
-
-  const selectedClient = clientId === "ALL" ? null : clientById.get(String(clientId));
-  const selectedUserId = selectedClient ? String(selectedClient.user_id) : null;
-
-  // 5) Query base para orders (solo columnas necesarias)
-  // NOTA: aquí NO jalamos 5000 siempre.
-  // Traemos:
-  // - un lote para KPIs + months + listas (reciente)
-  // - y otro lote para agregados (entregados) según filtros.
-
-  // A) Lote "reciente" (para listas + KPIs rápidos)
-  //    Traemos solo últimas 1500 órdenes (normalmente sobra para dashboard).
-  //    Si necesitas más historial para months, lo resolvemos con query de meses aparte (abajo).
-  const { data: recentOrders, error: rErr } = await supabase
-    .from("orders")
-    .select("id, client_user_id, status, total, created_at")
-    .order("created_at", { ascending: false })
-    .limit(1500);
-
-  if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
-
-  const safeRecent = Array.isArray(recentOrders) ? recentOrders : [];
-
-  // KPIs sobre lote reciente:
-  // (si quieres KPIs “históricos” totales, habría que hacer count() por status)
-  const kpis = {
-    activos: safeRecent.filter((o) => STATUS_ACTIVE.has(norm(o.status))).length,
-    entregados: safeRecent.filter((o) => STATUS_DELIVERED.has(norm(o.status))).length,
-    cancelados: safeRecent.filter((o) => STATUS_CANCELLED.has(norm(o.status))).length,
-  };
-
-  // B) Meses disponibles (mejor: derivar de órdenes entregadas recientes + recientes)
-  //    Esto evita cargar todas las órdenes de toda la historia.
-  const monthsSet = new Set();
-  for (const o of safeRecent) {
-    const k = ymKey(o.created_at);
-    if (k) monthsSet.add(k);
-  }
-  const months = Array.from(monthsSet).sort((a, b) => (a > b ? -1 : 1));
-
-  // Dropdown de clientes
-  const clientOptions = safeClients
-    .map((c) => ({
-      id: String(c.id),
-      label: String(c.business_name || c.owner_name || "Cliente"),
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label, "es"));
-
-  // 6) Query ENTREGADOS para ingresos según filtros (dataset pequeño y preciso)
-  let deliveredQuery = supabase
-    .from("orders")
-    .select("id, client_user_id, status, total, created_at")
-    .eq("status", "entregado")
-    .order("created_at", { ascending: true });
-
-  // filtro cliente
-  if (selectedUserId) deliveredQuery = deliveredQuery.eq("client_user_id", selectedUserId);
-
-  // filtro mes
-  if (month !== "ALL") {
-    const [startISO, endISO] = monthRange(month);
-    deliveredQuery = deliveredQuery.gte("created_at", startISO).lt("created_at", endISO);
-  }
-
-  // IMPORTANTE: para "Ingresos por día" no necesitas más de un mes normalmente.
-  // Si month=ALL y cliente=ALL, esto puede crecer. Limitamos a últimos 365 días.
-  if (month === "ALL") {
-    const from = new Date();
-    from.setUTCDate(from.getUTCDate() - 365);
-    deliveredQuery = deliveredQuery.gte("created_at", from.toISOString());
-  }
-
-  const { data: deliveredFiltered, error: dErr } = await deliveredQuery.limit(20000);
-  if (dErr) return NextResponse.json({ error: dErr.message }, { status: 500 });
-
-  const delivered = Array.isArray(deliveredFiltered) ? deliveredFiltered : [];
-
-  const incomeTotal = delivered.reduce((acc, o) => acc + Number(o.total || 0), 0);
-
-  // ingresos por día
-  const byDay = new Map();
-  for (const o of delivered) {
-    const k = dayKey(o.created_at);
-    if (!k) continue;
-    byDay.set(k, (byDay.get(k) || 0) + Number(o.total || 0));
-  }
-  const incomeByDay = Array.from(byDay.entries())
-    .sort((a, b) => (a[0] > b[0] ? 1 : -1))
-    .map(([date, ingresos]) => ({ date, ingresos }));
-
-  // 7) Tendencia por mes (respeta cliente, ignora month)
-  let deliveredAllQuery = supabase
-    .from("orders")
-    .select("total, created_at, client_user_id")
-    .eq("status", "entregado")
-    .order("created_at", { ascending: true });
-
-  if (selectedUserId) deliveredAllQuery = deliveredAllQuery.eq("client_user_id", selectedUserId);
-
-  // Para no traer toda la historia: últimos 24 meses
-  const from24 = new Date();
-  from24.setUTCMonth(from24.getUTCMonth() - 24);
-  deliveredAllQuery = deliveredAllQuery.gte("created_at", from24.toISOString());
-
-  const { data: deliveredAll, error: daErr } = await deliveredAllQuery.limit(20000);
-  if (daErr) return NextResponse.json({ error: daErr.message }, { status: 500 });
-
-  const byMonth = new Map();
-  for (const o of deliveredAll ?? []) {
-    const k = ymKey(o.created_at);
-    if (!k) continue;
-    byMonth.set(k, (byMonth.get(k) || 0) + Number(o.total || 0));
-  }
-  const incomeByMonth = Array.from(byMonth.entries())
-    .sort((a, b) => (a[0] > b[0] ? 1 : -1))
-    .map(([m, ingresos]) => ({ month: m, ingresos }));
-
-  // 8) Participación por cliente (según month o global)
-  //    Aquí sí conviene hacerlo con entregados, no con todas.
-  let shareQuery = supabase
-    .from("orders")
-    .select("client_user_id, total, created_at")
-    .eq("status", "entregado")
-    .order("created_at", { ascending: false });
-
-  if (month !== "ALL") {
-    const [startISO, endISO] = monthRange(month);
-    shareQuery = shareQuery.gte("created_at", startISO).lt("created_at", endISO);
-  } else {
-    // global => últimos 12 meses para no traer infinito
-    const from12 = new Date();
-    from12.setUTCMonth(from12.getUTCMonth() - 12);
-    shareQuery = shareQuery.gte("created_at", from12.toISOString());
-  }
-
-  const { data: shareOrders, error: sErr } = await shareQuery.limit(20000);
-  if (sErr) return NextResponse.json({ error: sErr.message }, { status: 500 });
-
-  const totalsByClient = new Map(); // clients.id -> total
-  for (const o of shareOrders ?? []) {
-    const c = clientByUserId.get(String(o.client_user_id));
-    if (!c) continue;
-    const cid = String(c.id);
-    totalsByClient.set(cid, (totalsByClient.get(cid) || 0) + Number(o.total || 0));
-  }
-
-  const grand = Array.from(totalsByClient.values()).reduce((a, b) => a + b, 0) || 0;
-
-  const shareRows = Array.from(totalsByClient.entries())
-    .map(([cid, total]) => {
-      const c = clientById.get(String(cid));
-      const name = c?.business_name || c?.owner_name || "Cliente";
-      const pct = grand > 0 ? (total / grand) * 100 : 0;
-      return { id: cid, name, total, pct };
-    })
-    .sort((a, b) => b.total - a.total);
-
-  // 9) Listas: Pendientes + Actualizaciones (de lote reciente)
-  const decorate = (o) => {
-    const c = clientByUserId.get(String(o.client_user_id));
-    return {
-      id: o.id,
-      status: o.status,
-      total: Number(o.total || 0),
-      created_at: o.created_at,
-      clientName: c?.business_name || c?.owner_name || "—",
-    };
-  };
-
-  const recentActive = safeRecent
-    .filter((o) => STATUS_ACTIVE.has(norm(o.status)))
-    .slice(0, 6)
-    .map(decorate);
-
-  const recentUpdates = safeRecent.slice(0, 6).map(decorate);
-
-  // 10) response
-  return NextResponse.json(
-    {
-      role: prof.role,
-      kpis,
-      months,
-      clientOptions,
-      incomeTotal,
-      incomeByDay,
-      incomeByMonth,
-      shareRows,
-      recentActive,
-      recentUpdates,
-    },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
+    if (guard.error) {
+      return NextResponse.json(
+        { error: guard.error },
+        { status: guard.status }
+      );
     }
-  );
+
+    const { searchParams } = new URL(req.url);
+
+    const month = searchParams.get("month");
+    const clientUserId = String(
+      searchParams.get("client_user_id") || ""
+    ).trim();
+
+    const monthRange = buildMonthRange(month);
+    const monthDate = `${monthRange.month}-01`;
+
+    const now = new Date();
+    const currentMonthStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    ).toISOString();
+
+    const [
+      clientsCountRes,
+      newClientsRes,
+      clientsRes,
+      recentOrdersRes,
+      productsRes,
+      monthOrdersRes,
+      clientMonthlyRes,
+      productMonthlyRes,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("clients")
+        .select("id", { count: "exact", head: true }),
+
+      supabaseAdmin
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", currentMonthStart),
+
+      supabaseAdmin
+        .from("clients")
+        .select("user_id, business_name, owner_name")
+        .order("business_name", { ascending: true }),
+
+      supabaseAdmin
+        .from("orders")
+        .select("id, client_user_id, status, total, payment_status, created_at")
+        .order("created_at", { ascending: false })
+        .limit(6),
+
+      supabaseAdmin
+        .from("suministros_xhunco")
+        .select("id, nombre, stock, activo"),
+
+      supabaseAdmin
+        .from("orders")
+        .select("id, client_user_id, status, total, payment_status, created_at")
+        .gte("created_at", monthRange.startIso)
+        .lt("created_at", monthRange.endIso),
+
+      supabaseAdmin
+        .from("dashboard_client_monthly")
+        .select("*")
+        .eq("month", monthDate),
+
+      supabaseAdmin
+        .from("dashboard_product_monthly")
+        .select("*")
+        .eq("month", monthDate),
+    ]);
+
+    if (clientsCountRes.error) {
+      return NextResponse.json(
+        { error: clientsCountRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (newClientsRes.error) {
+      return NextResponse.json(
+        { error: newClientsRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (clientsRes.error) {
+      return NextResponse.json(
+        { error: clientsRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (recentOrdersRes.error) {
+      return NextResponse.json(
+        { error: recentOrdersRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (productsRes.error) {
+      return NextResponse.json(
+        { error: productsRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (monthOrdersRes.error) {
+      return NextResponse.json(
+        { error: monthOrdersRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (clientMonthlyRes.error) {
+      return NextResponse.json(
+        { error: clientMonthlyRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (productMonthlyRes.error) {
+      return NextResponse.json(
+        { error: productMonthlyRes.error.message },
+        { status: 500 }
+      );
+    }
+
+    const clients = clientsRes.data || [];
+    const recentOrders = recentOrdersRes.data || [];
+    const products = productsRes.data || [];
+    const monthOrders = monthOrdersRes.data || [];
+    const clientMonthly = clientMonthlyRes.data || [];
+    const productMonthly = productMonthlyRes.data || [];
+
+    const clientsMap = new Map(
+      clients.map((client) => [
+        client.user_id,
+        client.business_name || client.owner_name || "Cliente",
+      ])
+    );
+
+    const clientOptions = clients.map((client) => ({
+      user_id: client.user_id,
+      label: client.business_name || client.owner_name || "Cliente",
+    }));
+
+    const selectedClient =
+      clientUserId && clientsMap.has(clientUserId)
+        ? {
+            user_id: clientUserId,
+            label: clientsMap.get(clientUserId),
+          }
+        : null;
+
+    const filteredClientRows = clientUserId
+      ? clientMonthly.filter(
+          (row) => String(row.client_user_id || "") === clientUserId
+        )
+      : clientMonthly;
+
+    const summary = filteredClientRows.reduce(
+      (acc, row) => {
+        acc.ordersCount += toNumber(row.orders_count);
+        acc.totalSpent += toNumber(row.total_sales);
+        acc.paidSpent += toNumber(row.paid_sales);
+        acc.pendingOrders += toNumber(row.pending_orders);
+        acc.confirmedOrders += toNumber(row.confirmed_orders);
+        acc.preparingOrders += toNumber(row.preparing_orders);
+        acc.onRouteOrders += toNumber(row.on_route_orders);
+        acc.deliveredOrders += toNumber(row.delivered_orders);
+        acc.cancelledOrders += toNumber(row.cancelled_orders);
+        return acc;
+      },
+      {
+        ordersCount: 0,
+        totalSpent: 0,
+        paidSpent: 0,
+        pendingOrders: 0,
+        confirmedOrders: 0,
+        preparingOrders: 0,
+        onRouteOrders: 0,
+        deliveredOrders: 0,
+        cancelledOrders: 0,
+      }
+    );
+
+    const avgTicket =
+      summary.ordersCount > 0 ? summary.totalSpent / summary.ordersCount : 0;
+
+    const activeOrders =
+      summary.pendingOrders +
+      summary.confirmedOrders +
+      summary.preparingOrders +
+      summary.onRouteOrders;
+
+    const paidMonthRevenue = summary.paidSpent;
+    const monthRevenue = summary.totalSpent;
+
+    const filteredMonthOrders = clientUserId
+      ? monthOrders.filter(
+          (order) => String(order.client_user_id || "") === clientUserId
+        )
+      : monthOrders;
+
+    const salesByDayMap = new Map();
+
+    for (let day = 1; day <= monthRange.daysInMonth; day += 1) {
+      salesByDayMap.set(String(day), 0);
+    }
+
+    filteredMonthOrders.forEach((order) => {
+      if (String(order.status || "").toLowerCase() === "cancelado") return;
+
+      const day = new Date(order.created_at).getDate();
+
+      salesByDayMap.set(
+        String(day),
+        toNumber(salesByDayMap.get(String(day))) + toNumber(order.total)
+      );
+    });
+
+    const salesByDay = Array.from(salesByDayMap.entries()).map(
+      ([day, total]) => ({
+        day,
+        total,
+      })
+    );
+
+    const topClientsByMonth = clientMonthly
+      .map((row) => ({
+        client_user_id: row.client_user_id,
+        label: row.client_label || "Cliente",
+        total: toNumber(row.total_sales),
+        orders: toNumber(row.orders_count),
+        paid: toNumber(row.paid_sales),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+
+    const filteredProductRows = clientUserId
+      ? productMonthly.filter(
+          (row) => String(row.client_user_id || "") === clientUserId
+        )
+      : productMonthly;
+
+    const topProductsMap = new Map();
+
+    filteredProductRows.forEach((row) => {
+      const key = String(row.suministro_id || "");
+
+      if (!key) return;
+
+      const prev = topProductsMap.get(key) || {
+        suministro_id: key,
+        nombre: row.product_name || "Producto",
+        subtitle: [row.marca, row.presentacion].filter(Boolean).join(" · "),
+        qty: 0,
+        total: 0,
+        avgUnitPriceAccum: 0,
+        avgRows: 0,
+      };
+
+      prev.qty += toNumber(row.total_qty);
+      prev.total += toNumber(row.total_sales);
+      prev.avgUnitPriceAccum += toNumber(row.avg_unit_price);
+      prev.avgRows += 1;
+
+      topProductsMap.set(key, prev);
+    });
+
+    const topProductsPeriod = Array.from(topProductsMap.values())
+      .map((product) => ({
+        suministro_id: product.suministro_id,
+        nombre: product.nombre,
+        subtitle: product.subtitle,
+        qty: product.qty,
+        total: product.total,
+        avgUnitPrice:
+          product.avgRows > 0
+            ? product.avgUnitPriceAccum / product.avgRows
+            : 0,
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+
+    const activeProducts = products.filter(
+      (product) => product.activo !== false
+    );
+
+    const outOfStock = activeProducts.filter(
+      (product) => toNumber(product.stock) <= 0
+    ).length;
+
+    const lowStock = activeProducts.filter((product) => {
+      const stock = toNumber(product.stock);
+      return stock > 0 && stock <= 5;
+    }).length;
+
+    const recentOrdersShaped = recentOrders.map((order) => ({
+      ...order,
+      negocio_nombre: clientsMap.get(order.client_user_id) || "Cliente",
+    }));
+
+    const alerts = [
+      ...(outOfStock > 0
+        ? [
+            {
+              id: "out-of-stock",
+              title: `${outOfStock} productos sin stock`,
+              subtitle: "Revisa inventario y repón existencias prioritarias.",
+              level: "high",
+              href: "/portal/admin/suministros",
+            },
+          ]
+        : []),
+
+      ...(lowStock > 0
+        ? [
+            {
+              id: "low-stock",
+              title: `${lowStock} productos con stock bajo`,
+              subtitle:
+                "Conviene reabastecer antes de afectar pedidos.",
+              level: "medium",
+              href: "/portal/admin/suministros",
+            },
+          ]
+        : []),
+
+      ...(summary.ordersCount > 0 && summary.paidSpent < summary.totalSpent
+        ? [
+            {
+              id: "pending-payments",
+              title: "Hay pedidos pendientes de pago",
+              subtitle: "Da seguimiento a cobranza y conciliación.",
+              level: "medium",
+              href: "/portal/admin/pedidos",
+            },
+          ]
+        : []),
+    ];
+
+    return NextResponse.json({
+      ok: true,
+      user: guard.user,
+
+      kpis: {
+        activeClients: clientsCountRes.count || 0,
+        newClientsThisMonth: newClientsRes.count || 0,
+        activeOrders,
+        deliveredOrders: summary.deliveredOrders,
+        cancelledOrders: summary.cancelledOrders,
+        monthRevenue,
+        paidMonthRevenue,
+        pendingPaymentOrders: Math.max(
+          summary.ordersCount - summary.deliveredOrders,
+          0
+        ),
+        totalProducts: activeProducts.length,
+        outOfStock,
+        lowStock,
+      },
+
+      filters: {
+        month: monthRange.month,
+        client_user_id: clientUserId,
+        clients: clientOptions,
+      },
+
+      selectedClient,
+
+      selectedMonthSummary: {
+        month: monthRange.month,
+        ordersCount: summary.ordersCount,
+        totalSpent: summary.totalSpent,
+        paidSpent: summary.paidSpent,
+        avgTicket,
+      },
+
+      salesByDay,
+      topClientsByMonth,
+      topProductsPeriod,
+      recentOrders: recentOrdersShaped,
+      recentActivity: [],
+      alerts,
+    });
+  } catch (error) {
+    console.error("Error cargando dashboard admin:", error);
+
+    return NextResponse.json(
+      { error: "Error cargando dashboard" },
+      { status: 500 }
+    );
+  }
 }

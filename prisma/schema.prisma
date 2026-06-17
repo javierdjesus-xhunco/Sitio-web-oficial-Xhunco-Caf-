@@ -44,5 +44,10 @@ model SuministroXhunco {
   stock           BigInt?  @db.BigInt
   activo          Boolean? @db.Boolean
 
+  descripcion_web String?  @db.Text
+  uso_sugerido    String?  @db.Text
+  tip_preparacion String?  @db.Text
+  ideal_para      String[] @db.Text
+
   @@map("suministros_xhunco")
 }
