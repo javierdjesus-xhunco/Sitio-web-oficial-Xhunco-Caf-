@@ -28,6 +28,24 @@ function makeCursor(row) {
   return encodeURIComponent(`${row.created_at}::${row.id}`);
 }
 
+function getMonthRange(month) {
+  const m = safeStr(month);
+
+  if (!/^\d{4}-\d{2}$/.test(m)) {
+    return null;
+  }
+
+  const [year, monthNumber] = m.split("-").map(Number);
+
+  const start = new Date(Date.UTC(year, monthNumber - 1, 1, 0, 0, 0));
+  const end = new Date(Date.UTC(year, monthNumber, 1, 0, 0, 0));
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString(),
+  };
+}
+
 function buildOwnerName(c) {
   const built = [
     c?.owner_first_name,
@@ -116,6 +134,10 @@ export async function GET(req) {
 
     const status = safeStr(searchParams.get("status") || "all");
     const client_user_id = safeStr(searchParams.get("client_user_id") || "");
+    const month = safeStr(searchParams.get("month") || "");
+
+    const monthRange = getMonthRange(month);
+
     const cursorRaw = searchParams.get("cursor") || "";
     const cursor = parseCursor(cursorRaw);
 
@@ -140,8 +162,6 @@ export async function GET(req) {
           "payment_status",
           "paid_at",
           "paid_by",
-
-          // Esto ayuda si el pedido guardó snapshot de dirección
           "delivery_address_snapshot",
         ].join(",")
       )
@@ -154,6 +174,12 @@ export async function GET(req) {
 
     if (client_user_id) {
       ordersQuery = ordersQuery.eq("client_user_id", client_user_id);
+    }
+
+    if (monthRange) {
+      ordersQuery = ordersQuery
+        .gte("created_at", monthRange.start)
+        .lt("created_at", monthRange.end);
     }
 
     // Keyset pagination

@@ -29,6 +29,7 @@ export default async function ClienteDashboardPage() {
     last_order: null,
     pendientes_pedido: { count: 0, total: 0 },
     pendientes_pago: { count: 0, total: 0 },
+    cancelados: { count: 0, total: 0 },
     pendientes: { count: 0, total: 0 },
     products: { top: [], bottom: [] },
   };
@@ -51,10 +52,13 @@ export default async function ClienteDashboardPage() {
         last_order: data?.last_order || null,
         pendientes_pedido: data?.pendientes_pedido || { count: 0, total: 0 },
         pendientes_pago: data?.pendientes_pago || { count: 0, total: 0 },
+        cancelados: data?.cancelados || { count: 0, total: 0 },
         pendientes: data?.pendientes || { count: 0, total: 0 },
         products: {
           top: Array.isArray(data?.products?.top) ? data.products.top : [],
-          bottom: Array.isArray(data?.products?.bottom) ? data.products.bottom : [],
+          bottom: Array.isArray(data?.products?.bottom)
+            ? data.products.bottom
+            : [],
         },
       };
     }

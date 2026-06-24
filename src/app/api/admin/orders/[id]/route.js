@@ -20,7 +20,7 @@ const ALLOWED = new Set([
   "cancelado",
 ]);
 
-const ALLOWED_PAYMENT = new Set(["pending", "paid"]);
+const ALLOWED_PAYMENT = new Set(["pending", "paid", "canceled"]);
 
 function getIdFromUrl(req) {
   try {
@@ -42,9 +42,28 @@ function normalizeStatus(input) {
 
 function normalizePaymentStatus(input) {
   const s = String(input || "").trim().toLowerCase();
+
   if (!s) return "";
+
   if (s === "pagado") return "paid";
-  if (s === "pendiente" || s === "pendiente_de_pago") return "pending";
+
+  if (
+    s === "pendiente" ||
+    s === "pendiente_de_pago" ||
+    s === "pendiente de pago"
+  ) {
+    return "pending";
+  }
+
+  if (
+    s === "cancelado" ||
+    s === "cancelada" ||
+    s === "canceled" ||
+    s === "cancelled"
+  ) {
+    return "canceled";
+  }
+
   return s;
 }
 
@@ -95,10 +114,23 @@ export async function PATCH(req, ctx) {
   const body = await req.json().catch(() => ({}));
 
   const wantsStatus = Object.prototype.hasOwnProperty.call(body || {}, "status");
-  const wantsPayment = Object.prototype.hasOwnProperty.call(body || {}, "payment_status");
 
   const nextStatus = wantsStatus ? normalizeStatus(body?.status) : "";
-  const nextPaymentStatus = wantsPayment ? normalizePaymentStatus(body?.payment_status) : "";
+
+  const wantsPayment =
+  Object.prototype.hasOwnProperty.call(body || {}, "payment_status") ||
+  nextStatus === "cancelado";
+
+  let nextPaymentStatus = Object.prototype.hasOwnProperty.call(
+  body || {},
+  "payment_status"
+  )
+  ? normalizePaymentStatus(body?.payment_status)
+  : "";
+
+  if (nextStatus === "cancelado") {
+  nextPaymentStatus = "canceled";
+  }
 
   if (!wantsStatus && !wantsPayment) {
     return NextResponse.json({ error: "Nada que actualizar" }, { status: 400 });
@@ -149,15 +181,17 @@ export async function PATCH(req, ctx) {
   }
 
   if (paymentChanged) {
-    patch.payment_status = nextPaymentStatus;
+  patch.payment_status = nextPaymentStatus;
 
-    if (nextPaymentStatus === "paid") {
-      patch.paid_at = new Date().toISOString();
-      patch.paid_by = auth.user.id;
-    } else if (nextPaymentStatus === "pending") {
-      patch.paid_at = null;
-      patch.paid_by = null;
-    }
+  if (nextPaymentStatus === "paid") {
+    patch.paid_at = new Date().toISOString();
+    patch.paid_by = auth.user.id;
+  }
+
+  if (nextPaymentStatus === "pending" || nextPaymentStatus === "canceled") {
+    patch.paid_at = null;
+    patch.paid_by = null;
+  }
   }
 
   const { error: updErr } = await supabaseAdmin.from("orders").update(patch).eq("id", id);

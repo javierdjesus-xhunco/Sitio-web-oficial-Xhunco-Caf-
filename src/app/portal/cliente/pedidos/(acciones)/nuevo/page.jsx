@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Star } from "lucide-react";
 
 function formatMoney(n) {
   const v = Number(n || 0);
@@ -37,6 +38,8 @@ function isCafe1Kg(it) {
 const LS_DRAFT = "xhunco_cart_draft";
 const LS_DRAFT_NO = "xhunco_cart_draft_no";
 const LS_RESUMEN = "xhunco_nuevo_pedido";
+const LS_FAVORITES = "xhunco_suministros_favoritos";
+
 
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
@@ -65,6 +68,10 @@ export default function NuevoPedidoPage() {
   const [category, setCategory] = useState("ALL");
   const [q, setQ] = useState("");
   const [orderBy, setOrderBy] = useState("nombre"); // nombre | precio | stock
+
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState([]);
+
 
   const [draftNo, setDraftNo] = useState(null);
 
@@ -145,6 +152,27 @@ export default function NuevoPedidoPage() {
 
     setHydrated(true);
   }, []);
+
+// ✅ Restaurar favoritos
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  const saved = localStorage.getItem(LS_FAVORITES);
+  if (!saved) return;
+
+  const data = safeParse(saved, []);
+  if (Array.isArray(data)) {
+    setFavoriteIds(data);
+  }
+}, []);
+
+// ✅ Persistir favoritos
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  localStorage.setItem(LS_FAVORITES, JSON.stringify(favoriteIds));
+}, [favoriteIds]);
+
 
   // 3) Persistir carrito
   useEffect(() => {
@@ -355,14 +383,47 @@ export default function NuevoPedidoPage() {
     }
   };
 
+
+const favoriteIdSet = useMemo(() => {
+  return new Set(favoriteIds);
+}, [favoriteIds]);
+
+const isFavorite = (id) => {
+  return favoriteIdSet.has(id);
+};
+
+const toggleFavorite = (p) => {
+  if (!p?.id) return;
+
+  setFavoriteIds((prev) => {
+    const exists = prev.includes(p.id);
+
+    if (exists) {
+      return prev.filter((id) => id !== p.id);
+    }
+
+    return [...prev, p.id];
+  });
+
+  // ✅ Al marcar estrella, manda visualmente a sección Favoritos
+  if (!isFavorite(p.id)) {
+    setShowFavorites(true);
+  }
+};
+
+
   // filtro combinado
   const filteredItems = useMemo(() => {
-    const query = norm(q);
+  const query = norm(q);
 
-    const filtered = items.filter((it) => {
-      if (category !== "ALL" && String(it.categoria || "").trim() !== category) {
-        return false;
-      }
+  const filtered = items.filter((it) => {
+    if (showFavorites && !favoriteIdSet.has(it.id)) {
+      return false;
+    }
+
+    if (!showFavorites && category !== "ALL" && String(it.categoria || "").trim() !== category) {
+      return false;
+    }
       if (!query) return true;
 
       const haystack = [
@@ -396,7 +457,7 @@ export default function NuevoPedidoPage() {
     });
 
     return filtered;
-  }, [items, category, q, orderBy]);
+ }, [items, category, q, orderBy, showFavorites, favoriteIdSet]);
 
   const goToResumen = () => {
     setError("");
@@ -478,10 +539,43 @@ export default function NuevoPedidoPage() {
     {/* Filtros desktop */}
     <div className="hidden sm:flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-2">
+        <button
+  type="button"
+  onClick={() => {
+    setShowFavorites(false);
+    setCategory("ALL");
+  }}
+  className="rounded-xl border bg-white px-3 py-2 text-xs font-semibold transition"
+  style={{
+    borderColor: !showFavorites ? BRAND_GREEN : "rgba(0,0,0,0.12)",
+    color: !showFavorites ? BRAND_GREEN : "#374151",
+  }}
+>
+  Todos
+</button>
+
+<button
+  type="button"
+  onClick={() => {
+    setShowFavorites(true);
+  }}
+  className="rounded-xl border bg-white px-3 py-2 text-xs font-semibold transition"
+  style={{
+    borderColor: showFavorites ? BRAND_GREEN : "rgba(0,0,0,0.12)",
+    color: showFavorites ? BRAND_GREEN : "#374151",
+  }}
+>
+  Favoritos {favoriteIds.length ? `(${favoriteIds.length})` : ""}
+</button>
+
         <div className="text-xs text-gray-600">Categoría</div>
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => {
+          setCategory(e.target.value);
+          setShowFavorites(false);
+          }}
+          
           className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 outline-none"
           style={{ borderColor: "rgba(0,0,0,0.12)" }}
         >
@@ -518,15 +612,33 @@ export default function NuevoPedidoPage() {
         [&::-webkit-scrollbar]:hidden
       "
     >
+       <button
+  type="button"
+  onClick={() => setShowFavorites(true)}
+  className={[
+    "relative shrink-0 whitespace-nowrap pb-3 pt-1 text-[14px] font-semibold transition",
+    showFavorites ? "text-[#31572c]" : "text-gray-950",
+  ].join(" ")}
+>
+  Favoritos {favoriteIds.length ? `(${favoriteIds.length})` : ""}
+
+  {showFavorites ? (
+    <span className="absolute bottom-0 left-0 h-[3px] w-full rounded-full bg-[#31572c]" />
+  ) : null}
+</button> 
+
       {categories.map((c) => {
-        const active = category === c;
+       const active = !showFavorites && category === c;
         const label = c === "ALL" ? "General" : c;
 
         return (
           <button
             key={c}
             type="button"
-            onClick={() => setCategory(c)}
+            onClick={() => {
+            setCategory(c);
+            setShowFavorites(false);
+            }}
             className={[
               "relative shrink-0 whitespace-nowrap pb-3 pt-1 text-[14px] font-semibold transition",
               active ? "text-[#31572c]" : "text-gray-950",
@@ -577,10 +689,17 @@ export default function NuevoPedidoPage() {
   </div>
 
   <div className="text-xs text-gray-500">
-    Mostrando: <span className="text-gray-900">{filteredItems.length}</span>{" "}
-    productos
-  </div>
+  {showFavorites ? "Favoritos" : "Mostrando"}:{" "}
+  <span className="text-gray-900">{filteredItems.length}</span>{" "}
+  productos
 </div>
+</div>
+
+{showFavorites && filteredItems.length === 0 ? (
+  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    Aún no tienes suministros favoritos. Marca la estrella de tus productos frecuentes para encontrarlos más rápido.
+  </div>
+) : null}
 
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
   {filteredItems.map((p) => {
@@ -590,14 +709,29 @@ export default function NuevoPedidoPage() {
     const atMax = inCart >= stock && stock > 0;
 
     return (
-      <div
-        key={p.id}
-        className="
-          flex flex-col overflow-hidden rounded-[22px] border border-gray-200 bg-white
-          p-2.5 shadow-[0_1px_8px_rgba(0,0,0,0.04)]
-          sm:rounded-2xl sm:bg-gray-50 sm:p-4 sm:shadow-none
-        "
+     <div
+     key={p.id}
+     className="
+     relative flex flex-col overflow-hidden rounded-[22px] border border-gray-200 bg-white
+     p-2.5 shadow-[0_1px_8px_rgba(0,0,0,0.04)]
+      sm:rounded-2xl sm:bg-gray-50 sm:p-4 sm:shadow-none
+  "
+>
+      <button
+      type="button"
+       onClick={() => toggleFavorite(p)}
+      className="absolute right-2 top-2 z-10 p-1 transition active:scale-95"
+      title={isFavorite(p.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
+      aria-label={isFavorite(p.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
       >
+      <Star
+      size={22}
+      className="drop-shadow-sm"
+      color={isFavorite(p.id) ? "#f59e0b" : "#9ca3af"}
+      fill={isFavorite(p.id) ? "#f59e0b" : "none"}
+      strokeWidth={2.4}
+      />
+     </button>
         <button
           type="button"
           onClick={() => openImage(p.imagen, p.nombre)}

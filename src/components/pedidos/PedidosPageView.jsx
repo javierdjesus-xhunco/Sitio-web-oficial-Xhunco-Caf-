@@ -40,8 +40,13 @@ function paymentLabel(v) {
 
 function paymentStatusLabel(v) {
   const s = String(v || "").toLowerCase().trim();
+
   if (s === "paid") return "Pagado";
   if (s === "pending") return "Pendiente de pago";
+  if (s === "canceled" || s === "cancelled" || s === "cancelado") {
+    return "Cancelado";
+  }
+
   if (!s) return "—";
   return s;
 }
@@ -136,6 +141,10 @@ function paymentBadgeClass(v) {
     return `${base} border-blue-200 bg-blue-50 text-blue-700`;
   }
 
+  if (s === "canceled" || s === "cancelled" || s === "cancelado") {
+    return `${base} border-red-200 bg-red-50 text-red-700`;
+  }
+
   return `${base} border-red-200 bg-red-50 text-red-700`;
 }
 
@@ -149,7 +158,19 @@ function paymentSelectClass(v) {
     return `${base} border-blue-200 bg-blue-50 text-blue-700`;
   }
 
+  if (s === "canceled" || s === "cancelled" || s === "cancelado") {
+    return `${base} border-red-200 bg-red-50 text-red-700`;
+  }
+
   return `${base} border-red-200 bg-red-50 text-red-700`;
+}
+
+function effectivePaymentStatus(order) {
+  if (normalizeStatusValue(order?.status) === "cancelado") {
+    return "canceled";
+  }
+
+  return String(order?.payment_status || "pending").toLowerCase();
 }
 
 
@@ -242,6 +263,7 @@ export default function PedidosPageView({ role = "admin" }) {
 
   const [status, setStatus] = useState("all");
   const [clientUserId, setClientUserId] = useState("");
+  const [month, setMonth] = useState("");
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -272,70 +294,74 @@ export default function PedidosPageView({ role = "admin" }) {
   }
 
   async function loadTotal(next = {}) {
-    const st = next.status ?? status;
-    const cu = next.clientUserId ?? clientUserId;
+  const st = next.status ?? status;
+  const cu = next.clientUserId ?? clientUserId;
+  const mo = next.month ?? month;
 
-    const sp = new URLSearchParams();
-    sp.set("status", st);
+  const sp = new URLSearchParams();
+  sp.set("status", st);
 
-    if (cu) sp.set("client_user_id", cu);
+  if (cu) sp.set("client_user_id", cu);
+  if (mo) sp.set("month", mo);
 
-    const r = await fetch(`/api/admin/orders/count?${sp.toString()}`, {
-      cache: "no-store",
-    });
+  const r = await fetch(`/api/admin/orders/count?${sp.toString()}`, {
+    cache: "no-store",
+  });
 
-    const j = await r.json().catch(() => ({}));
+  const j = await r.json().catch(() => ({}));
 
-    if (!r.ok) throw new Error(j?.error || "Error contando pedidos");
+  if (!r.ok) throw new Error(j?.error || "Error contando pedidos");
 
-    setTotal(Number(j?.total || 0));
-  }
+  setTotal(Number(j?.total || 0));
+}
 
   async function loadOrders(next = {}) {
-    const st = next.status ?? status;
-    const cu = next.clientUserId ?? clientUserId;
+  const st = next.status ?? status;
+  const cu = next.clientUserId ?? clientUserId;
+  const mo = next.month ?? month;
 
-    const cursorToUse = Object.prototype.hasOwnProperty.call(next, "cursor")
-      ? next.cursor
-      : currentCursor;
+  const cursorToUse = Object.prototype.hasOwnProperty.call(next, "cursor")
+    ? next.cursor
+    : currentCursor;
 
-    const sp = new URLSearchParams();
-    sp.set("pageSize", String(pageSize));
-    sp.set("status", st);
+  const sp = new URLSearchParams();
+  sp.set("pageSize", String(pageSize));
+  sp.set("status", st);
 
-    if (cu) sp.set("client_user_id", cu);
-    if (cursorToUse) sp.set("cursor", cursorToUse);
+  if (cu) sp.set("client_user_id", cu);
+  if (mo) sp.set("month", mo);
+  if (cursorToUse) sp.set("cursor", cursorToUse);
 
-    const r = await fetch(`/api/admin/orders?${sp.toString()}`, {
-      cache: "no-store",
-    });
+  const r = await fetch(`/api/admin/orders?${sp.toString()}`, {
+    cache: "no-store",
+  });
 
-    const j = await r.json().catch(() => ({}));
+  const j = await r.json().catch(() => ({}));
 
-    if (!r.ok) throw new Error(j?.error || "Error cargando pedidos");
+  if (!r.ok) throw new Error(j?.error || "Error cargando pedidos");
 
-    setRows(j?.data || []);
-    setHasNext(Boolean(j?.hasNext));
-    setNextCursor(j?.nextCursor || null);
-    setCurrentCursor(cursorToUse ?? null);
-  }
+  setRows(j?.data || []);
+  setHasNext(Boolean(j?.hasNext));
+  setNextCursor(j?.nextCursor || null);
+  setCurrentCursor(cursorToUse ?? null);
+}
 
   const refreshCurrentPage = useCallback(async () => {
-    if (refreshingRealtimeRef.current) return;
+  if (refreshingRealtimeRef.current) return;
 
-    refreshingRealtimeRef.current = true;
+  refreshingRealtimeRef.current = true;
 
-    try {
-      await Promise.all([
-        loadTotal({ status, clientUserId }),
-        loadOrders({ status, clientUserId, cursor: currentCursor }),
-      ]);
-    } catch (e) {
-      console.error("Error refrescando pedidos en tiempo real:", e);
-    } finally {
-      refreshingRealtimeRef.current = false;
-    }
-  }, [status, clientUserId, currentCursor]);
+  try {
+    await Promise.all([
+      loadTotal({ status, clientUserId, month }),
+      loadOrders({ status, clientUserId, month, cursor: currentCursor }),
+    ]);
+  } catch (e) {
+    console.error("Error refrescando pedidos en tiempo real:", e);
+  } finally {
+    refreshingRealtimeRef.current = false;
+  }
+}, [status, clientUserId, month, currentCursor]);
 
   const scheduleRealtimeRefresh = useCallback(() => {
     if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
@@ -367,9 +393,9 @@ export default function PedidosPageView({ role = "admin" }) {
 
     try {
       await Promise.all([
-        loadClients(),
-        resetAndLoad({ status: "all", clientUserId: "" }),
-      ]);
+  loadClients(),
+  resetAndLoad({ status: "all", clientUserId: "", month: "" }),
+]);
     } catch (e) {
       alert(String(e?.message || e));
     } finally {
@@ -449,31 +475,52 @@ const clientByUserId = useMemo(() => {
 }, [clients]);
 
 
-  async function updateStatus(orderId, nextStatus) {
-    setSavingId(orderId);
+ async function updateStatus(orderId, nextStatus) {
+  setSavingId(orderId);
 
-    try {
-      const r = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      });
+  try {
+    const nextPaymentStatus = nextStatus === "cancelado" ? "canceled" : null;
 
-      const j = await r.json().catch(() => ({}));
+    const body = nextPaymentStatus
+      ? {
+          status: nextStatus,
+          payment_status: nextPaymentStatus,
+        }
+      : {
+          status: nextStatus,
+        };
 
-      if (!r.ok) throw new Error(j?.error || "No se pudo actualizar el status");
+    const r = await fetch(`/api/admin/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
-      setRows((prev) =>
-        prev.map((x) => (x.id === orderId ? { ...x, status: nextStatus } : x))
-      );
+    const j = await r.json().catch(() => ({}));
 
-      await loadTotal({ status, clientUserId });
-    } catch (e) {
-      alert(String(e?.message || e));
-    } finally {
-      setSavingId(null);
-    }
+    if (!r.ok) throw new Error(j?.error || "No se pudo actualizar el status");
+
+    setRows((prev) =>
+      prev.map((x) =>
+        x.id === orderId
+          ? {
+              ...x,
+              status: nextStatus,
+              ...(nextPaymentStatus
+                ? { payment_status: nextPaymentStatus }
+                : {}),
+            }
+          : x
+      )
+    );
+
+    await loadTotal({ status, clientUserId, month });
+  } catch (e) {
+    alert(String(e?.message || e));
+  } finally {
+    setSavingId(null);
   }
+}
 
   async function updatePaymentStatus(orderId, nextPaymentStatus) {
     setSavingId(orderId);
@@ -972,7 +1019,7 @@ async function downloadOrderPDF(order) {
         </div>
 
         <button
-          onClick={() => resetAndLoad({ status, clientUserId })}
+        onClick={() => resetAndLoad({ status, clientUserId, month })}
           disabled={loading}
           className="rounded-xl px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
           style={{ background: BRAND_GREEN }}
@@ -982,7 +1029,7 @@ async function downloadOrderPDF(order) {
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
             <div className="mb-1 text-xs font-semibold text-gray-700">
               Status
@@ -990,11 +1037,11 @@ async function downloadOrderPDF(order) {
 
             <select
               value={status}
-              onChange={async (e) => {
-                const v = e.target.value;
-                setStatus(v);
-                await resetAndLoad({ status: v, clientUserId });
-              }}
+             onChange={async (e) => {
+  const v = e.target.value;
+  setStatus(v);
+  await resetAndLoad({ status: v, clientUserId, month });
+}}
               className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
             >
               {STATUS.map((s) => (
@@ -1005,31 +1052,48 @@ async function downloadOrderPDF(order) {
             </select>
           </div>
 
-          <div>
-            <div className="mb-1 text-xs font-semibold text-gray-700">
-              Negocio
-            </div>
+         <div>
+  <div className="mb-1 text-xs font-semibold text-gray-700">
+    Negocio
+  </div>
 
-            <select
-              value={clientUserId}
-              onChange={async (e) => {
-                const v = e.target.value;
-                setClientUserId(v);
-                await resetAndLoad({ status, clientUserId: v });
-              }}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
-            >
-              <option value="">Todos los negocios</option>
+  <select
+    value={clientUserId}
+    onChange={async (e) => {
+      const v = e.target.value;
+      setClientUserId(v);
+      await resetAndLoad({ status, clientUserId: v, month });
+    }}
+    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
+  >
+    <option value="">Todos los negocios</option>
 
-              {(clients || [])
-                .filter((c) => c?.user_id)
-                .map((c) => (
-                  <option key={c.user_id} value={c.user_id}>
-                    {c.label}
-                  </option>
-                ))}
-            </select>
-          </div>
+    {(clients || [])
+      .filter((c) => c?.user_id)
+      .map((c) => (
+        <option key={c.user_id} value={c.user_id}>
+          {c.label}
+        </option>
+      ))}
+  </select>
+</div>
+
+<div>
+  <div className="mb-1 text-xs font-semibold text-gray-700">
+    Mes
+  </div>
+
+  <input
+    type="month"
+    value={month}
+    onChange={async (e) => {
+      const v = e.target.value;
+      setMonth(v);
+      await resetAndLoad({ status, clientUserId, month: v });
+    }}
+    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold outline-none"
+  />
+</div>
 
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
             <div className="text-xs text-gray-600">
@@ -1068,7 +1132,7 @@ async function downloadOrderPDF(order) {
               return (
   <div
     key={o.id}
-  className="rounded-2xl border border-[#b9d4ad] bg-[#e9f4e3] p-4 shadow-sm"
+className="rounded-2xl border-2 border-[#31572c] bg-white p-4 shadow-sm"
   >
     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
       <div className="min-w-0 w-full">
@@ -1112,9 +1176,9 @@ async function downloadOrderPDF(order) {
 
             <div className="text-xs text-gray-700">
               Pago:{" "}
-              <span className={paymentBadgeClass(o.payment_status)}>
-                {paymentStatusLabel(o.payment_status)}
-              </span>
+             <span className={paymentBadgeClass(effectivePaymentStatus(o))}>
+             {paymentStatusLabel(effectivePaymentStatus(o))}
+             </span>
 
               {o?.paid_at ? (
                 <span className="ml-1 text-gray-500">
@@ -1230,7 +1294,7 @@ className="rounded-lg bg-[#f0f7ec] px-3 py-1.5 text-xs font-semibold text-[#3157
         <button
           type="button"
           onClick={() => downloadOrderPDF(o)}
-          disabled={busy}
+        disabled={busy || normalizeStatusValue(o.status) === "cancelado"}
           className="w-full rounded-xl border border-[#31572c]/20 bg-[#f8f6f0] px-4 py-2.5 text-sm font-semibold text-[#31572c] shadow-sm transition hover:bg-[#f1eadf] disabled:opacity-60"
         >
           Descargar PDF
@@ -1261,15 +1325,16 @@ className="rounded-lg bg-[#f0f7ec] px-3 py-1.5 text-xs font-semibold text-[#3157
             Pago
           </div>
 
-          <select
-            value={String(o.payment_status || "pending").toLowerCase()}
-            disabled={busy}
-            onChange={(e) => updatePaymentStatus(o.id, e.target.value)}
-            className={paymentSelectClass(o.payment_status)}
-          >
-            <option value="pending">Pendiente de pago</option>
-            <option value="paid">Pagado</option>
-          </select>
+         <select
+         value={effectivePaymentStatus(o)}
+         disabled={busy || normalizeStatusValue(o.status) === "cancelado"}
+         onChange={(e) => updatePaymentStatus(o.id, e.target.value)}
+         className={paymentSelectClass(effectivePaymentStatus(o))}
+         >
+         <option value="pending">Pendiente de pago</option>
+         <option value="paid">Pagado</option>
+         <option value="canceled">Cancelado</option>
+         </select>
         </div>
 
         {busy ? (

@@ -1,31 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
 import { useRouter } from "next/navigation";
+
 import Link from "next/link";
+
 import Image from "next/image";
+
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+
 import LoadingOverlay from "@/components/LoadingOverlay";
+
+const LOGIN_BACKGROUNDS = [
+  "/fondoportal1.avif",
+  "/fondoportal2.avif",
+  "/fondoportal3.avif",
+];
 
 export default function PortalLogin() {
   const router = useRouter();
+
   const [errorMessage, setErrorMessage] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
+
+  const [backgroundImage, setBackgroundImage] = useState(LOGIN_BACKGROUNDS[0]);
+
+  useEffect(() => {
+    const storageKey = "xhunco_login_background_index";
+
+    const lastIndex = Number(localStorage.getItem(storageKey) || "-1");
+
+    const nextIndex = (lastIndex + 1) % LOGIN_BACKGROUNDS.length;
+
+    localStorage.setItem(storageKey, String(nextIndex));
+
+    setBackgroundImage(LOGIN_BACKGROUNDS[nextIndex]);
+  }, []);
 
   async function handleLogin(e) {
     e.preventDefault();
 
     const formData = new FormData(e.currentTarget);
+
     const email = String(formData.get("email") || "").trim().toLowerCase();
+
     const password = String(formData.get("password") || "");
 
     setErrorMessage("");
+
     setIsLoading(true);
 
     const res = await fetch("/api/auth/login", {
       method: "POST",
+
       headers: { "Content-Type": "application/json" },
+
       body: JSON.stringify({ email, password }),
     });
 
@@ -33,31 +66,39 @@ export default function PortalLogin() {
 
     if (!res.ok) {
       setErrorMessage("Usuario o contraseña incorrectos.");
+
       setIsLoading(false);
+
       return;
     }
 
     const roleRes = await fetch("/api/auth/role", { method: "GET" });
+
     const roleData = await roleRes.json().catch(() => ({}));
 
     if (!roleRes.ok) {
       setErrorMessage("No se pudo determinar el rol del usuario.");
+
       setIsLoading(false);
+
       return;
     }
 
     if (roleData.role === "super_admin") {
       router.push("/portal/super-admin/dashboard");
+
       return;
     }
 
     if (roleData.role === "admin") {
       router.push("/portal/admin/dashboard");
+
       return;
     }
 
     if (roleData.role === "cliente") {
       router.push("/portal/cliente/dashboard");
+
       return;
     }
 
@@ -71,8 +112,8 @@ export default function PortalLogin() {
       <main className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
         {/* IMAGEN DE FONDO */}
         <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/fondoportal.jpeg')" }}
+          className="absolute inset-0 bg-cover bg-center transition-all duration-700"
+          style={{ backgroundImage: `url('${backgroundImage}')` }}
         />
 
         {/* OVERLAY */}

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -14,6 +15,10 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
+
+const NotificationsBell = dynamic(() => import("@/components/NotificationsBell"), {
+  ssr: false,
+});
 
 const BRAND_GREEN = "#31572c";
 const BRAND_GREEN_DARK = "#25441f";
@@ -43,11 +48,31 @@ export default function ClienteLayoutClient({ children, initialClient }) {
 
   const links = useMemo(
     () => [
-      { href: "/portal/cliente/dashboard", label: "Inicio", icon: Home },
-      { href: "/portal/cliente/perfil", label: "Mi Perfil", icon: User },
-      { href: "/portal/cliente/pedidos/nuevo", label: "Crear Pedido", icon: PlusCircle },
-      { href: "/portal/cliente/pedidos", label: "Mis Pedidos", icon: Package },
-      { href: "/portal/cliente/suministros/solicitudes", label: "Mis Solicitudes", icon: ClipboardList },
+      {
+        href: "/portal/cliente/dashboard",
+        label: "Inicio",
+        icon: Home,
+      },
+      {
+        href: "/portal/cliente/perfil",
+        label: "Mi Perfil",
+        icon: User,
+      },
+      {
+        href: "/portal/cliente/pedidos/nuevo",
+        label: "Crear Pedido",
+        icon: PlusCircle,
+      },
+      {
+        href: "/portal/cliente/pedidos",
+        label: "Mis Pedidos",
+        icon: Package,
+      },
+      {
+        href: "/portal/cliente/suministros/solicitudes",
+        label: "Mis Solicitudes",
+        icon: ClipboardList,
+      },
     ],
     []
   );
@@ -74,7 +99,9 @@ export default function ClienteLayoutClient({ children, initialClient }) {
 
   const logout = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
     } finally {
       router.replace("/portal");
       router.refresh();
@@ -112,6 +139,7 @@ export default function ClienteLayoutClient({ children, initialClient }) {
               >
                 XHUNCO
               </span>
+
               <span className="text-[11px] tracking-[0.35em] text-black/40">
                 PORTAL
               </span>
@@ -120,6 +148,10 @@ export default function ClienteLayoutClient({ children, initialClient }) {
             <div className="text-sm font-semibold text-black truncate">
               {businessName}
             </div>
+          </div>
+
+          <div className="shrink-0">
+            <NotificationsBell />
           </div>
         </div>
       </header>
@@ -132,7 +164,9 @@ export default function ClienteLayoutClient({ children, initialClient }) {
             "transition-all duration-300 ease-out",
             expanded ? "px-5 py-6" : "px-3 py-6",
           ].join(" ")}
-          style={{ width: expanded ? SIDEBAR_W : SIDEBAR_COLLAPSED_W }}
+          style={{
+            width: expanded ? SIDEBAR_W : SIDEBAR_COLLAPSED_W,
+          }}
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
         >
@@ -153,7 +187,11 @@ export default function ClienteLayoutClient({ children, initialClient }) {
             aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
             title={collapsed ? "Expandir menú" : "Colapsar menú"}
           >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            {collapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
           </button>
 
           <div className="mt-6">
@@ -226,7 +264,9 @@ export default function ClienteLayoutClient({ children, initialClient }) {
               "transform transition-transform duration-300 ease-out",
               open ? "translate-x-0" : "-translate-x-full",
             ].join(" ")}
-            style={{ maxWidth: DRAWER_W }}
+            style={{
+              maxWidth: DRAWER_W,
+            }}
           >
             <div className="p-5 min-h-[100dvh] flex flex-col">
               <div className="flex items-start justify-between gap-4">
@@ -304,7 +344,10 @@ function ClienteBrandHeader({ expanded, logoSrc, businessName, mobile = false })
           className="h-10 w-10 rounded-2xl border border-black/10 bg-black/[0.02] flex items-center justify-center"
           title={businessName}
         >
-          <span className="text-xs font-semibold" style={{ color: BRAND_GREEN }}>
+          <span
+            className="text-xs font-semibold"
+            style={{ color: BRAND_GREEN }}
+          >
             {String(businessName || "C").charAt(0).toUpperCase()}
           </span>
         </div>
@@ -319,7 +362,11 @@ function ClienteBrandHeader({ expanded, logoSrc, businessName, mobile = false })
           <img
             src={logoSrc}
             alt="Logo del negocio"
-            className={mobile ? "h-28 w-28 object-contain" : "h-32 w-32 object-contain"}
+            className={
+              mobile
+                ? "h-28 w-28 object-contain"
+                : "h-32 w-32 object-contain"
+            }
             loading="eager"
           />
         ) : (
@@ -375,7 +422,11 @@ function ClienteSideItem({ href, label, icon: Icon, active, collapsed }) {
         <Icon size={18} color={active ? "#ffffff" : BRAND_GREEN_DARK} />
       </span>
 
-      {!collapsed && <span className="text-sm font-medium truncate">{label}</span>}
+      {!collapsed && (
+        <span className="text-sm font-medium truncate">
+          {label}
+        </span>
+      )}
     </a>
   );
 }

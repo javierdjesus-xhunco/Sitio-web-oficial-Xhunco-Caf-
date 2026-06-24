@@ -53,6 +53,11 @@ const ORDER_PENDING_VALUES = new Set([
   "en ruta",
 ]);
 
+const ORDER_CANCELED_VALUES = new Set([
+  "cancelado",
+  "cancelada",
+]);
+
 export async function GET() {
   try {
     const supabase = await supabaseServer();
@@ -148,6 +153,7 @@ export async function GET() {
           last_order: null,
           pendientes_pedido: { count: 0, total: 0 },
           pendientes_pago: { count: 0, total: 0 },
+          cancelados: { count: 0, total: 0 },
           pendientes: { count: 0, total: 0 },
           products: { top: [], bottom: [] },
         },
@@ -162,6 +168,9 @@ export async function GET() {
 
     let pendPagoCount = 0;
     let pendPagoTotal = 0;
+
+    let canceladosCount = 0;
+    let canceladosTotal = 0;
 
     for (const order of rows) {
       const ym = ymKeyFromIso(order.created_at);
@@ -182,6 +191,11 @@ export async function GET() {
       if (PAYMENT_PENDING_VALUES.has(paymentStatus)) {
         pendPagoCount += 1;
         pendPagoTotal += total;
+      }
+
+      if (ORDER_CANCELED_VALUES.has(status)) {
+        canceladosCount += 1;
+        canceladosTotal += total;
       }
     }
 
@@ -274,6 +288,11 @@ export async function GET() {
       total: pendPagoTotal,
     };
 
+    const cancelados = {
+      count: canceladosCount,
+      total: canceladosTotal,
+    };
+
     return NextResponse.json(
       {
         ok: true,
@@ -283,6 +302,7 @@ export async function GET() {
         last_order,
         pendientes_pedido,
         pendientes_pago,
+        cancelados,
         pendientes: pendientes_pedido,
         products: {
           top,
