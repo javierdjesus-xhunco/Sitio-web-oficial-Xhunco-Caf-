@@ -62,7 +62,7 @@ export default function B2B() {
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <Link
-                href="/contacto"
+                href="/b2b"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[#2A1A12] px-6 py-3.5 text-sm font-medium text-white transition hover:bg-[#1E120D]"
               >
                 Solicitar cotización

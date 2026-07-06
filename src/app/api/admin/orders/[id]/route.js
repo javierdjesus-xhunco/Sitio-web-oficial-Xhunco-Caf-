@@ -22,6 +22,14 @@ const ALLOWED = new Set([
 
 const ALLOWED_PAYMENT = new Set(["pending", "paid", "canceled"]);
 
+const STATUS_FLOW = [
+  "pendiente",
+  "confirmado",
+  "en_preparacion",
+  "en_ruta",
+  "entregado",
+];
+
 function getIdFromUrl(req) {
   try {
     const url = new URL(req.url);
@@ -34,9 +42,11 @@ function getIdFromUrl(req) {
 
 function normalizeStatus(input) {
   const s = String(input || "").trim().toLowerCase();
+
   if (!s) return "";
   if (s === "en preparación" || s === "en preparacion") return "en_preparacion";
   if (s === "en ruta") return "en_ruta";
+
   return s;
 }
 
@@ -50,7 +60,8 @@ function normalizePaymentStatus(input) {
   if (
     s === "pendiente" ||
     s === "pendiente_de_pago" ||
-    s === "pendiente de pago"
+    s === "pendiente de pago" ||
+    s === "pendiente_pago"
   ) {
     return "pending";
   }
@@ -68,16 +79,57 @@ function normalizePaymentStatus(input) {
 }
 
 function buildOrigin(req) {
-  return req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return (
+    req.headers.get("origin") ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000"
+  );
 }
 
 function safeName(profile) {
   if (!profile) return "Cliente";
-  const fullName = [profile.first_name, profile.last_name_paterno, profile.last_name_materno]
+
+  const fullName = [
+    profile.first_name,
+    profile.last_name_paterno,
+    profile.last_name_materno,
+  ]
     .map((x) => (x || "").trim())
     .filter(Boolean)
     .join(" ");
+
   return fullName || profile.email || "Cliente";
+}
+
+function getNextStatus(currentStatus) {
+  const index = STATUS_FLOW.indexOf(currentStatus);
+  if (index < 0) return null;
+
+  return STATUS_FLOW[index + 1] || null;
+}
+
+function isValidStatusTransition(prevStatus, nextStatus) {
+  if (prevStatus === nextStatus) return true;
+
+  if (prevStatus === "cancelado") return false;
+  if (prevStatus === "entregado") return false;
+
+  if (nextStatus === "cancelado") return true;
+
+  return getNextStatus(prevStatus) === nextStatus;
+}
+
+function getAllowedNextStatuses(prevStatus) {
+  if (prevStatus === "cancelado") return [];
+  if (prevStatus === "entregado") return [];
+
+  const next = getNextStatus(prevStatus);
+  const allowed = [];
+
+  if (next) allowed.push(next);
+  allowed.push("cancelado");
+
+  return allowed;
 }
 
 export async function PATCH(req, ctx) {
@@ -88,13 +140,22 @@ export async function PATCH(req, ctx) {
 
   if (!id) {
     return NextResponse.json(
-      { error: "Falta id", debug: { params: ctx?.params ?? null, url: req.url } },
+      {
+        error: "Falta id",
+        debug: {
+          params: ctx?.params ?? null,
+          url: req.url,
+        },
+      },
       { status: 400 }
     );
   }
 
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  if (!auth?.user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
 
   const { data: profRows, error: profErr } = await supabase
     .from("profiles")
@@ -102,10 +163,15 @@ export async function PATCH(req, ctx) {
     .eq("id", auth.user.id)
     .limit(1);
 
-  if (profErr) return NextResponse.json({ error: profErr.message }, { status: 400 });
+  if (profErr) {
+    return NextResponse.json({ error: profErr.message }, { status: 400 });
+  }
 
   const prof = profRows?.[0];
-  if (!prof?.active) return NextResponse.json({ error: "Usuario inactivo" }, { status: 403 });
+
+  if (!prof?.active) {
+    return NextResponse.json({ error: "Usuario inactivo" }, { status: 403 });
+  }
 
   if (!["admin", "superadmin", "super_admin"].includes(String(prof.role || "").trim())) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -118,18 +184,15 @@ export async function PATCH(req, ctx) {
   const nextStatus = wantsStatus ? normalizeStatus(body?.status) : "";
 
   const wantsPayment =
-  Object.prototype.hasOwnProperty.call(body || {}, "payment_status") ||
-  nextStatus === "cancelado";
+    Object.prototype.hasOwnProperty.call(body || {}, "payment_status") ||
+    nextStatus === "cancelado";
 
-  let nextPaymentStatus = Object.prototype.hasOwnProperty.call(
-  body || {},
-  "payment_status"
-  )
-  ? normalizePaymentStatus(body?.payment_status)
-  : "";
+  let nextPaymentStatus = Object.prototype.hasOwnProperty.call(body || {}, "payment_status")
+    ? normalizePaymentStatus(body?.payment_status)
+    : "";
 
   if (nextStatus === "cancelado") {
-  nextPaymentStatus = "canceled";
+    nextPaymentStatus = "canceled";
   }
 
   if (!wantsStatus && !wantsPayment) {
@@ -137,12 +200,21 @@ export async function PATCH(req, ctx) {
   }
 
   if (wantsStatus && !ALLOWED.has(nextStatus)) {
-    return NextResponse.json({ error: "Status inválido", received: nextStatus }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: "Status inválido",
+        received: nextStatus,
+      },
+      { status: 400 }
+    );
   }
 
   if (wantsPayment && !ALLOWED_PAYMENT.has(nextPaymentStatus)) {
     return NextResponse.json(
-      { error: "payment_status inválido", received: nextPaymentStatus },
+      {
+        error: "payment_status inválido",
+        received: nextPaymentStatus,
+      },
       { status: 400 }
     );
   }
@@ -153,11 +225,16 @@ export async function PATCH(req, ctx) {
     .eq("id", id)
     .single();
 
-  if (ordErr) return NextResponse.json({ error: ordErr.message }, { status: 400 });
-  if (!order) return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  if (ordErr) {
+    return NextResponse.json({ error: ordErr.message }, { status: 400 });
+  }
+
+  if (!order) {
+    return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  }
 
   const prevStatus = normalizeStatus(order.status);
-  const prevPaymentStatus = normalizePaymentStatus(order.payment_status);
+  const prevPaymentStatus = normalizePaymentStatus(order.payment_status || "pending");
   const clientUserId = order.client_user_id;
   const origin = buildOrigin(req);
 
@@ -174,6 +251,81 @@ export async function PATCH(req, ctx) {
     });
   }
 
+  if (prevStatus === "cancelado") {
+    return NextResponse.json(
+      {
+        error: "Este pedido está cancelado y ya no permite cambios.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (statusChanged && !isValidStatusTransition(prevStatus, nextStatus)) {
+    return NextResponse.json(
+      {
+        error: "No puedes saltarte pasos del pedido. Debes seguir el flujo correcto.",
+        current_status: prevStatus,
+        requested_status: nextStatus,
+        allowed_next_statuses: getAllowedNextStatuses(prevStatus),
+      },
+      { status: 409 }
+    );
+  }
+
+  if (paymentChanged) {
+    if (prevPaymentStatus === "canceled") {
+      return NextResponse.json(
+        {
+          error: "Este pago está cancelado y ya no permite cambios.",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (
+      prevPaymentStatus === "paid" &&
+      nextPaymentStatus !== "paid" &&
+      nextStatus !== "cancelado"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Este pago ya está marcado como pagado y no permite cambios manuales.",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (nextPaymentStatus === "canceled" && nextStatus !== "cancelado") {
+      return NextResponse.json(
+        {
+          error: "El pago solo puede pasar a cancelado cuando el pedido se cancela.",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (prevPaymentStatus === "pending" && nextPaymentStatus === "pending") {
+      return NextResponse.json(
+        {
+          error: "El pago ya está pendiente.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      prevPaymentStatus === "pending" &&
+      !["paid", "canceled"].includes(nextPaymentStatus)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Cambio de pago inválido.",
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const patch = {};
 
   if (statusChanged) {
@@ -181,23 +333,30 @@ export async function PATCH(req, ctx) {
   }
 
   if (paymentChanged) {
-  patch.payment_status = nextPaymentStatus;
+    patch.payment_status = nextPaymentStatus;
 
-  if (nextPaymentStatus === "paid") {
-    patch.paid_at = new Date().toISOString();
-    patch.paid_by = auth.user.id;
+    if (nextPaymentStatus === "paid") {
+      patch.paid_at = new Date().toISOString();
+      patch.paid_by = auth.user.id;
+    }
+
+    if (nextPaymentStatus === "pending" || nextPaymentStatus === "canceled") {
+      patch.paid_at = null;
+      patch.paid_by = null;
+    }
   }
 
-  if (nextPaymentStatus === "pending" || nextPaymentStatus === "canceled") {
-    patch.paid_at = null;
-    patch.paid_by = null;
-  }
-  }
+  const { error: updErr } = await supabaseAdmin
+    .from("orders")
+    .update(patch)
+    .eq("id", id);
 
-  const { error: updErr } = await supabaseAdmin.from("orders").update(patch).eq("id", id);
-  if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 });
+  if (updErr) {
+    return NextResponse.json({ error: updErr.message }, { status: 400 });
+  }
 
   let clientProf = null;
+
   try {
     const { data } = await supabaseAdmin
       .from("profiles")
@@ -235,35 +394,55 @@ export async function PATCH(req, ctx) {
     let notifBody = "";
 
     if (nextStatus === "confirmado") {
-      email = clientOrderConfirmedEmail({ clienteNombre, orderId: id, orderUrl });
+      email = clientOrderConfirmedEmail({
+        clienteNombre,
+        orderId: id,
+        orderUrl,
+      });
       notifType = "order_confirmed";
       notifTitle = "Tu pedido fue confirmado";
       notifBody = `Tu pedido ${id} fue confirmado.`;
     }
 
     if (nextStatus === "en_preparacion") {
-      email = clientOrderInPreparationEmail({ clienteNombre, orderId: id, orderUrl });
+      email = clientOrderInPreparationEmail({
+        clienteNombre,
+        orderId: id,
+        orderUrl,
+      });
       notifType = "order_in_preparation";
       notifTitle = "Tu pedido está en preparación";
       notifBody = `Tu pedido ${id} ya está en preparación.`;
     }
 
     if (nextStatus === "en_ruta") {
-      email = clientOrderOnTheWayEmail({ clienteNombre, orderId: id, orderUrl });
+      email = clientOrderOnTheWayEmail({
+        clienteNombre,
+        orderId: id,
+        orderUrl,
+      });
       notifType = "order_on_the_way";
       notifTitle = "Tu pedido va en camino";
       notifBody = `Tu pedido ${id} va en camino.`;
     }
 
     if (nextStatus === "entregado") {
-      email = clientOrderDeliveredEmail({ clienteNombre, orderId: id, orderUrl });
+      email = clientOrderDeliveredEmail({
+        clienteNombre,
+        orderId: id,
+        orderUrl,
+      });
       notifType = "order_delivered";
       notifTitle = "Tu pedido fue entregado";
       notifBody = `Tu pedido ${id} fue entregado.`;
     }
 
     if (nextStatus === "cancelado") {
-      email = clientOrderCancelledEmail({ clienteNombre, orderId: id, orderUrl });
+      email = clientOrderCancelledEmail({
+        clienteNombre,
+        orderId: id,
+        orderUrl,
+      });
       notifType = "order_cancelled";
       notifTitle = "Tu pedido fue cancelado";
       notifBody = `Tu pedido ${id} fue cancelado.`;
@@ -282,7 +461,10 @@ export async function PATCH(req, ctx) {
         };
 
         const { error: nErr } = await supabaseAdmin.from("notifications").insert([notif]);
-        if (nErr) console.error(`Error insert ${notifType} notification:`, nErr);
+
+        if (nErr) {
+          console.error(`Error insert ${notifType} notification:`, nErr);
+        }
 
         if (clienteEmail) {
           try {
@@ -309,20 +491,26 @@ export async function PATCH(req, ctx) {
 
       if (itemsErr) {
         return NextResponse.json(
-          { error: `Status actualizado pero no se pudo leer order_items: ${itemsErr.message}` },
+          {
+            error: `Status actualizado pero no se pudo leer order_items: ${itemsErr.message}`,
+          },
           { status: 400 }
         );
       }
 
       const agg = new Map();
+
       for (const it of items || []) {
         const suministroId = it?.suministro_id;
         const qty = Math.max(0, Number(it?.qty || 0));
+
         if (!suministroId || qty <= 0) continue;
+
         agg.set(suministroId, (agg.get(suministroId) || 0) + qty);
       }
 
       const ids = Array.from(agg.keys());
+
       if (ids.length > 0) {
         const { data: prods, error: prodsErr } = await supabaseAdmin
           .from("suministros_xhunco")
@@ -331,7 +519,9 @@ export async function PATCH(req, ctx) {
 
         if (prodsErr) {
           return NextResponse.json(
-            { error: `Pedido cancelado pero no se pudo leer suministros: ${prodsErr.message}` },
+            {
+              error: `Pedido cancelado pero no se pudo leer suministros: ${prodsErr.message}`,
+            },
             { status: 400 }
           );
         }
@@ -342,6 +532,7 @@ export async function PATCH(req, ctx) {
 
         const updates = ids.map(async (suministro_id) => {
           const current = stockById.get(suministro_id);
+
           if (current == null) {
             console.error("Stock restore: suministro no encontrado:", suministro_id);
             return;
@@ -356,7 +547,9 @@ export async function PATCH(req, ctx) {
             .eq("id", suministro_id);
 
           if (stockUpdErr) {
-            throw new Error(`No se pudo reponer stock (${suministro_id}): ${stockUpdErr.message}`);
+            throw new Error(
+              `No se pudo reponer stock (${suministro_id}): ${stockUpdErr.message}`
+            );
           }
         });
 
@@ -364,7 +557,11 @@ export async function PATCH(req, ctx) {
           await Promise.all(updates);
         } catch (e) {
           return NextResponse.json(
-            { error: `Pedido cancelado pero falló la reposición de stock: ${String(e?.message || e)}` },
+            {
+              error: `Pedido cancelado pero falló la reposición de stock: ${String(
+                e?.message || e
+              )}`,
+            },
             { status: 400 }
           );
         }
@@ -387,7 +584,10 @@ export async function PATCH(req, ctx) {
       };
 
       const { error: pErr } = await supabaseAdmin.from("notifications").insert([notif]);
-      if (pErr) console.error("Error insert order_paid notification:", pErr);
+
+      if (pErr) {
+        console.error("Error insert order_paid notification:", pErr);
+      }
 
       if (clienteEmail) {
         try {
@@ -417,5 +617,11 @@ export async function PATCH(req, ctx) {
     id,
     status: statusChanged ? nextStatus : prevStatus,
     payment_status: paymentChanged ? nextPaymentStatus : prevPaymentStatus,
+    paid_at: Object.prototype.hasOwnProperty.call(patch, "paid_at")
+      ? patch.paid_at
+      : null,
+    paid_by: Object.prototype.hasOwnProperty.call(patch, "paid_by")
+      ? patch.paid_by
+      : null,
   });
 }

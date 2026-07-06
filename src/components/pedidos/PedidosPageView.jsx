@@ -170,7 +170,7 @@ function effectivePaymentStatus(order) {
     return "canceled";
   }
 
-  return String(order?.payment_status || "pending").toLowerCase();
+  return normalizePaymentStatusValue(order?.payment_status || "pending");
 }
 
 
@@ -251,6 +251,94 @@ const STATUS = [
   { v: "entregado", label: "Entregado" },
   { v: "cancelado", label: "Cancelado" },
 ];
+
+const STATUS_FLOW = [
+  "pendiente",
+  "confirmado",
+  "en_preparacion",
+  "en_ruta",
+  "entregado",
+];
+
+function normalizePaymentStatusValue(v) {
+  const s = String(v || "").toLowerCase().trim();
+
+  if (s === "paid" || s === "pagado") return "paid";
+
+  if (
+    s === "pending" ||
+    s === "pendiente" ||
+    s === "pendiente de pago" ||
+    s === "pendiente_pago"
+  ) {
+    return "pending";
+  }
+
+  if (s === "canceled" || s === "cancelled" || s === "cancelado") {
+    return "canceled";
+  }
+
+  return s || "pending";
+}
+
+function isStatusLocked(order) {
+  const s = normalizeStatusValue(order?.status);
+  return s === "entregado" || s === "cancelado";
+}
+
+function isPaymentLocked(order) {
+  const s = normalizeStatusValue(order?.status);
+  const p = effectivePaymentStatus(order);
+
+  return s === "cancelado" || p === "paid" || p === "canceled";
+}
+
+function getAllowedStatusOptions(order) {
+  const current = normalizeStatusValue(order?.status);
+
+  if (current === "cancelado") {
+    return [{ v: "cancelado", label: "Cancelado" }];
+  }
+
+  if (current === "entregado") {
+    return [{ v: "entregado", label: "Entregado" }];
+  }
+
+  const index = STATUS_FLOW.indexOf(current);
+  const safeCurrent = index >= 0 ? current : "pendiente";
+  const nextStatus = STATUS_FLOW[index + 1];
+
+  const options = [{ v: safeCurrent, label: statusLabel(safeCurrent) }];
+
+  if (nextStatus) {
+    options.push({
+      v: nextStatus,
+      label: statusLabel(nextStatus),
+    });
+  }
+
+  options.push({ v: "cancelado", label: "Cancelado" });
+
+  return options;
+}
+
+function getAllowedPaymentOptions(order) {
+  const p = effectivePaymentStatus(order);
+
+  if (p === "paid") {
+    return [{ v: "paid", label: "Pagado" }];
+  }
+
+  if (p === "canceled") {
+    return [{ v: "canceled", label: "Cancelado" }];
+  }
+
+  return [
+    { v: "pending", label: "Pendiente de pago" },
+    { v: "paid", label: "Pagado" },
+  ];
+}
+
 
 export default function PedidosPageView({ role = "admin" }) {
   const isSuperAdmin = role === "super_admin";
@@ -475,16 +563,37 @@ const clientByUserId = useMemo(() => {
 }, [clients]);
 
 
- async function updateStatus(orderId, nextStatus) {
+ async function updateStatus(order, nextStatusRaw) {
+  const orderId = order?.id;
+  const currentStatus = normalizeStatusValue(order?.status);
+  const nextStatus = normalizeStatusValue(nextStatusRaw);
+
+  if (!orderId) return;
+
+  if (isStatusLocked(order)) {
+    return;
+  }
+
+  const allowedStatuses = getAllowedStatusOptions(order).map((x) => x.v);
+
+  if (!allowedStatuses.includes(nextStatus)) {
+    alert("No puedes saltarte pasos del pedido. Debes seguir el orden correcto.");
+    return;
+  }
+
+  if (nextStatus === currentStatus) {
+    return;
+  }
+
   setSavingId(orderId);
 
   try {
-    const nextPaymentStatus = nextStatus === "cancelado" ? "canceled" : null;
+    const shouldCancelPayment = nextStatus === "cancelado";
 
-    const body = nextPaymentStatus
+    const body = shouldCancelPayment
       ? {
           status: nextStatus,
-          payment_status: nextPaymentStatus,
+          payment_status: "canceled",
         }
       : {
           status: nextStatus,
@@ -498,7 +607,9 @@ const clientByUserId = useMemo(() => {
 
     const j = await r.json().catch(() => ({}));
 
-    if (!r.ok) throw new Error(j?.error || "No se pudo actualizar el status");
+    if (!r.ok) {
+      throw new Error(j?.error || "No se pudo actualizar el status");
+    }
 
     setRows((prev) =>
       prev.map((x) =>
@@ -506,8 +617,10 @@ const clientByUserId = useMemo(() => {
           ? {
               ...x,
               status: nextStatus,
-              ...(nextPaymentStatus
-                ? { payment_status: nextPaymentStatus }
+              ...(shouldCancelPayment
+                ? {
+                    payment_status: "canceled",
+                  }
                 : {}),
             }
           : x
@@ -522,42 +635,64 @@ const clientByUserId = useMemo(() => {
   }
 }
 
-  async function updatePaymentStatus(orderId, nextPaymentStatus) {
-    setSavingId(orderId);
+  async function updatePaymentStatus(order, nextPaymentStatusRaw) {
+  const orderId = order?.id;
+  const currentPaymentStatus = effectivePaymentStatus(order);
+  const nextPaymentStatus = normalizePaymentStatusValue(nextPaymentStatusRaw);
 
-    try {
-      const r = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_status: nextPaymentStatus }),
-      });
+  if (!orderId) return;
 
-      const j = await r.json().catch(() => ({}));
-
-      if (!r.ok)
-        throw new Error(j?.error || "No se pudo actualizar el estado de pago");
-
-      const nextPaidAt = j?.paid_at ?? null;
-      const nextPaidBy = j?.paid_by ?? null;
-
-      setRows((prev) =>
-        prev.map((x) =>
-          x.id === orderId
-            ? {
-                ...x,
-                payment_status: nextPaymentStatus,
-                ...(nextPaidAt !== null ? { paid_at: nextPaidAt } : {}),
-                ...(nextPaidBy !== null ? { paid_by: nextPaidBy } : {}),
-              }
-            : x
-        )
-      );
-    } catch (e) {
-      alert(String(e?.message || e));
-    } finally {
-      setSavingId(null);
-    }
+  if (isPaymentLocked(order)) {
+    return;
   }
+
+  const allowedPaymentStatuses = getAllowedPaymentOptions(order).map((x) => x.v);
+
+  if (!allowedPaymentStatuses.includes(nextPaymentStatus)) {
+    alert("No puedes cambiar a ese estado de pago.");
+    return;
+  }
+
+  if (nextPaymentStatus === currentPaymentStatus) {
+    return;
+  }
+
+  setSavingId(orderId);
+
+  try {
+    const r = await fetch(`/api/admin/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payment_status: nextPaymentStatus }),
+    });
+
+    const j = await r.json().catch(() => ({}));
+
+    if (!r.ok) {
+      throw new Error(j?.error || "No se pudo actualizar el estado de pago");
+    }
+
+    const nextPaidAt = j?.paid_at ?? null;
+    const nextPaidBy = j?.paid_by ?? null;
+
+    setRows((prev) =>
+      prev.map((x) =>
+        x.id === orderId
+          ? {
+              ...x,
+              payment_status: nextPaymentStatus,
+              ...(nextPaidAt !== null ? { paid_at: nextPaidAt } : {}),
+              ...(nextPaidBy !== null ? { paid_by: nextPaidBy } : {}),
+            }
+          : x
+      )
+    );
+  } catch (e) {
+    alert(String(e?.message || e));
+  } finally {
+    setSavingId(null);
+  }
+}
 
 async function downloadOrderPDF(order) {
   try {
@@ -1117,9 +1252,19 @@ async function downloadOrderPDF(order) {
         </div>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="space-y-5 rounded-2xl bg-[#f8f4e8] p-3">
             {rows.map((o) => {
-              const busy = savingId === o.id;
+
+  const busy = savingId === o.id;
+
+  const currentStatus = normalizeStatusValue(o.status);
+  const currentPaymentStatus = effectivePaymentStatus(o);
+
+  const statusLocked = isStatusLocked(o);
+  const paymentLocked = isPaymentLocked(o);
+
+  const allowedStatusOptions = getAllowedStatusOptions(o);
+  const allowedPaymentOptions = getAllowedPaymentOptions(o);
 
               const negocioNombre =
                 o?.negocio_nombre ||
@@ -1132,7 +1277,7 @@ async function downloadOrderPDF(order) {
               return (
   <div
     key={o.id}
-className="rounded-2xl border-2 border-[#31572c] bg-white p-4 shadow-sm"
+className="rounded-2xl border-2 border-[#31572c]/80 bg-white p-4 shadow-sm"
   >
     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
       <div className="min-w-0 w-full">
@@ -1140,7 +1285,7 @@ className="rounded-2xl border-2 border-[#31572c] bg-white p-4 shadow-sm"
           Pedido: {o.id}
         </div>
 
-        <div className="mt-3 rounded-xl border border-[#dbe8d3] bg-[#f4faf0] p-4">
+       <div className="mt-3 rounded-xl border border-[#dbe8d3] bg-[#eef6e8] p-4">
           <div className="mb-3 text-xs font-bold uppercase tracking-wide text-[#31572c]">
             Datos del pedido
           </div>
@@ -1210,7 +1355,7 @@ className="rounded-2xl border-2 border-[#31572c] bg-white p-4 shadow-sm"
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl border border-[#e1ecd9] bg-[#fafdf7] p-4">
+       <div className="mt-3 rounded-xl border border-[#e1ecd9] bg-[#f4f0df] p-4">
           <div className="mb-3 text-xs font-bold uppercase tracking-wide text-[#31572c]">
             Productos
           </div>
@@ -1305,19 +1450,24 @@ className="rounded-lg bg-[#f0f7ec] px-3 py-1.5 text-xs font-semibold text-[#3157
             Cambiar status
           </div>
 
-          <select
-            value={o.status || "pendiente"}
-            disabled={busy}
-            onChange={(e) => updateStatus(o.id, e.target.value)}
-            className={statusSelectClass(o.status)}
-          >
-            <option value="pendiente">Pendiente</option>
-            <option value="confirmado">Confirmado</option>
-            <option value="en_preparacion">En preparación</option>
-            <option value="en_ruta">En ruta</option>
-            <option value="entregado">Entregado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
+         <select
+  value={currentStatus}
+  disabled={busy || statusLocked}
+  onChange={(e) => updateStatus(o, e.target.value)}
+  className={`${statusSelectClass(currentStatus)} disabled:cursor-not-allowed`}
+>
+  {allowedStatusOptions.map((s) => (
+    <option key={s.v} value={s.v}>
+      {s.label}
+    </option>
+  ))}
+</select>
+
+{statusLocked ? (
+  <div className="mt-1 text-[11px] font-medium text-gray-500">
+    Este pedido ya no permite cambios de seguimiento.
+  </div>
+) : null}
         </div>
 
         <div>
@@ -1326,15 +1476,23 @@ className="rounded-lg bg-[#f0f7ec] px-3 py-1.5 text-xs font-semibold text-[#3157
           </div>
 
          <select
-         value={effectivePaymentStatus(o)}
-         disabled={busy || normalizeStatusValue(o.status) === "cancelado"}
-         onChange={(e) => updatePaymentStatus(o.id, e.target.value)}
-         className={paymentSelectClass(effectivePaymentStatus(o))}
-         >
-         <option value="pending">Pendiente de pago</option>
-         <option value="paid">Pagado</option>
-         <option value="canceled">Cancelado</option>
-         </select>
+  value={currentPaymentStatus}
+  disabled={busy || paymentLocked}
+  onChange={(e) => updatePaymentStatus(o, e.target.value)}
+  className={`${paymentSelectClass(currentPaymentStatus)} disabled:cursor-not-allowed`}
+>
+  {allowedPaymentOptions.map((p) => (
+    <option key={p.v} value={p.v}>
+      {p.label}
+    </option>
+  ))}
+</select>
+
+{paymentLocked ? (
+  <div className="mt-1 text-[11px] font-medium text-gray-500">
+    Este estado de pago ya no permite cambios.
+  </div>
+) : null}
         </div>
 
         {busy ? (
