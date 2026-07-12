@@ -7,6 +7,14 @@ import {
   clientOrderReceivedEmail,
 } from "@/lib/emailTemplates";
 
+import { sendWhatsAppText, normalizeMxPhone } from "@/lib/whatsapp";
+import {
+  buildClientOrderMessage,
+  buildAdminOrderMessage,
+  buildAddressText,
+} from "@/lib/orderWhatsappMessages";
+
+
 function buildOrigin(req) {
   return req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
@@ -107,11 +115,12 @@ export async function POST(req) {
     // 3) Perfil cliente
     let clienteNombre = "Cliente";
     let clienteEmail = "";
+    let clientePhoneProfile = "";
 
     try {
       const { data: prof, error: profErr } = await supabaseAdmin
         .from("profiles")
-        .select("id, role, active, email, first_name, last_name_paterno, last_name_materno")
+      .select("id, role, active, email, phone, first_name, last_name_paterno, last_name_materno")
         .eq("id", userId)
         .single();
 
@@ -120,10 +129,181 @@ export async function POST(req) {
       } else {
         clienteNombre = safeName(prof);
         clienteEmail = prof?.email || "";
+        clientePhoneProfile = prof?.phone || "";
       }
     } catch (e) {
       console.error("Error leyendo perfil cliente:", e);
     }
+   
+        // 3.1) Datos completos para WhatsApp
+    let clientData = null;
+    let createdOrder = null;
+    let orderProducts = [];
+
+    try {
+      const { data: cData, error: clientErr } = await supabaseAdmin
+        .from("clients")
+        .select(`
+          business_name,
+          owner_name,
+          phone,
+          street,
+          ext_number,
+          int_number,
+          neighborhood,
+          municipality,
+          state,
+          postal_code
+        `)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (clientErr) {
+        console.error("No se pudo leer cliente para WhatsApp:", clientErr);
+      } else {
+        clientData = cData;
+      }
+
+      const { data: oData, error: orderErr } = await supabaseAdmin
+        .from("orders")
+        .select("id, total, created_at, delivery_method, payment_method, delivery_address_snapshot")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (orderErr) {
+        console.error("No se pudo leer pedido para WhatsApp:", orderErr);
+      } else {
+        createdOrder = oData;
+      }
+
+      const { data: productsData, error: productsErr } = await supabaseAdmin
+        .from("order_items")
+        .select(`
+          qty,
+          unit_price,
+          line_total,
+          suministros_xhunco (
+            nombre,
+            marca,
+            presentacion
+          )
+        `)
+        .eq("order_id", orderId);
+
+      if (productsErr) {
+        console.error("No se pudieron leer productos para WhatsApp:", productsErr);
+      } else {
+        orderProducts = productsData || [];
+      }
+    } catch (e) {
+      console.error("Error preparando datos para WhatsApp:", e);
+    }
+    
+        // 3.2) 📲 WhatsApp al cliente y a admins/superadmins
+    try {
+      const businessName = clientData?.business_name || "No especificado";
+      const clientPhone = clientData?.phone || clientePhoneProfile || "";
+      const clientContactName = clientData?.owner_name || clienteNombre || "Cliente";
+
+      const finalOrder = {
+        id: orderId,
+        total: createdOrder?.total || 0,
+        created_at: createdOrder?.created_at || new Date().toISOString(),
+        delivery_method: createdOrder?.delivery_method || body?.delivery_method || null,
+        payment_method: createdOrder?.payment_method || body?.payment_method || null,
+        delivery_address_snapshot:
+          createdOrder?.delivery_address_snapshot || body?.address || null,
+      };
+
+      const whatsappItems = (orderProducts || []).map((item) => {
+        const product = item?.suministros_xhunco || {};
+
+        return {
+          nombre: [
+            product?.nombre,
+             product?.marca,
+            product?.presentacion,
+
+          ]
+            .filter(Boolean)
+            .join(" "),
+          qty: item?.qty || 0,
+        };
+      });
+
+      // Cliente
+      if (clientPhone) {
+        const clientMessage = buildClientOrderMessage({
+          clientName: clientContactName,
+          businessName,
+          orderId: finalOrder.id,
+          createdAt: finalOrder.created_at,
+          paymentMethod: finalOrder.payment_method,
+          total: finalOrder.total,
+        });
+
+        await sendWhatsAppText({
+          to: clientPhone,
+          message: clientMessage,
+        });
+      } else {
+        console.warn("WhatsApp cliente omitido: el cliente no tiene teléfono registrado.");
+      }
+
+      // Admins y superadmins
+      const { data: whatsappAdmins, error: whatsappAdminsErr } = await supabaseAdmin
+        .from("profiles")
+        .select("id, phone, role, active")
+        .in("role", ["admin", "super_admin", "superadmin"])
+        .eq("active", true);
+
+      if (whatsappAdminsErr) {
+        console.error("No se pudieron leer admins para WhatsApp:", whatsappAdminsErr);
+      } else {
+        const companyPhone = process.env.XHUNCO_WHATSAPP_ADMIN_PHONE;
+
+        const adminPhones = [
+          ...(whatsappAdmins || []).map((admin) => admin.phone),
+          companyPhone,
+        ]
+          .filter(Boolean)
+          .map((phone) => normalizeMxPhone(phone))
+          .filter(Boolean);
+
+        const uniqueAdminPhones = [...new Set(adminPhones)];
+
+        const addressText =
+          finalOrder.delivery_method === "delivery"
+            ? buildAddressText(finalOrder.delivery_address_snapshot || clientData)
+            : "Recolección en sucursal Xhunco";
+
+        const adminMessage = buildAdminOrderMessage({
+          businessName,
+          clientName: clientContactName,
+          clientPhone,
+          total: finalOrder.total,
+          paymentMethod: finalOrder.payment_method,
+          items: whatsappItems,
+          deliveryMethod: finalOrder.delivery_method,
+          address: addressText,
+          createdAt: finalOrder.created_at,
+          orderId: finalOrder.id,
+        });
+
+        await Promise.allSettled(
+          uniqueAdminPhones.map((phone) =>
+            sendWhatsAppText({
+              to: phone,
+              message: adminMessage,
+            })
+          )
+        );
+      }
+    } catch (whatsappErr) {
+      console.error("El pedido se creó, pero falló el envío de WhatsApp:", whatsappErr);
+    }
+
+
 
     // 4) 🔔 Notificación + 📧 correo a admins/superadmins
     try {
