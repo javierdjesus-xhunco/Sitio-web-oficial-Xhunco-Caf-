@@ -61,27 +61,6 @@ export default function LegalFooter() {
           >
             Cookies
           </Link>
-
-          <Link
-            href="/legal/contacto"
-            className="
-              inline-flex
-              items-center
-              gap-1
-              text-sm
-              font-medium
-              text-[#31572c]
-              transition-colors
-              hover:text-[#3f6b38]
-            "
-          >
-            Contacto legal
-
-            <ArrowUpRight
-              size={14}
-              strokeWidth={1.8}
-            />
-          </Link>
         </nav>
       </div>
 
