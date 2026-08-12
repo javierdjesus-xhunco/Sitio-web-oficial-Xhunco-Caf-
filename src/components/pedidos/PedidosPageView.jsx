@@ -281,9 +281,18 @@ function normalizePaymentStatusValue(v) {
   return s || "pending";
 }
 
-function isStatusLocked(order) {
+function isStatusLocked(order, isSuperAdmin = false) {
   const s = normalizeStatusValue(order?.status);
-  return s === "entregado" || s === "cancelado";
+
+  if (s === "cancelado") {
+    return true;
+  }
+
+  if (s === "entregado" && !isSuperAdmin) {
+    return true;
+  }
+
+  return false;
 }
 
 function isPaymentLocked(order) {
@@ -293,22 +302,60 @@ function isPaymentLocked(order) {
   return s === "cancelado" || p === "paid" || p === "canceled";
 }
 
-function getAllowedStatusOptions(order) {
+function getAllowedStatusOptions(order, isSuperAdmin = false) {
   const current = normalizeStatusValue(order?.status);
 
   if (current === "cancelado") {
-    return [{ v: "cancelado", label: "Cancelado" }];
+    return [
+      {
+        v: "cancelado",
+        label: "Cancelado",
+      },
+    ];
   }
 
+  /*
+   * SUPERADMIN:
+   *
+   * Si el pedido ya está entregado, puede corregir
+   * el status y regresar el pedido a un estado anterior
+   * si fuera necesario.
+   */
+  if (current === "entregado" && isSuperAdmin) {
+    return STATUS_FLOW.map((v) => ({
+      v,
+      label: statusLabel(v),
+    }));
+  }
+
+  /*
+   * ADMIN:
+   *
+   * Un pedido entregado queda bloqueado.
+   */
   if (current === "entregado") {
-    return [{ v: "entregado", label: "Entregado" }];
+    return [
+      {
+        v: "entregado",
+        label: "Entregado",
+      },
+    ];
   }
 
   const index = STATUS_FLOW.indexOf(current);
-  const safeCurrent = index >= 0 ? current : "pendiente";
-  const nextStatus = STATUS_FLOW[index + 1];
 
-  const options = [{ v: safeCurrent, label: statusLabel(safeCurrent) }];
+  const safeCurrent =
+    index >= 0 ? current : "pendiente";
+
+  const nextStatus =
+    STATUS_FLOW[index + 1];
+
+  const options = [
+    {
+      v: safeCurrent,
+      label: statusLabel(safeCurrent),
+    },
+  ];
 
   if (nextStatus) {
     options.push({
@@ -317,7 +364,10 @@ function getAllowedStatusOptions(order) {
     });
   }
 
-  options.push({ v: "cancelado", label: "Cancelado" });
+  options.push({
+    v: "cancelado",
+    label: "Cancelado",
+  });
 
   return options;
 }
@@ -341,7 +391,13 @@ function getAllowedPaymentOptions(order) {
 
 
 export default function PedidosPageView({ role = "admin" }) {
-  const isSuperAdmin = role === "super_admin";
+ const normalizedRole = String(role || "")
+  .trim()
+  .toLowerCase();
+
+const isSuperAdmin =
+  normalizedRole === "super_admin" ||
+  normalizedRole === "superadmin";
 
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
@@ -570,11 +626,14 @@ const clientByUserId = useMemo(() => {
 
   if (!orderId) return;
 
-  if (isStatusLocked(order)) {
-    return;
-  }
+if (isStatusLocked(order, isSuperAdmin)) {
+  return;
+}
 
-  const allowedStatuses = getAllowedStatusOptions(order).map((x) => x.v);
+const allowedStatuses = getAllowedStatusOptions(
+  order,
+  isSuperAdmin
+).map((x) => x.v);
 
   if (!allowedStatuses.includes(nextStatus)) {
     alert("No puedes saltarte pasos del pedido. Debes seguir el orden correcto.");
@@ -1260,11 +1319,16 @@ async function downloadOrderPDF(order) {
   const currentStatus = normalizeStatusValue(o.status);
   const currentPaymentStatus = effectivePaymentStatus(o);
 
-  const statusLocked = isStatusLocked(o);
+  const statusLocked = isStatusLocked(o, isSuperAdmin);
   const paymentLocked = isPaymentLocked(o);
 
-  const allowedStatusOptions = getAllowedStatusOptions(o);
-  const allowedPaymentOptions = getAllowedPaymentOptions(o);
+   const allowedStatusOptions = getAllowedStatusOptions(
+  o,
+  isSuperAdmin
+  );
+
+const allowedPaymentOptions =
+  getAllowedPaymentOptions(o);
 
               const negocioNombre =
                 o?.negocio_nombre ||

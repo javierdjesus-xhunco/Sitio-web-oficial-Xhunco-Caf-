@@ -54,6 +54,16 @@ export default function Footer() {
                 Buscar mi lote
               </Link>
             </li>
+            <li>
+              <Link href="/legal" className="transition hover:text-[#31572c]">
+                Centro Legal
+              </Link>
+            </li>
+            <li>
+              <Link href="/legal/privacidad" className="transition hover:text-[#31572c]">
+                Aviso de Privacidad
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -83,11 +93,11 @@ export default function Footer() {
 
             <li>
               <a
-                href="tel:+522461716089"
+                href="tel:+522463607392"
                 className="flex items-center gap-3 transition hover:text-[#31572c]"
               >
                 <Phone className="h-4 w-4 shrink-0 text-[#31572c]" />
-                <span>+52 246 171 6089</span>
+                <span>+52 246 360 7392</span>
               </a>
             </li>
           </ul>
